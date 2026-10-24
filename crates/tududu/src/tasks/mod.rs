@@ -98,7 +98,8 @@ pub async fn recover_orphan_jobs(db: &PgPool, older_than_secs: i64) -> sqlx::Res
 
         if let Some(message_id) = job.message_id {
             let outcome =
-                session_store::finish_message(db, message_id, session_store::MSG_FAILED, None).await;
+                session_store::finish_message(db, message_id, session_store::MSG_FAILED, None)
+                    .await;
 
             if let Err(err) = outcome {
                 tracing::warn!(error = %err, %message_id, "回写会话消息失败");
