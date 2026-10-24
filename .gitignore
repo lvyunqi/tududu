@@ -2,9 +2,11 @@
 /target
 **/target
 /web/node_modules
-/web/dist
+/web/dist/*
+!/web/dist/.gitkeep
 /admin/node_modules
-/admin/dist
+/admin/dist/*
+!/admin/dist/.gitkeep
 
 
 # 设计文档：只保留在本地，不进仓库

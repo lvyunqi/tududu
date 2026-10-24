@@ -10,7 +10,9 @@ use sqlx::PgPool;
 
 use crate::config::Config;
 use crate::error::ApiBody;
-use crate::http::{admin, admin_ops, assets, auth, billing, jobs, payment, plaza, sessions};
+use crate::http::{
+    admin, admin_ops, assets, auth, billing, jobs, payment, plaza, sessions, static_files,
+};
 
 /// 进程级共享状态。连接池句柄可 Clone，配置只读所以放进 Arc。
 #[derive(Clone)]
@@ -139,6 +141,7 @@ pub fn router(state: AppState) -> Router {
             post(admin_ops::set_prompt_status),
         )
         .with_state(state)
+        .fallback(static_files::fallback)
 }
 
 /// 给负载均衡与容器探针用的最小健康检查，不碰数据库。

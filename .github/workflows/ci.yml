@@ -64,6 +64,24 @@ jobs:
           targets: x86_64-unknown-linux-musl
       - name: 恢复编译缓存
         uses: Swatinem/rust-cache@v2
+      - name: 安装 pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - name: 安装 Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: 构建用户端
+        working-directory: web
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm build
+      - name: 构建管理后台
+        working-directory: admin
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm build
       - name: 安装 musl 工具链
         run: sudo apt-get update && sudo apt-get install -y musl-tools
       - name: 编译静态二进制
