@@ -54,6 +54,13 @@ impl IntoResponse for ApiError {
     }
 }
 
+impl From<sqlx::Error> for ApiError {
+    fn from(err: sqlx::Error) -> Self {
+        tracing::error!(error = %err, "数据库操作失败");
+        Self::internal("服务暂时不可用，请稍后再试")
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

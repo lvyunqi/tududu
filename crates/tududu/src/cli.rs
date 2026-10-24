@@ -14,8 +14,10 @@ pub struct Cli {
 
 #[derive(Debug, Subcommand)]
 pub enum Command {
-    /// 启动 HTTP API 服务
+    /// 启动 HTTP API 服务，启动时自动执行数据库迁移
     Serve,
+    /// 只执行数据库迁移然后退出
+    Migrate,
     /// 输出版本号
     Version,
 }
