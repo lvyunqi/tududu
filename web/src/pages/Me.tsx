@@ -6,7 +6,7 @@ import type { PromptItem } from "../lib/types";
 
 type Auth = ReturnType<typeof useAuth>;
 
-export default function MePage({ auth }: { auth: Auth }) {
+export default function MePage({ auth, onRecharge }: { auth: Auth; onRecharge: () => void }) {
   const [works, setWorks] = useState<PromptItem[]>([]);
 
   useEffect(() => {
@@ -25,7 +25,7 @@ export default function MePage({ auth }: { auth: Auth }) {
         <p className="balance-line">
           {auth.balance} {auth.unitName}
         </p>
-        <p className="hint">充值入口接上易支付后补齐</p>
+        <button onClick={onRecharge}>去充值</button>
       </section>
 
       <section className="card">

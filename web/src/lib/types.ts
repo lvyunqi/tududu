@@ -91,3 +91,34 @@ export interface PromptCategory {
   name: string;
   slug: string;
 }
+
+export interface RechargePlan {
+  id: string;
+  name: string;
+  amount_fen: number;
+  credit: number;
+  bonus: number;
+  sort: number;
+  enabled: boolean;
+}
+
+export interface CheckoutInfo {
+  order_no: string;
+  amount_fen: number;
+  credit: number;
+  bonus: number;
+  subject: string;
+  pay_url: string;
+  expire_at: string;
+}
+
+export interface PayOrder {
+  order_no: string;
+  status: number;
+  amount_fen: number;
+  credit: number;
+  bonus: number;
+  subject: string;
+  paid_at: string | null;
+  created_at: string;
+}
