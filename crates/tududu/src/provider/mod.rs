@@ -57,7 +57,9 @@ pub async fn create_provider(
 ) -> Result<store::ProviderRow, ApiError> {
     let code = req.code.trim().to_lowercase();
     if !is_valid_code(&code) {
-        return Err(ApiError::bad_request("渠道商标识只能用 2 到 32 位小写字母、数字、短横线或下划线"));
+        return Err(ApiError::bad_request(
+            "渠道商标识只能用 2 到 32 位小写字母、数字、短横线或下划线",
+        ));
     }
 
     let name = req.name.trim();
@@ -148,11 +150,10 @@ pub async fn create_channel(
         return Err(ApiError::bad_request("密钥长度看起来不对"));
     }
 
-    let cipher = crypto::encrypt(key, api_key)
-        .map_err(|err| {
-            tracing::error!(error = %err, "加密渠道密钥失败");
-            ApiError::internal("保存密钥失败")
-        })?;
+    let cipher = crypto::encrypt(key, api_key).map_err(|err| {
+        tracing::error!(error = %err, "加密渠道密钥失败");
+        ApiError::internal("保存密钥失败")
+    })?;
 
     let created = store::NewChannel {
         provider_id,
@@ -214,10 +215,7 @@ pub async fn refresh_models(
     Ok(store::upsert_models(db, provider_id, &codes).await?)
 }
 
-pub async fn list_models(
-    db: &PgPool,
-    provider_id: Uuid,
-) -> Result<Vec<store::ModelRow>, ApiError> {
+pub async fn list_models(db: &PgPool, provider_id: Uuid) -> Result<Vec<store::ModelRow>, ApiError> {
     if store::find_provider(db, provider_id).await?.is_none() {
         return Err(ApiError::not_found("渠道商不存在"));
     }
@@ -237,7 +235,9 @@ fn is_valid_code(code: &str) -> bool {
 fn normalize_base_url(raw: &str) -> Result<String, ApiError> {
     let trimmed = raw.trim().trim_end_matches('/');
     if !trimmed.starts_with("http://") && !trimmed.starts_with("https://") {
-        return Err(ApiError::bad_request("接口地址需要以 http:// 或 https:// 开头"));
+        return Err(ApiError::bad_request(
+            "接口地址需要以 http:// 或 https:// 开头",
+        ));
     }
 
     Ok(trimmed.to_owned())
@@ -263,8 +263,8 @@ mod tests {
     #[test]
     fn base_url_requires_scheme_and_drops_trailing_slash() {
         assert_eq!(
-            normalize_base_url("https://api.example.com/v1/").as_deref(),
-            Ok("https://api.example.com/v1")
+            normalize_base_url("https://api.example.com/v1/").unwrap(),
+            "https://api.example.com/v1"
         );
         assert!(normalize_base_url("api.example.com").is_err());
     }

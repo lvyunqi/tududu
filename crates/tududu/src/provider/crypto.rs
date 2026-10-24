@@ -74,7 +74,7 @@ mod tests {
         let cipher = encrypt(&key, "sk-test-1234567890").expect("encrypt");
 
         assert_ne!(cipher, "sk-test-1234567890");
-        assert_eq!(decrypt(&key, &cipher).as_deref(), Ok("sk-test-1234567890"));
+        assert_eq!(decrypt(&key, &cipher).unwrap(), "sk-test-1234567890");
     }
 
     #[test]

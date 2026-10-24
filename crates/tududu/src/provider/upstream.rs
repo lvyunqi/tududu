@@ -34,7 +34,9 @@ pub async fn list_models(
     let response = client
         .get(&url)
         .bearer_auth(api_key)
-        .timeout(Duration::from_millis(u64::from(timeout_ms.max(1000) as u32)))
+        .timeout(Duration::from_millis(
+            u64::from(timeout_ms.max(1000) as u32),
+        ))
         .send()
         .await
         .map_err(|err| format!("请求上游失败：{err}"))?;
@@ -54,7 +56,11 @@ pub async fn list_models(
 
     let mut models: Vec<String> = Vec::new();
     for item in envelope.data.into_iter().chain(envelope.models) {
-        let code = if item.id.is_empty() { item.name } else { item.id };
+        let code = if item.id.is_empty() {
+            item.name
+        } else {
+            item.id
+        };
         let code = code.trim().to_owned();
         if !code.is_empty() && !models.contains(&code) {
             models.push(code);

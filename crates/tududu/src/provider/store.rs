@@ -69,7 +69,9 @@ pub struct NewProvider<'a> {
 }
 
 pub async fn insert_provider(db: &PgPool, item: &NewProvider<'_>) -> sqlx::Result<ProviderRow> {
-    let sql = format!("INSERT INTO providers (code, name, protocol, base_url, timeout_ms, max_concurrency) VALUES ($1, $2, $3, $4, $5, $6) RETURNING {PROVIDER_COLUMNS}");
+    let sql = format!(
+        "INSERT INTO providers (code, name, protocol, base_url, timeout_ms, max_concurrency) VALUES ($1, $2, $3, $4, $5, $6) RETURNING {PROVIDER_COLUMNS}"
+    );
 
     sqlx::query_as::<_, ProviderRow>(&sql)
         .bind(item.code)
@@ -91,7 +93,9 @@ pub async fn update_provider(
     max_concurrency: Option<i32>,
     enabled: Option<bool>,
 ) -> sqlx::Result<Option<ProviderRow>> {
-    let sql = format!("UPDATE providers SET name = COALESCE($2, name), base_url = COALESCE($3, base_url), timeout_ms = COALESCE($4, timeout_ms), max_concurrency = COALESCE($5, max_concurrency), enabled = COALESCE($6, enabled), updated_at = now() WHERE id = $1 RETURNING {PROVIDER_COLUMNS}");
+    let sql = format!(
+        "UPDATE providers SET name = COALESCE($2, name), base_url = COALESCE($3, base_url), timeout_ms = COALESCE($4, timeout_ms), max_concurrency = COALESCE($5, max_concurrency), enabled = COALESCE($6, enabled), updated_at = now() WHERE id = $1 RETURNING {PROVIDER_COLUMNS}"
+    );
 
     sqlx::query_as::<_, ProviderRow>(&sql)
         .bind(id)
@@ -124,7 +128,9 @@ pub struct NewChannel<'a> {
 }
 
 pub async fn insert_channel(db: &PgPool, item: &NewChannel<'_>) -> sqlx::Result<ChannelRow> {
-    let sql = format!("INSERT INTO channels (provider_id, name, api_key_cipher, api_key_hint, weight, priority, max_concurrency) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING {CHANNEL_COLUMNS}");
+    let sql = format!(
+        "INSERT INTO channels (provider_id, name, api_key_cipher, api_key_hint, weight, priority, max_concurrency) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING {CHANNEL_COLUMNS}"
+    );
 
     sqlx::query_as::<_, ChannelRow>(&sql)
         .bind(item.provider_id)
@@ -139,7 +145,9 @@ pub async fn insert_channel(db: &PgPool, item: &NewChannel<'_>) -> sqlx::Result<
 }
 
 pub async fn list_channels(db: &PgPool, provider_id: Uuid) -> sqlx::Result<Vec<ChannelRow>> {
-    let sql = format!("SELECT {CHANNEL_COLUMNS} FROM channels WHERE provider_id = $1 ORDER BY priority, created_at");
+    let sql = format!(
+        "SELECT {CHANNEL_COLUMNS} FROM channels WHERE provider_id = $1 ORDER BY priority, created_at"
+    );
 
     sqlx::query_as::<_, ChannelRow>(&sql)
         .bind(provider_id)
