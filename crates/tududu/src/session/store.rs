@@ -157,6 +157,16 @@ pub async fn list_messages(
         .await
 }
 
+/// 找这个会话最近一次生成成功的图，用来接着改。
+pub async fn latest_output_asset(db: &PgPool, session_id: Uuid) -> sqlx::Result<Option<Uuid>> {
+    sqlx::query_scalar(
+        "SELECT output_asset_id FROM session_messages WHERE session_id = $1 AND output_asset_id IS NOT NULL ORDER BY created_at DESC LIMIT 1",
+    )
+    .bind(session_id)
+    .fetch_optional(db)
+    .await
+}
+
 pub async fn attach_job(db: &PgPool, message_id: Uuid, job_id: Uuid) -> sqlx::Result<()> {
     sqlx::query("UPDATE session_messages SET job_id = $2 WHERE id = $1")
         .bind(message_id)

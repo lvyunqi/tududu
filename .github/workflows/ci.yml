@@ -126,7 +126,7 @@ jobs:
       - name: 跑计费与支付测试
         env:
           TEST_DATABASE_URL: postgres://postgres@127.0.0.1:5432/tududu_test
-        run: cargo test --test billing_flow -- --test-threads=1
+        run: cargo test --test billing_flow --test session_flow -- --test-threads=1
   web:
     name: 前端构建
     runs-on: ubuntu-latest
