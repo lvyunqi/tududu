@@ -2,6 +2,7 @@
 
 pub mod local_store;
 pub mod store;
+pub mod thumb;
 
 use chrono::Utc;
 use sha2::{Digest, Sha256};
@@ -88,16 +89,33 @@ async fn store_asset(
         return Ok(existing);
     }
 
-    let object_key = format!("{prefix}/{}.{}", Uuid::new_v4().simple(), ext);
+    let file_id = Uuid::new_v4().simple().to_string();
+    let object_key = format!("{prefix}/{file_id}.{ext}");
 
     files.save(&object_key, bytes).await.map_err(|err| {
         tracing::error!(error = %err, key = %object_key, "写入本地文件失败");
         ApiError::internal("保存图片失败")
     })?;
 
+    // 缩略图尽力而为：生成失败不影响原图入库，列表回退到原图而已
+    let thumb_key = match thumb::make(bytes) {
+        Some(small) => {
+            let key = format!("{prefix}/{file_id}_thumb.jpg");
+            match files.save(&key, &small).await {
+                Ok(()) => Some(key),
+                Err(err) => {
+                    tracing::warn!(error = %err, key = %key, "写入缩略图失败");
+                    None
+                }
+            }
+        }
+        None => None,
+    };
+
     let new_asset = store::NewAsset {
         owner_user_id: owner,
         object_key: &object_key,
+        thumb_key: thumb_key.as_deref(),
         mime,
         byte_size: bytes.len() as i64,
         sha256: &sha256,
@@ -109,6 +127,9 @@ async fn store_asset(
         Err(err) => {
             // 入库失败就把刚写的文件删掉，别留孤儿文件
             let _ = files.remove(&object_key).await;
+            if let Some(key) = thumb_key {
+                let _ = files.remove(&key).await;
+            }
             Err(err.into())
         }
     }

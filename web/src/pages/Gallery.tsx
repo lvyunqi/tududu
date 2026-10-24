@@ -36,7 +36,7 @@ export default function GalleryPage() {
 
       <div className="grid">
         {items.map((item) => (
-          <AuthImage key={item.id} assetId={item.id} alt={item.source} />
+          <AuthImage key={item.id} assetId={item.id} alt={item.source} variant="thumb" />
         ))}
       </div>
     </div>
