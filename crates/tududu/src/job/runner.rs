@@ -127,6 +127,7 @@ pub async fn execute(
                 .await?;
                 let asset = storage::save_generated(db, files, job.user_id, &bytes).await?;
                 store::mark_succeeded(db, job_id, asset.id).await?;
+                finish_message(db, &job, crate::session::store::MSG_DONE, Some(asset.id)).await;
                 return Ok(());
             }
             Err(err) => {
@@ -174,6 +175,7 @@ async fn fail_and_refund(
     message: &str,
 ) -> Result<(), ApiError> {
     store::mark_failed(db, job.id, error_code, message).await?;
+    finish_message(db, job, crate::session::store::MSG_FAILED, None).await;
 
     if job.price > 0 {
         let outcome = crate::billing::refund(
@@ -192,6 +194,25 @@ async fn fail_and_refund(
     }
 
     Ok(())
+}
+
+/// 任务挂在会话里时，把这一轮的结果回写到助手消息上。
+async fn finish_message(
+    db: &PgPool,
+    job: &store::JobRow,
+    status: i16,
+    output_asset_id: Option<Uuid>,
+) {
+    let Some(message_id) = job.message_id else {
+        return;
+    };
+
+    let outcome =
+        crate::session::store::finish_message(db, message_id, status, output_asset_id).await;
+
+    if let Err(err) = outcome {
+        tracing::error!(error = %err, %message_id, "回写会话消息失败");
+    }
 }
 
 #[allow(clippy::too_many_arguments)]

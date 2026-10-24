@@ -5,6 +5,7 @@ pub mod billing;
 pub mod jobs;
 pub mod payment;
 pub mod routes;
+pub mod sessions;
 
 use std::sync::Arc;
 

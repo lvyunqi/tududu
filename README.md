@@ -48,6 +48,11 @@ curl http://127.0.0.1:8080/api/v1/health
 | DELETE | `/api/v1/assets/{id}` | 移入回收站 |
 | POST | `/api/v1/jobs` | 提交修图任务，立即返回任务号，上游调用在后台执行 |
 | GET | `/api/v1/jobs/{id}` | 查询任务状态与结果图 |
+| GET/POST | `/api/v1/sessions` | 会话列表与新建 |
+| GET/PATCH/DELETE | `/api/v1/sessions/{id}` | 会话详情（含消息）、改名、删除 |
+| POST | `/api/v1/sessions/{id}/messages` | 提交一轮修改，返回任务号 |
+
+会话是带图的连续对话：每轮写一条用户消息和一条助手消息，任务跑完由执行器把结果图回写到助手消息上。
 | GET | `/api/v1/billing/wallet` | 钱包余额 |
 | GET | `/api/v1/billing/ledger` | 流水，游标分页 |
 | GET | `/api/v1/billing/config` | 计费单位名称与换算，公开 |

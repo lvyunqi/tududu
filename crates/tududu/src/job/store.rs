@@ -19,6 +19,8 @@ pub struct JobRow {
     pub model: String,
     pub prompt: String,
     pub input_asset_id: Option<Uuid>,
+    pub session_id: Option<Uuid>,
+    pub message_id: Option<Uuid>,
     pub status: i16,
     pub attempt_count: i32,
     pub max_attempts: i32,
@@ -31,7 +33,7 @@ pub struct JobRow {
     pub created_at: DateTime<Utc>,
 }
 
-const JOB_COLUMNS: &str = "id, user_id, provider_id, channel_id, model, prompt, input_asset_id, status, attempt_count, max_attempts, output_asset_id, price, error_code, error_message, started_at, finished_at, created_at";
+const JOB_COLUMNS: &str = "id, user_id, provider_id, channel_id, model, prompt, input_asset_id, session_id, message_id, status, attempt_count, max_attempts, output_asset_id, price, error_code, error_message, started_at, finished_at, created_at";
 
 pub struct NewJob<'a> {
     pub user_id: Uuid,
@@ -39,13 +41,15 @@ pub struct NewJob<'a> {
     pub model: &'a str,
     pub prompt: &'a str,
     pub input_asset_id: Option<Uuid>,
+    pub session_id: Option<Uuid>,
+    pub message_id: Option<Uuid>,
     pub max_attempts: i32,
     pub price: i64,
 }
 
 pub async fn insert(db: &PgPool, item: &NewJob<'_>) -> sqlx::Result<JobRow> {
     let sql = format!(
-        "INSERT INTO jobs (user_id, provider_id, model, prompt, input_asset_id, max_attempts, price) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING {JOB_COLUMNS}"
+        "INSERT INTO jobs (user_id, provider_id, model, prompt, input_asset_id, session_id, message_id, max_attempts, price) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING {JOB_COLUMNS}"
     );
 
     sqlx::query_as::<_, JobRow>(&sql)
@@ -54,6 +58,8 @@ pub async fn insert(db: &PgPool, item: &NewJob<'_>) -> sqlx::Result<JobRow> {
         .bind(item.model)
         .bind(item.prompt)
         .bind(item.input_asset_id)
+        .bind(item.session_id)
+        .bind(item.message_id)
         .bind(item.max_attempts)
         .bind(item.price)
         .fetch_one(db)
