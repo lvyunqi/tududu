@@ -109,12 +109,7 @@ pub async fn refund(
     apply_delta(db, user_id, amount, KIND_REFUND, ref_type, ref_id, remark).await
 }
 
-pub async fn grant(
-    db: &PgPool,
-    user_id: Uuid,
-    amount: i64,
-    remark: &str,
-) -> Result<i64, ApiError> {
+pub async fn grant(db: &PgPool, user_id: Uuid, amount: i64, remark: &str) -> Result<i64, ApiError> {
     apply_delta(db, user_id, amount, KIND_GRANT, None, None, remark).await
 }
 

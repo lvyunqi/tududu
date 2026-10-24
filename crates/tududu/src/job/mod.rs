@@ -52,13 +52,8 @@ pub async fn submit(
         }
     }
 
-    let price = crate::billing::price_for(
-        db,
-        model,
-        req.size.as_deref(),
-        req.quality.as_deref(),
-    )
-    .await?;
+    let price =
+        crate::billing::price_for(db, model, req.size.as_deref(), req.quality.as_deref()).await?;
 
     let new_job = store::NewJob {
         user_id,

@@ -77,9 +77,11 @@ pub async fn list_ledger(
 }
 
 pub async fn read_config(db: &PgPool) -> sqlx::Result<Option<ConfigRow>> {
-    sqlx::query_as::<_, ConfigRow>("SELECT unit_name, unit_per_yuan FROM billing_config WHERE id = 1")
-        .fetch_optional(db)
-        .await
+    sqlx::query_as::<_, ConfigRow>(
+        "SELECT unit_name, unit_per_yuan FROM billing_config WHERE id = 1",
+    )
+    .fetch_optional(db)
+    .await
 }
 
 pub async fn write_config(db: &PgPool, unit_name: &str, unit_per_yuan: i64) -> sqlx::Result<()> {
