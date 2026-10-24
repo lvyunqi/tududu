@@ -70,7 +70,7 @@ pub async fn save_upload(
 
     let now = Utc::now();
     let prefix = format!("u/{short_code}/{}/{}", now.format("%Y"), now.format("%m"));
-    store_asset(db, files, owner, &prefix, bytes, "upload").await
+    store_asset(db, files, owner, &prefix, bytes, "upload", Some(quota_bytes)).await
 }
 
 /// 保存模型生成的结果图。和上传一样按内容去重，同一张图不会重复占盘。
@@ -86,7 +86,8 @@ pub async fn save_generated(
 
     let now = Utc::now();
     let prefix = format!("g/{owner}/{}/{}", now.format("%Y"), now.format("%m"));
-    store_asset(db, files, owner, &prefix, bytes, "job").await
+    // 生成图不查配额：用户已经付过钱，任务跑完却因为配额入库失败等于扣钱没图
+    store_asset(db, files, owner, &prefix, bytes, "job", None).await
 }
 
 async fn store_asset(
@@ -96,6 +97,7 @@ async fn store_asset(
     prefix: &str,
     bytes: &[u8],
     source: &str,
+    quota_bytes: Option<i64>,
 ) -> Result<store::AssetRow, ApiError> {
     let (mime, ext) =
         detect_image(bytes).ok_or_else(|| ApiError::bad_request("只支持 PNG、JPEG、WebP"))?;
@@ -106,8 +108,10 @@ async fn store_asset(
     }
 
     // 去重之后才查配额：同一张图重复上传不该被算成新占用
-    let used = store::used_bytes(db, owner).await?;
-    ensure_quota(used, bytes.len(), quota_bytes)?;
+    if let Some(limit) = quota_bytes {
+        let used = store::used_bytes(db, owner).await?;
+        ensure_quota(used, bytes.len(), limit)?;
+    }
 
     let file_id = Uuid::new_v4().simple().to_string();
     let object_key = format!("{prefix}/{file_id}.{ext}");
