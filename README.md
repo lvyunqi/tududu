@@ -118,7 +118,13 @@ curl http://127.0.0.1:8080/api/v1/health
 
 图片落在 `TUDUDU_DATA_DIR` 下，库里只存相对路径。同一用户重复上传相同内容会直接复用已有记录。
 
-管理接口需要请求头 `x-admin-token`，值为 `TUDUDU_ADMIN_TOKEN`：
+管理接口用管理员账号登录，拿到令牌后放 `Authorization: Bearer <token>`。
+过渡期仍支持请求头 `x-admin-token`，值为 `TUDUDU_ADMIN_TOKEN`。
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| POST | `/api/v1/admin/auth/login` | 账号密码登录，返回 8 小时有效的令牌 |
+
 
 | 方法 | 路径 | 说明 |
 | --- | --- | --- |
@@ -165,7 +171,9 @@ curl http://127.0.0.1:8080/api/v1/health
 | `TUDUDU_JWT_SECRET` | 无，必填 | 访问令牌签名密钥，至少 32 位 |
 | `TUDUDU_ACCESS_TTL` | `900` | 访问令牌有效期，单位秒 |
 | `TUDUDU_REFRESH_TTL` | `2592000` | 刷新令牌有效期，单位秒 |
-| `TUDUDU_ADMIN_TOKEN` | 空 | 管理接口令牌，不配置则管理接口关闭 |
+| `TUDUDU_ADMIN_USERNAME` | 空 | 初始管理员账号，只在库里没有管理员时创建 |
+| `TUDUDU_ADMIN_PASSWORD` | 空 | 初始管理员密码，同上 |
+| `TUDUDU_ADMIN_TOKEN` | 空 | 旧的单一令牌，保留作为过渡，账号体系就绪后可以不配 |
 | `TUDUDU_PUBLIC_BASE_URL` | 空 | 对外访问地址，用于拼接支付回调地址 |
 | `TUDUDU_LOG` | `info` | 日志过滤规则，语法同 `RUST_LOG` |
 

@@ -36,5 +36,15 @@ async fn main() -> anyhow::Result<()> {
 async fn open_database(config: &Config) -> anyhow::Result<PgPool> {
     let pool = db::connect(&config.database_url, config.db_max_connections).await?;
     db::migrate(&pool).await?;
+
+    if let (Some(username), Some(password)) = (
+        config.admin_username.as_deref(),
+        config.admin_password.as_deref(),
+    ) {
+        tududu::admin_auth::bootstrap(&pool, username, password)
+            .await
+            .context("创建初始管理员失败")?;
+    }
+
     Ok(pool)
 }

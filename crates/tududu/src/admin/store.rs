@@ -166,14 +166,16 @@ pub async fn overview(db: &PgPool) -> sqlx::Result<OverviewRow> {
 
 pub async fn record_audit(
     db: &PgPool,
+    operator_id: Option<Uuid>,
     action: &str,
     target_type: &str,
     target_id: &str,
     detail: &str,
 ) -> sqlx::Result<()> {
     sqlx::query(
-        "INSERT INTO audit_logs (action, target_type, target_id, detail) VALUES ($1, $2, $3, $4)",
+        "INSERT INTO audit_logs (operator_id, action, target_type, target_id, detail) VALUES ($1, $2, $3, $4, $5)",
     )
+    .bind(operator_id)
     .bind(action)
     .bind(target_type)
     .bind(target_id)

@@ -34,9 +34,10 @@ interface Options {
 }
 
 export async function adminRequest<T>(path: string, options: Options = {}): Promise<T> {
-  const headers: Record<string, string> = {
-    "x-admin-token": getAdminToken()
-  };
+  const token = getAdminToken();
+  const headers: Record<string, string> = token.startsWith("ey") 
+    ? { Authorization: `Bearer ${token}` }
+    : { "x-admin-token": token };
 
   let payload: BodyInit | undefined;
   if (options.body !== undefined) {

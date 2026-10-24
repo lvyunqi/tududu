@@ -51,7 +51,7 @@ pub async fn set_user_status(
     Path(id): Path<Uuid>,
     Json(req): Json<UserStatusRequest>,
 ) -> Result<Json<ApiBody<()>>, ApiError> {
-    require_admin(&state, &headers)?;
+    let operator = require_admin(&state, &headers)?;
 
     if !admin::is_valid_user_status(req.status) {
         return Err(ApiError::bad_request("状态只能是 1 正常、2 禁言、3 封禁"));
@@ -62,8 +62,15 @@ pub async fn set_user_status(
     }
 
     let detail = format!("status={}", req.status);
-    let _ =
-        admin_store::record_audit(&state.db, "user_status", "user", &id.to_string(), &detail).await;
+    let _ = admin_store::record_audit(
+        &state.db,
+        operator.id,
+        "user_status",
+        "user",
+        &id.to_string(),
+        &detail,
+    )
+    .await;
 
     Ok(Json(ApiBody {
         code: 0,
@@ -176,7 +183,7 @@ pub async fn set_prompt_status(
     Path(code): Path<String>,
     Json(req): Json<PromptStatusRequest>,
 ) -> Result<Json<ApiBody<()>>, ApiError> {
-    require_admin(&state, &headers)?;
+    let operator = require_admin(&state, &headers)?;
 
     if req.status != plaza_store::STATUS_PUBLISHED && req.status != plaza_store::STATUS_HIDDEN {
         return Err(ApiError::bad_request("状态只能是 2 已发布或 3 已下架"));
@@ -187,7 +194,15 @@ pub async fn set_prompt_status(
     }
 
     let detail = format!("status={}", req.status);
-    let _ = admin_store::record_audit(&state.db, "prompt_status", "prompt", &code, &detail).await;
+    let _ = admin_store::record_audit(
+        &state.db,
+        operator.id,
+        "prompt_status",
+        "prompt",
+        &code,
+        &detail,
+    )
+    .await;
 
     Ok(Json(ApiBody {
         code: 0,

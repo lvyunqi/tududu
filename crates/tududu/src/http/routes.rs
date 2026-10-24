@@ -11,7 +11,8 @@ use sqlx::PgPool;
 use crate::config::Config;
 use crate::error::ApiBody;
 use crate::http::{
-    admin, admin_ops, assets, auth, billing, jobs, payment, plaza, sessions, static_files,
+    admin, admin_auth, admin_ops, assets, auth, billing, jobs, payment, plaza, sessions,
+    static_files,
 };
 
 /// 进程级共享状态。连接池句柄可 Clone，配置只读所以放进 Arc。
@@ -126,6 +127,7 @@ pub fn router(state: AppState) -> Router {
             "/api/v1/admin/pay-channels",
             get(payment::admin_list_channels).post(payment::admin_create_channel),
         )
+        .route("/api/v1/admin/auth/login", post(admin_auth::login))
         .route("/api/v1/admin/overview", get(admin_ops::overview))
         .route("/api/v1/admin/users", get(admin_ops::list_users))
         .route(
