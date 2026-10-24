@@ -51,6 +51,13 @@ curl http://127.0.0.1:8080/api/v1/health
 | GET/POST | `/api/v1/sessions` | 会话列表与新建 |
 | GET/PATCH/DELETE | `/api/v1/sessions/{id}` | 会话详情（含消息）、改名、删除 |
 | POST | `/api/v1/sessions/{id}/messages` | 提交一轮修改，返回任务号 |
+| GET | `/api/v1/prompt-categories` | 广场分类 |
+| GET/POST | `/api/v1/prompts` | 广场列表与发布 |
+| GET/DELETE | `/api/v1/prompts/{code}` | 作品详情与下架（仅作者） |
+| POST | `/api/v1/prompts/{code}/like` | 点赞或取消 |
+| GET | `/api/v1/my/prompts` | 我发布的作品 |
+
+发布时校验标题与提示词长度，封面图必须是自己的图片。广场列表只展示已发布的作品，按发布时间倒序。
 
 会话是带图的连续对话：每轮写一条用户消息和一条助手消息，任务跑完由执行器把结果图回写到助手消息上。
 | GET | `/api/v1/billing/wallet` | 钱包余额 |

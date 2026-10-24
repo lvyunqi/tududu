@@ -4,6 +4,7 @@ pub mod auth;
 pub mod billing;
 pub mod jobs;
 pub mod payment;
+pub mod plaza;
 pub mod routes;
 pub mod sessions;
 
