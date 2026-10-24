@@ -53,6 +53,17 @@ TEST_DATABASE_URL=postgres://postgres:postgres@127.0.0.1:5432/tududu_test \
   cargo test --test billing_flow -- --test-threads=1
 ```
 
+前端构建产物会被编译进二进制。想让二进制同时服务网页，先构建前端再编译后端：
+
+```bash
+cd web && pnpm build
+cd ../admin && pnpm build
+cd .. && cargo build --release
+```
+
+启动后 `/` 是用户端，`/admin` 是管理后台，`/api/v1` 是接口。若没有构建前端，
+访问页面会提示界面未构建，接口照常可用。
+
 启动 HTTP 服务（会在启动时自动执行数据库迁移）：
 
 ```bash

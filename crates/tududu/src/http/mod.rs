@@ -8,6 +8,7 @@ pub mod payment;
 pub mod plaza;
 pub mod routes;
 pub mod sessions;
+pub mod static_files;
 
 use std::sync::Arc;
 
