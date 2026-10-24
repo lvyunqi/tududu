@@ -29,6 +29,8 @@ pub struct Config {
     pub admin_username: Option<String>,
     /// 初始管理员密码，来自 `TUDUDU_ADMIN_PASSWORD`，同上。
     pub admin_password: Option<String>,
+    /// 回收站保留天数，来自 `TUDUDU_TRASH_DAYS`，默认 30。
+    pub trash_retention_days: i32,
 }
 
 /// 签名密钥的最短长度，太短等于没签名。
@@ -95,6 +97,14 @@ impl Config {
         };
 
         let admin_token = read_env("TUDUDU_ADMIN_TOKEN");
+        let trash_retention_days = match read_env("TUDUDU_TRASH_DAYS") {
+            Some(raw) => raw.parse().map_err(|_| ConfigError::Env {
+                name: "TUDUDU_TRASH_DAYS",
+                value: raw,
+            })?,
+            None => 30,
+        };
+
         let admin_username = read_env("TUDUDU_ADMIN_USERNAME");
         let admin_password = read_env("TUDUDU_ADMIN_PASSWORD");
         let public_base_url =
@@ -112,6 +122,7 @@ impl Config {
             public_base_url,
             admin_username,
             admin_password,
+            trash_retention_days,
         })
     }
 }

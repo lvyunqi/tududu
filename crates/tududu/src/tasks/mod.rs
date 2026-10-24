@@ -6,6 +6,8 @@ use serde::Serialize;
 use sqlx::PgPool;
 use uuid::Uuid;
 
+use crate::storage::local_store::LocalStore;
+
 /// 两轮之间的间隔。这两件事都不急，五分钟一次足够。
 const INTERVAL: Duration = Duration::from_secs(5 * 60);
 
@@ -19,21 +21,26 @@ pub struct Mismatch {
 #[derive(Debug, Serialize)]
 pub struct ReconcileReport {
     pub expired_closed: u64,
+    pub purged: u64,
     pub mismatches: Vec<Mismatch>,
 }
 
 /// 起一个后台循环。进程退出时随之结束，没有额外的关闭逻辑。
-pub fn spawn(db: PgPool) {
+pub fn spawn(db: PgPool, files: LocalStore, retention_days: i32) {
     tokio::spawn(async move {
         let mut ticker = tokio::time::interval(INTERVAL);
 
         loop {
             ticker.tick().await;
 
-            match run_once(&db).await {
+            match run_once(&db, &files, retention_days).await {
                 Ok(report) => {
                     if report.expired_closed > 0 {
                         tracing::info!(closed = report.expired_closed, "关闭过期订单");
+                    }
+
+                    if report.purged > 0 {
+                        tracing::info!(purged = report.purged, "清理回收站");
                     }
 
                     if !report.mismatches.is_empty() {
@@ -49,15 +56,63 @@ pub fn spawn(db: PgPool) {
     });
 }
 
-/// 跑一轮：先关过期订单，再核对账本。
-pub async fn run_once(db: &PgPool) -> sqlx::Result<ReconcileReport> {
+/// 跑一轮：关过期订单、清回收站、核对账本。
+pub async fn run_once(
+    db: &PgPool,
+    files: &LocalStore,
+    retention_days: i32,
+) -> sqlx::Result<ReconcileReport> {
     let expired_closed = close_expired_orders(db).await?;
+    let purged = purge_trash(db, files, retention_days).await?;
     let mismatches = check_ledger(db).await?;
 
     Ok(ReconcileReport {
         expired_closed,
+        purged,
         mismatches,
     })
+}
+
+/// 把超过保留期的回收站条目真正清掉：先删文件，再把状态标成已删除。
+///
+/// 文件删除失败只记日志，不影响状态推进——否则一条删不掉的记录会永远卡在队列里。
+pub async fn purge_trash(
+    db: &PgPool,
+    files: &LocalStore,
+    retention_days: i32,
+) -> sqlx::Result<u64> {
+    let rows: Vec<(Uuid, String, Option<String>)> = sqlx::query_as(
+        "SELECT id, object_key, thumb_key FROM assets \
+          WHERE status = 2 AND trashed_at IS NOT NULL \
+            AND trashed_at < now() - make_interval(days => $1) \
+          ORDER BY trashed_at LIMIT 200",
+    )
+    .bind(retention_days)
+    .fetch_all(db)
+    .await?;
+
+    let mut purged = 0_u64;
+
+    for (id, object_key, thumb_key) in rows {
+        if let Err(err) = files.remove(&object_key).await {
+            tracing::warn!(error = %err, key = %object_key, "删除原图失败");
+        }
+
+        if let Some(key) = thumb_key.as_deref() {
+            if let Err(err) = files.remove(key).await {
+                tracing::warn!(error = %err, key = %key, "删除缩略图失败");
+            }
+        }
+
+        sqlx::query("UPDATE assets SET status = 3 WHERE id = $1 AND status = 2")
+            .bind(id)
+            .execute(db)
+            .await?;
+
+        purged += 1;
+    }
+
+    Ok(purged)
 }
 
 /// 过期的待支付订单标记为已关闭。已经支付的不会动。
