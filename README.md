@@ -51,6 +51,13 @@ curl http://127.0.0.1:8080/api/v1/health
 | GET | `/api/v1/billing/wallet` | 钱包余额 |
 | GET | `/api/v1/billing/ledger` | 流水，游标分页 |
 | GET | `/api/v1/billing/config` | 计费单位名称与换算，公开 |
+| GET | `/api/v1/billing/plans` | 充值套餐 |
+| POST | `/api/v1/billing/orders` | 下单，返回易支付跳转地址 |
+| GET | `/api/v1/billing/orders/{order_no}` | 订单状态，前端轮询用 |
+| GET/POST | `/pay/epay/notify` | 易支付异步通知，返回纯文本 `success` |
+| GET | `/pay/epay/return` | 支付完成后的回跳落地页 |
+
+支付走易支付标准协议：签名是参数按名排序后拼 `k=v&...` 再拼商户密钥取 MD5。回调会校验签名与金额，同一订单重复回调只入账一次。
 
 任务提交时先按模型、尺寸、质量查价格并预扣，失败自动退回。余额不足直接返回 40201。
 
@@ -73,6 +80,8 @@ curl http://127.0.0.1:8080/api/v1/health
 | GET/PUT | `/api/v1/admin/billing/prices` | 查询与批量设置价格（模型 × 尺寸 × 质量） |
 | GET/PUT | `/api/v1/admin/billing/config` | 计费单位名称与每元换算数量 |
 | POST | `/api/v1/admin/users/{id}/credits` | 手工增减余额，写流水 |
+| GET/POST | `/api/v1/admin/recharge-plans` | 充值套餐的查询与新增 |
+| GET/POST | `/api/v1/admin/pay-channels` | 易支付通道的查询与新增（商户密钥加密入库） |
 
 价格表里 `size`、`quality` 留空表示通配，匹配时优先用更具体的规则。
 
@@ -94,6 +103,7 @@ curl http://127.0.0.1:8080/api/v1/health
 | `TUDUDU_ACCESS_TTL` | `900` | 访问令牌有效期，单位秒 |
 | `TUDUDU_REFRESH_TTL` | `2592000` | 刷新令牌有效期，单位秒 |
 | `TUDUDU_ADMIN_TOKEN` | 空 | 管理接口令牌，不配置则管理接口关闭 |
+| `TUDUDU_PUBLIC_BASE_URL` | 空 | 对外访问地址，用于拼接支付回调地址 |
 | `TUDUDU_LOG` | `info` | 日志过滤规则，语法同 `RUST_LOG` |
 
 ## 构建

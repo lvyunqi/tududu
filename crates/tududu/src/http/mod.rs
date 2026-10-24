@@ -3,6 +3,7 @@ pub mod assets;
 pub mod auth;
 pub mod billing;
 pub mod jobs;
+pub mod payment;
 pub mod routes;
 
 use std::sync::Arc;

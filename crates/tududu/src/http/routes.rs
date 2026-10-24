@@ -10,7 +10,7 @@ use sqlx::PgPool;
 
 use crate::config::Config;
 use crate::error::ApiBody;
-use crate::http::{admin, assets, auth, billing, jobs};
+use crate::http::{admin, assets, auth, billing, jobs, payment};
 
 /// 进程级共享状态。连接池句柄可 Clone，配置只读所以放进 Arc。
 #[derive(Clone)]
@@ -49,6 +49,17 @@ pub fn router(state: AppState) -> Router {
         .route("/api/v1/billing/wallet", get(billing::wallet))
         .route("/api/v1/billing/ledger", get(billing::ledger))
         .route("/api/v1/billing/config", get(billing::public_config))
+        .route("/api/v1/billing/plans", get(payment::list_plans))
+        .route("/api/v1/billing/orders", post(payment::create_order))
+        .route(
+            "/api/v1/billing/orders/{order_no}",
+            get(payment::order_status),
+        )
+        .route(
+            "/pay/epay/notify",
+            get(payment::notify_get).post(payment::notify_post),
+        )
+        .route("/pay/epay/return", get(payment::return_page))
         .route("/api/v1/jobs", post(jobs::create))
         .route("/api/v1/jobs/{id}", get(jobs::detail))
         .route(
@@ -82,6 +93,14 @@ pub fn router(state: AppState) -> Router {
         .route(
             "/api/v1/admin/users/{id}/credits",
             post(billing::adjust_credits),
+        )
+        .route(
+            "/api/v1/admin/recharge-plans",
+            get(payment::admin_list_plans).post(payment::admin_create_plan),
+        )
+        .route(
+            "/api/v1/admin/pay-channels",
+            get(payment::admin_list_channels).post(payment::admin_create_channel),
         )
         .with_state(state)
 }
