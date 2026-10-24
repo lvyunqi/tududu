@@ -48,6 +48,11 @@ curl http://127.0.0.1:8080/api/v1/health
 | DELETE | `/api/v1/assets/{id}` | 移入回收站 |
 | POST | `/api/v1/jobs` | 提交修图任务，立即返回任务号，上游调用在后台执行 |
 | GET | `/api/v1/jobs/{id}` | 查询任务状态与结果图 |
+| GET | `/api/v1/billing/wallet` | 钱包余额 |
+| GET | `/api/v1/billing/ledger` | 流水，游标分页 |
+| GET | `/api/v1/billing/config` | 计费单位名称与换算，公开 |
+
+任务提交时先按模型、尺寸、质量查价格并预扣，失败自动退回。余额不足直接返回 40201。
 
 任务状态：`0` 排队、`1` 执行中、`2` 成功、`3` 失败、`4` 已取消。失败会自动换渠道重试，最多 3 次。
 
@@ -65,6 +70,11 @@ curl http://127.0.0.1:8080/api/v1/health
 | POST | `/api/v1/admin/providers/{id}/channels` | 添加密钥 |
 | GET | `/api/v1/admin/providers/{id}/models` | 已收录的模型 |
 | POST | `/api/v1/admin/providers/{id}/models/refresh` | 调用上游 `/models` 在线拉取并入库 |
+| GET/PUT | `/api/v1/admin/billing/prices` | 查询与批量设置价格（模型 × 尺寸 × 质量） |
+| GET/PUT | `/api/v1/admin/billing/config` | 计费单位名称与每元换算数量 |
+| POST | `/api/v1/admin/users/{id}/credits` | 手工增减余额，写流水 |
+
+价格表里 `size`、`quality` 留空表示通配，匹配时优先用更具体的规则。
 
 渠道密钥入库前用 AES-256-GCM 加密，接口只返回掩码。
 

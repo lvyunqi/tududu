@@ -136,6 +136,8 @@ pub async fn register(
         }
     };
 
+    crate::billing::store::ensure_wallet(db, user.id).await?;
+
     let (access_token, refresh_token) = issue_tokens(db, config, user.id, &meta).await?;
 
     Ok(AuthResponse {
