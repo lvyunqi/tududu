@@ -1,7 +1,5 @@
 //! 存储与回收站的集成测试。
 
-use std::path::PathBuf;
-
 use sqlx::PgPool;
 use uuid::Uuid;
 
@@ -64,7 +62,7 @@ async fn status_of(pool: &PgPool, id: Uuid) -> i16 {
 }
 
 fn store() -> LocalStore {
-    LocalStore::new(PathBuf::from(std::env::temp_dir().join("tududu-test-data")))
+    LocalStore::new(std::env::temp_dir().join("tududu-test-data"))
 }
 
 #[tokio::test]
