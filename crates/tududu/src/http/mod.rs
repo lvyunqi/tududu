@@ -1,4 +1,7 @@
+pub mod auth;
 pub mod routes;
+
+use std::sync::Arc;
 
 use anyhow::Context;
 use sqlx::PgPool;
@@ -6,17 +9,23 @@ use sqlx::PgPool;
 use crate::config::Config;
 
 pub async fn serve(config: Config, db: PgPool) -> anyhow::Result<()> {
-    let listener = tokio::net::TcpListener::bind(config.listen)
+    let listen = config.listen;
+    let data_dir = config.data_dir.clone();
+
+    let listener = tokio::net::TcpListener::bind(listen)
         .await
-        .with_context(|| format!("监听 {} 失败", config.listen))?;
+        .with_context(|| format!("监听 {listen} 失败"))?;
 
     tracing::info!(
-        addr = %config.listen,
-        data_dir = %config.data_dir.display(),
+        addr = %listen,
+        data_dir = %data_dir.display(),
         "http server listening"
     );
 
-    let state = routes::AppState { db };
+    let state = routes::AppState {
+        db,
+        config: Arc::new(config),
+    };
 
     axum::serve(listener, routes::router(state))
         .with_graceful_shutdown(shutdown_signal())

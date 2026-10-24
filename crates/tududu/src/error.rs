@@ -41,6 +41,35 @@ impl ApiError {
     pub fn internal(message: impl Into<String>) -> Self {
         Self::new(StatusCode::INTERNAL_SERVER_ERROR, 90001, message)
     }
+
+    /// 参数或请求体不合法，错误码 10001。
+    pub fn bad_request(message: impl Into<String>) -> Self {
+        Self::new(StatusCode::BAD_REQUEST, 10001, message)
+    }
+
+    /// 未登录或令牌失效，错误码 10002。
+    pub fn unauthorized() -> Self {
+        Self::new(
+            StatusCode::UNAUTHORIZED,
+            10002,
+            "登录状态已失效，请重新登录",
+        )
+    }
+
+    /// 已登录但无权访问，错误码 10003。
+    pub fn forbidden(message: impl Into<String>) -> Self {
+        Self::new(StatusCode::FORBIDDEN, 10003, message)
+    }
+
+    /// 资源不存在，错误码 10005。
+    pub fn not_found(message: impl Into<String>) -> Self {
+        Self::new(StatusCode::NOT_FOUND, 10005, message)
+    }
+
+    /// 资源冲突，比如重复注册，错误码由调用方按业务段传入。
+    pub fn conflict(code: i32, message: impl Into<String>) -> Self {
+        Self::new(StatusCode::CONFLICT, code, message)
+    }
 }
 
 impl IntoResponse for ApiError {

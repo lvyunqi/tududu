@@ -15,7 +15,16 @@ pub struct Config {
     pub database_url: String,
     /// 连接池上限，来自 `TUDUDU_DB_MAX_CONNECTIONS`，默认 10。
     pub db_max_connections: u32,
+    /// 访问令牌签名密钥，来自 `TUDUDU_JWT_SECRET`，至少 32 位。
+    pub jwt_secret: String,
+    /// 访问令牌有效期秒数，来自 `TUDUDU_ACCESS_TTL`，默认 15 分钟。
+    pub access_token_ttl_secs: i64,
+    /// 刷新令牌有效期秒数，来自 `TUDUDU_REFRESH_TTL`，默认 30 天。
+    pub refresh_token_ttl_secs: i64,
 }
+
+/// 签名密钥的最短长度，太短等于没签名。
+const MIN_JWT_SECRET_LEN: usize = 32;
 
 #[derive(Debug, thiserror::Error)]
 pub enum ConfigError {
@@ -24,6 +33,9 @@ pub enum ConfigError {
 
     #[error("环境变量 {name} 的值不合法：{value}")]
     Env { name: &'static str, value: String },
+
+    #[error("环境变量 {name} 至少要 {min} 位")]
+    TooShort { name: &'static str, min: usize },
 }
 
 impl Config {
@@ -50,11 +62,38 @@ impl Config {
             None => 10,
         };
 
+        let jwt_secret = required_env("TUDUDU_JWT_SECRET")?;
+        if jwt_secret.len() < MIN_JWT_SECRET_LEN {
+            return Err(ConfigError::TooShort {
+                name: "TUDUDU_JWT_SECRET",
+                min: MIN_JWT_SECRET_LEN,
+            });
+        }
+
+        let access_token_ttl_secs = match read_env("TUDUDU_ACCESS_TTL") {
+            Some(raw) => raw.parse().map_err(|_| ConfigError::Env {
+                name: "TUDUDU_ACCESS_TTL",
+                value: raw,
+            })?,
+            None => 900,
+        };
+
+        let refresh_token_ttl_secs = match read_env("TUDUDU_REFRESH_TTL") {
+            Some(raw) => raw.parse().map_err(|_| ConfigError::Env {
+                name: "TUDUDU_REFRESH_TTL",
+                value: raw,
+            })?,
+            None => 2_592_000,
+        };
+
         Ok(Self {
             listen,
             data_dir,
             database_url,
             db_max_connections,
+            jwt_secret,
+            access_token_ttl_secs,
+            refresh_token_ttl_secs,
         })
     }
 }
