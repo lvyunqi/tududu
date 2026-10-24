@@ -16,7 +16,8 @@ struct WebAssets;
 #[folder = "$CARGO_MANIFEST_DIR/../../admin/dist"]
 struct AdminAssets;
 
-const UI_MISSING: &str = "界面还没有构建。先在 web 与 admin 目录下执行 pnpm build，再重新编译服务端。";
+const UI_MISSING: &str =
+    "界面还没有构建。先在 web 与 admin 目录下执行 pnpm build，再重新编译服务端。";
 
 /// 所有没匹配上路由的请求都会落到这里。
 pub async fn fallback(uri: Uri) -> Response {
@@ -122,9 +123,15 @@ mod tests {
     #[test]
     fn content_type_covers_frontend_assets() {
         assert_eq!(content_type("index.html"), "text/html; charset=utf-8");
-        assert_eq!(content_type("assets/a.js"), "text/javascript; charset=utf-8");
+        assert_eq!(
+            content_type("assets/a.js"),
+            "text/javascript; charset=utf-8"
+        );
         assert_eq!(content_type("assets/a.css"), "text/css; charset=utf-8");
-        assert_eq!(content_type("manifest.webmanifest"), "application/json; charset=utf-8");
+        assert_eq!(
+            content_type("manifest.webmanifest"),
+            "application/json; charset=utf-8"
+        );
         assert_eq!(content_type("logo.svg"), "image/svg+xml");
         assert_eq!(content_type("unknown.bin"), "application/octet-stream");
     }
