@@ -98,7 +98,7 @@ jobs:
           node-version: 22
       - name: 安装依赖
         working-directory: web
-        run: pnpm install --no-frozen-lockfile
+        run: pnpm install --frozen-lockfile
       - name: 类型检查
         working-directory: web
         run: pnpm typecheck
