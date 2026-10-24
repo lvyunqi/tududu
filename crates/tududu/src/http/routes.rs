@@ -62,7 +62,10 @@ pub fn router(state: AppState) -> Router {
         .route("/pay/epay/return", get(payment::return_page))
         .route("/api/v1/jobs", post(jobs::create))
         .route("/api/v1/jobs/{id}", get(jobs::detail))
-        .route("/api/v1/sessions", get(sessions::list).post(sessions::create))
+        .route(
+            "/api/v1/sessions",
+            get(sessions::list).post(sessions::create),
+        )
         .route(
             "/api/v1/sessions/{id}",
             get(sessions::detail)

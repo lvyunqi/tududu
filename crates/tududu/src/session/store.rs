@@ -36,7 +36,12 @@ const SESSION_COLUMNS: &str = "id, title, model, status, last_active_at, created
 const MESSAGE_COLUMNS: &str =
     "id, role, content, input_asset_id, output_asset_id, job_id, status, created_at";
 
-pub async fn insert(db: &PgPool, user_id: Uuid, title: &str, model: &str) -> sqlx::Result<SessionRow> {
+pub async fn insert(
+    db: &PgPool,
+    user_id: Uuid,
+    title: &str,
+    model: &str,
+) -> sqlx::Result<SessionRow> {
     let sql = format!(
         "INSERT INTO sessions (user_id, title, model) VALUES ($1, $2, $3) RETURNING {SESSION_COLUMNS}"
     );
@@ -50,7 +55,9 @@ pub async fn insert(db: &PgPool, user_id: Uuid, title: &str, model: &str) -> sql
 }
 
 pub async fn find_owned(db: &PgPool, id: Uuid, user_id: Uuid) -> sqlx::Result<Option<SessionRow>> {
-    let sql = format!("SELECT {SESSION_COLUMNS} FROM sessions WHERE id = $1 AND user_id = $2 AND status <> 3");
+    let sql = format!(
+        "SELECT {SESSION_COLUMNS} FROM sessions WHERE id = $1 AND user_id = $2 AND status <> 3"
+    );
 
     sqlx::query_as::<_, SessionRow>(&sql)
         .bind(id)
@@ -78,22 +85,26 @@ pub async fn list(
 }
 
 pub async fn rename(db: &PgPool, id: Uuid, user_id: Uuid, title: &str) -> sqlx::Result<bool> {
-    let result = sqlx::query("UPDATE sessions SET title = $3 WHERE id = $1 AND user_id = $2 AND status <> 3")
-        .bind(id)
-        .bind(user_id)
-        .bind(title)
-        .execute(db)
-        .await?;
+    let result = sqlx::query(
+        "UPDATE sessions SET title = $3 WHERE id = $1 AND user_id = $2 AND status <> 3",
+    )
+    .bind(id)
+    .bind(user_id)
+    .bind(title)
+    .execute(db)
+    .await?;
 
     Ok(result.rows_affected() > 0)
 }
 
 pub async fn soft_delete(db: &PgPool, id: Uuid, user_id: Uuid) -> sqlx::Result<bool> {
-    let result = sqlx::query("UPDATE sessions SET status = 3 WHERE id = $1 AND user_id = $2 AND status <> 3")
-        .bind(id)
-        .bind(user_id)
-        .execute(db)
-        .await?;
+    let result = sqlx::query(
+        "UPDATE sessions SET status = 3 WHERE id = $1 AND user_id = $2 AND status <> 3",
+    )
+    .bind(id)
+    .bind(user_id)
+    .execute(db)
+    .await?;
 
     Ok(result.rows_affected() > 0)
 }

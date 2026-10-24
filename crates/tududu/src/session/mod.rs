@@ -2,7 +2,6 @@
 
 pub mod store;
 
-use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use uuid::Uuid;
@@ -169,6 +168,7 @@ fn sanitize_title(raw: Option<&str>) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use chrono::{DateTime, Utc};
 
     #[test]
     fn blank_title_falls_back_to_default() {
