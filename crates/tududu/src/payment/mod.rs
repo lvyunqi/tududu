@@ -5,6 +5,7 @@ pub mod store;
 use std::collections::BTreeMap;
 
 use chrono::{Duration, Utc};
+use axum::http::StatusCode;
 use md5::{Digest, Md5};
 use percent_encoding::{NON_ALPHANUMERIC, utf8_percent_encode};
 use serde::Serialize;
@@ -46,7 +47,8 @@ pub fn sign(params: &BTreeMap<String, String>, key: &str) -> String {
 
 pub fn verify(params: &BTreeMap<String, String>, key: &str, provided: &str) -> bool {
     let expected = sign(params, key);
-    constant_time_eq(expected.as_bytes(), provided.to_ascii_lowercase().as_bytes())
+    let actual = provided.to_ascii_lowercase();
+    constant_time_eq(expected.as_bytes(), actual.as_bytes())
 }
 
 /// 分转成易支付要求的两位小数字符串。
@@ -69,9 +71,9 @@ pub async fn create_order(
     user_id: Uuid,
     plan_id: Uuid,
 ) -> Result<CheckoutInfo, ApiError> {
-    let base = public_base.ok_or_else(|| {
-        ApiError::internal("还没有配置 TUDUDU_PUBLIC_BASE_URL，无法生成回调地址")
-    })?;
+    let Some(base) = public_base else {
+        return Err(ApiError::internal("未配置对外访问地址，无法生成回调地址"));
+    };
 
     let plan = store::find_plan(db, plan_id)
         .await?
@@ -81,9 +83,17 @@ pub async fn create_order(
         return Err(ApiError::bad_request("该套餐已下架"));
     }
 
-    let channel = store::pick_channel(db)
-        .await?
-        .ok_or_else(|| ApiError::new(axum::http::StatusCode::SERVICE_UNAVAILABLE, 40204, "暂时没有可用的支付通道"))?;
+    let found = store::pick_channel(db).await?;
+    let channel = match found {
+        Some(value) => value,
+        None => {
+            return Err(ApiError::new(
+                StatusCode::SERVICE_UNAVAILABLE,
+                40204,
+                "暂时没有可用的支付通道",
+            ));
+        }
+    };
 
     let secret = crypto::decrypt(encrypt_key, &channel.key_cipher).map_err(|err| {
         tracing::error!(error = %err, "解密支付密钥失败");
@@ -158,18 +168,15 @@ pub async fn handle_notify(
     raw_body: &str,
     params: BTreeMap<String, String>,
 ) -> String {
-    let order_no = params.get("out_trade_no").cloned();
-    let trade_no = params.get("trade_no").cloned();
-
     let Some(pid) = params.get("pid").cloned() else {
-        record(db, order_no.as_deref(), trade_no.as_deref(), raw_body, false, "missing_pid").await;
+        audit(db, &params, raw_body, false, "missing_pid").await;
         return "fail".to_owned();
     };
 
     let channel = match store::find_channel_by_pid(db, &pid).await {
         Ok(Some(found)) => found,
         Ok(None) => {
-            record(db, order_no.as_deref(), trade_no.as_deref(), raw_body, false, "unknown_pid").await;
+            audit(db, &params, raw_body, false, "unknown_pid").await;
             return "fail".to_owned();
         }
         Err(err) => {
@@ -182,26 +189,26 @@ pub async fn handle_notify(
         Ok(value) => value,
         Err(err) => {
             tracing::error!(error = %err, "解密支付密钥失败");
-            record(db, order_no.as_deref(), trade_no.as_deref(), raw_body, false, "decrypt_failed").await;
+            audit(db, &params, raw_body, false, "decrypt_failed").await;
             return "fail".to_owned();
         }
     };
 
     let provided = params.get("sign").cloned().unwrap_or_default();
     if !verify(&params, &secret, &provided) {
-        record(db, order_no.as_deref(), trade_no.as_deref(), raw_body, false, "sign_mismatch").await;
+        audit(db, &params, raw_body, false, "sign_mismatch").await;
         return "fail".to_owned();
     }
 
-    let Some(order_no) = order_no else {
-        record(db, None, trade_no.as_deref(), raw_body, true, "missing_order_no").await;
+    let Some(order_no) = params.get("out_trade_no").cloned() else {
+        audit(db, &params, raw_body, true, "missing_order_no").await;
         return "fail".to_owned();
     };
 
     let order = match store::find_order_by_no(db, &order_no).await {
         Ok(Some(found)) => found,
         Ok(None) => {
-            record(db, Some(&order_no), trade_no.as_deref(), raw_body, true, "order_not_found").await;
+            audit(db, &params, raw_body, true, "order_not_found").await;
             return "fail".to_owned();
         }
         Err(err) => {
@@ -211,13 +218,13 @@ pub async fn handle_notify(
     };
 
     if order.status == store::ORDER_PAID {
-        record(db, Some(&order_no), trade_no.as_deref(), raw_body, true, "already_paid").await;
+        audit(db, &params, raw_body, true, "already_paid").await;
         return "success".to_owned();
     }
 
     let status_text = params.get("trade_status").cloned().unwrap_or_default();
     if status_text != "TRADE_SUCCESS" {
-        record(db, Some(&order_no), trade_no.as_deref(), raw_body, true, "not_success").await;
+        audit(db, &params, raw_body, true, "not_success").await;
         return "success".to_owned();
     }
 
@@ -227,12 +234,12 @@ pub async fn handle_notify(
         .unwrap_or_default();
 
     if paid_fen != order.amount_fen {
-        record(db, Some(&order_no), trade_no.as_deref(), raw_body, true, "amount_mismatch").await;
+        audit(db, &params, raw_body, true, "amount_mismatch").await;
         return "fail".to_owned();
     }
 
     let total = order.credit + order.bonus;
-    if let Err(err) = crate::billing::grant_ref(
+    let charged = crate::billing::grant_ref(
         db,
         order.user_id,
         total,
@@ -240,13 +247,14 @@ pub async fn handle_notify(
         order.id,
         "充值",
     )
-    .await
-    {
+    .await;
+
+    if let Err(err) = charged {
         tracing::error!(error = %err, %order_no, "充值入账失败");
         return "fail".to_owned();
     }
 
-    let trade_no = trade_no.unwrap_or_default();
+    let trade_no = params.get("trade_no").cloned().unwrap_or_default();
     let pay_type = params.get("type").cloned().unwrap_or_default();
 
     if let Err(err) = store::mark_paid(db, &order_no, &trade_no, &pay_type).await {
@@ -254,25 +262,33 @@ pub async fn handle_notify(
         return "fail".to_owned();
     }
 
-    record(db, Some(&order_no), Some(&trade_no), raw_body, true, "ok").await;
+    audit(db, &params, raw_body, true, "ok").await;
     "success".to_owned()
 }
 
-async fn record(
+/// 记录回调原文与处理结果，出错只记日志，不影响返回。
+async fn audit(
     db: &PgPool,
-    order_no: Option<&str>,
-    trade_no: Option<&str>,
+    params: &BTreeMap<String, String>,
     raw_body: &str,
     sign_valid: bool,
     verify_result: &str,
 ) {
-    let trimmed = if raw_body.chars().count() > 4000 {
-        raw_body.chars().take(4000).collect::<String>()
-    } else {
-        raw_body.to_owned()
-    };
+    let order_no = params.get("out_trade_no").map(String::as_str);
+    let trade_no = params.get("trade_no").map(String::as_str);
 
-    if let Err(err) = store::record_notify(db, order_no, trade_no, &trimmed, sign_valid, verify_result).await {
+    let trimmed: String = raw_body.chars().take(4000).collect();
+    let outcome = store::record_notify(
+        db,
+        order_no,
+        trade_no,
+        &trimmed,
+        sign_valid,
+        verify_result,
+    )
+    .await;
+
+    if let Err(err) = outcome {
         tracing::error!(error = %err, "写回调记录失败");
     }
 }
@@ -361,12 +377,9 @@ mod tests {
     #[test]
     fn sign_is_sorted_and_appends_key() {
         let params = sample();
-        let expected = {
-            let text = "money=12.00&out_trade_no=20261025010101abcdef&pid=1001secret";
-            hex::encode(Md5::digest(text.as_bytes()))
-        };
+        let text = "money=12.00&out_trade_no=20261025010101abcdef&pid=1001secret";
 
-        assert_eq!(sign(&params, &"secret"), expected);
+        assert_eq!(sign(&params, "secret"), hex::encode(Md5::digest(text.as_bytes())));
     }
 
     #[test]
@@ -376,16 +389,16 @@ mod tests {
         params.insert("sign_type".to_owned(), "MD5".to_owned());
         params.insert("empty".to_owned(), String::new());
 
-        assert_eq!(sign(&params, &"secret"), sign(&sample(), &"secret"));
+        assert_eq!(sign(&params, "secret"), sign(&sample(), "secret"));
     }
 
     #[test]
     fn verify_accepts_uppercase_signature() {
         let params = sample();
-        let signature = sign(&params, &"secret");
+        let signature = sign(&params, "secret");
 
-        assert!(verify(&params, &"secret", &signature.to_uppercase()));
-        assert!(!verify(&params, &"secret", "deadbeef"));
+        assert!(verify(&params, "secret", &signature.to_uppercase()));
+        assert!(!verify(&params, "secret", "deadbeef"));
     }
 
     #[test]

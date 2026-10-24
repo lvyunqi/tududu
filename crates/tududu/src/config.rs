@@ -91,8 +91,8 @@ impl Config {
         };
 
         let admin_token = read_env("TUDUDU_ADMIN_TOKEN");
-        let public_base_url = read_env("TUDUDU_PUBLIC_BASE_URL")
-            .map(|value| value.trim_end_matches('/').to_owned());
+        let public_base_url =
+            read_env("TUDUDU_PUBLIC_BASE_URL").map(|value| value.trim_end_matches('/').to_owned());
 
         Ok(Self {
             listen,

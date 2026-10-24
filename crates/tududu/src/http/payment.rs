@@ -175,7 +175,9 @@ pub async fn admin_create_channel(
     }
 
     if !gateway.starts_with("http://") && !gateway.starts_with("https://") {
-        return Err(ApiError::bad_request("网关地址需要以 http:// 或 https:// 开头"));
+        return Err(ApiError::bad_request(
+            "网关地址需要以 http:// 或 https:// 开头",
+        ));
     }
 
     if key.len() < 8 {

@@ -122,7 +122,16 @@ pub async fn grant_ref(
     ref_id: Uuid,
     remark: &str,
 ) -> Result<i64, ApiError> {
-    apply_delta(db, user_id, amount, KIND_GRANT, Some(ref_type), Some(ref_id), remark).await
+    apply_delta(
+        db,
+        user_id,
+        amount,
+        KIND_GRANT,
+        Some(ref_type),
+        Some(ref_id),
+        remark,
+    )
+    .await
 }
 
 /// 改余额并记一条流水。整个过程在一个事务里，余额加行锁。
