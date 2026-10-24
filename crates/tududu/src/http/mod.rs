@@ -1,3 +1,4 @@
+pub mod admin;
 pub mod auth;
 pub mod routes;
 
@@ -22,9 +23,12 @@ pub async fn serve(config: Config, db: PgPool) -> anyhow::Result<()> {
         "http server listening"
     );
 
+    let provider_key = crate::provider::crypto::derive_key(&config.jwt_secret);
     let state = routes::AppState {
         db,
         config: Arc::new(config),
+        provider_key,
+        http: reqwest::Client::new(),
     };
 
     axum::serve(listener, routes::router(state))

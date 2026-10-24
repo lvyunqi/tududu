@@ -42,6 +42,21 @@ curl http://127.0.0.1:8080/api/v1/health
 | POST | `/api/v1/auth/logout` | 登出当前设备 |
 | GET | `/api/v1/me` | 当前登录用户资料 |
 
+管理接口需要请求头 `x-admin-token`，值为 `TUDUDU_ADMIN_TOKEN`：
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| GET | `/api/v1/admin/providers` | 渠道商列表 |
+| POST | `/api/v1/admin/providers` | 新增渠道商 |
+| PATCH | `/api/v1/admin/providers/{id}` | 修改渠道商 |
+| DELETE | `/api/v1/admin/providers/{id}` | 删除渠道商 |
+| GET | `/api/v1/admin/providers/{id}/channels` | 该渠道商的密钥列表 |
+| POST | `/api/v1/admin/providers/{id}/channels` | 添加密钥 |
+| GET | `/api/v1/admin/providers/{id}/models` | 已收录的模型 |
+| POST | `/api/v1/admin/providers/{id}/models/refresh` | 调用上游 `/models` 在线拉取并入库 |
+
+渠道密钥入库前用 AES-256-GCM 加密，接口只返回掩码。
+
 除注册、登录、刷新外，其余接口需要 `Authorization: Bearer <access_token>`。
 
 ## 配置
@@ -57,6 +72,7 @@ curl http://127.0.0.1:8080/api/v1/health
 | `TUDUDU_JWT_SECRET` | 无，必填 | 访问令牌签名密钥，至少 32 位 |
 | `TUDUDU_ACCESS_TTL` | `900` | 访问令牌有效期，单位秒 |
 | `TUDUDU_REFRESH_TTL` | `2592000` | 刷新令牌有效期，单位秒 |
+| `TUDUDU_ADMIN_TOKEN` | 空 | 管理接口令牌，不配置则管理接口关闭 |
 | `TUDUDU_LOG` | `info` | 日志过滤规则，语法同 `RUST_LOG` |
 
 ## 构建
