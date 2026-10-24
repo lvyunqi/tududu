@@ -98,10 +98,10 @@ pub async fn purge_trash(
             tracing::warn!(error = %err, key = %object_key, "删除原图失败");
         }
 
-        if let Some(key) = thumb_key.as_deref() {
-            if let Err(err) = files.remove(key).await {
-                tracing::warn!(error = %err, key = %key, "删除缩略图失败");
-            }
+        if let Some(key) = thumb_key.as_deref()
+            && let Err(err) = files.remove(key).await
+        {
+            tracing::warn!(error = %err, key = %key, "删除缩略图失败");
         }
 
         sqlx::query("UPDATE assets SET status = 3 WHERE id = $1 AND status = 2")

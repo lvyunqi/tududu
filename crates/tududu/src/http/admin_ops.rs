@@ -28,12 +28,8 @@ pub async fn reconcile(
     headers: HeaderMap,
 ) -> Result<Json<ApiBody<tasks::ReconcileReport>>, ApiError> {
     require_admin(&state, &headers)?;
-    let report = tasks::run_once(
-        &state.db,
-        &state.files,
-        state.config.trash_retention_days,
-    )
-    .await?;
+    let report =
+        tasks::run_once(&state.db, &state.files, state.config.trash_retention_days).await?;
     Ok(Json(ApiBody::ok(report)))
 }
 
