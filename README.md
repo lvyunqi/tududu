@@ -46,6 +46,10 @@ curl http://127.0.0.1:8080/api/v1/health
 | GET | `/api/v1/assets/{id}` | 图片详情 |
 | GET | `/api/v1/assets/{id}/file` | 取图片原始字节 |
 | DELETE | `/api/v1/assets/{id}` | 移入回收站 |
+| POST | `/api/v1/jobs` | 提交修图任务，立即返回任务号，上游调用在后台执行 |
+| GET | `/api/v1/jobs/{id}` | 查询任务状态与结果图 |
+
+任务状态：`0` 排队、`1` 执行中、`2` 成功、`3` 失败、`4` 已取消。失败会自动换渠道重试，最多 3 次。
 
 图片落在 `TUDUDU_DATA_DIR` 下，库里只存相对路径。同一用户重复上传相同内容会直接复用已有记录。
 

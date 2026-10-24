@@ -51,6 +51,35 @@ pub async fn save_upload(
         return Err(ApiError::bad_request("单张图片不能超过 20MB"));
     }
 
+    let now = Utc::now();
+    let prefix = format!("u/{short_code}/{}/{}", now.format("%Y"), now.format("%m"));
+    store_asset(db, files, owner, &prefix, bytes, "upload").await
+}
+
+/// 保存模型生成的结果图。和上传一样按内容去重，同一张图不会重复占盘。
+pub async fn save_generated(
+    db: &PgPool,
+    files: &LocalStore,
+    owner: Uuid,
+    bytes: &[u8],
+) -> Result<store::AssetRow, ApiError> {
+    if bytes.is_empty() {
+        return Err(ApiError::internal("上游返回的图片是空的"));
+    }
+
+    let now = Utc::now();
+    let prefix = format!("g/{owner}/{}/{}", now.format("%Y"), now.format("%m"));
+    store_asset(db, files, owner, &prefix, bytes, "job").await
+}
+
+async fn store_asset(
+    db: &PgPool,
+    files: &LocalStore,
+    owner: Uuid,
+    prefix: &str,
+    bytes: &[u8],
+    source: &str,
+) -> Result<store::AssetRow, ApiError> {
     let (mime, ext) =
         detect_image(bytes).ok_or_else(|| ApiError::bad_request("只支持 PNG、JPEG、WebP"))?;
 
@@ -59,15 +88,7 @@ pub async fn save_upload(
         return Ok(existing);
     }
 
-    let now = Utc::now();
-    let object_key = format!(
-        "u/{}/{}/{}/{}.{}",
-        short_code,
-        now.format("%Y"),
-        now.format("%m"),
-        Uuid::new_v4().simple(),
-        ext
-    );
+    let object_key = format!("{prefix}/{}.{}", Uuid::new_v4().simple(), ext);
 
     files.save(&object_key, bytes).await.map_err(|err| {
         tracing::error!(error = %err, key = %object_key, "写入本地文件失败");
@@ -80,6 +101,7 @@ pub async fn save_upload(
         mime,
         byte_size: bytes.len() as i64,
         sha256: &sha256,
+        source,
     };
 
     match store::insert(db, &new_asset).await {

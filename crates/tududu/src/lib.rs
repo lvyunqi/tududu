@@ -8,6 +8,7 @@ pub mod config;
 pub mod db;
 pub mod error;
 pub mod http;
+pub mod job;
 pub mod provider;
 pub mod storage;
 pub mod telemetry;
