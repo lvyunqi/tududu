@@ -62,8 +62,8 @@ pub async fn set_user_status(
     }
 
     let detail = format!("status={}", req.status);
-    let _ = admin_store::record_audit(&state.db, "user_status", "user", &id.to_string(), &detail)
-        .await;
+    let _ =
+        admin_store::record_audit(&state.db, "user_status", "user", &id.to_string(), &detail).await;
 
     Ok(Json(ApiBody {
         code: 0,
@@ -158,13 +158,9 @@ pub async fn list_prompts(
     require_admin(&state, &headers)?;
 
     let status = query.status.unwrap_or(plaza_store::STATUS_PUBLISHED);
-    let rows = plaza_store::list_by_status(
-        &state.db,
-        status,
-        query.before,
-        page_limit(query.limit),
-    )
-    .await?;
+    let rows =
+        plaza_store::list_by_status(&state.db, status, query.before, page_limit(query.limit))
+            .await?;
 
     Ok(Json(ApiBody::ok(rows)))
 }
