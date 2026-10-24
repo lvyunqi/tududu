@@ -9,7 +9,8 @@
 
 ```
 crates/tududu/     服务端（库 + 二进制）
-web/               前端（React + TypeScript + Vite）
+web/               用户端（React + TypeScript + Vite）
+admin/             管理后台（React + TypeScript + Vite）
 .github/workflows/ 持续集成
 ```
 
@@ -23,6 +24,16 @@ pnpm dev      # 本地开发，/api 会转发到 127.0.0.1:8080
 pnpm typecheck
 pnpm build
 ```
+
+管理后台单独一个工程，开发时另开一个终端：
+
+```bash
+cd admin
+pnpm install
+pnpm dev      # 5174 端口，/api 同样转发到 8080
+```
+
+登录时填服务端配置的 `TUDUDU_ADMIN_TOKEN`。
 
 ## 本地开发
 
