@@ -239,11 +239,13 @@ async fn expired_orders_are_closed() {
     let pool = pool().await;
     let fixture = pay_fixture(&pool).await;
 
-    sqlx::query("UPDATE pay_orders SET expire_at = now() - interval '1 minute' WHERE order_no = $1")
-        .bind(&fixture.order_no)
-        .execute(&pool)
-        .await
-        .expect("改过期时间失败");
+    sqlx::query(
+        "UPDATE pay_orders SET expire_at = now() - interval '1 minute' WHERE order_no = $1",
+    )
+    .bind(&fixture.order_no)
+    .execute(&pool)
+    .await
+    .expect("改过期时间失败");
 
     let closed = tududu::tasks::close_expired_orders(&pool)
         .await
