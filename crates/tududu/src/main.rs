@@ -16,6 +16,13 @@ async fn main() -> anyhow::Result<()> {
             let config = Config::from_env().context("加载配置失败")?;
             let pool = open_database(&config).await?;
             let files = tududu::storage::local_store::LocalStore::new(config.data_dir.clone());
+
+            // 上一个进程留下的任务不可能还在跑，启动时立刻回收，别让用户的钱挂着
+            let recovered = tududu::tasks::recover_orphan_jobs(&pool, 0).await?;
+            if recovered > 0 {
+                tracing::warn!(count = recovered, "启动时回收了上次未完成的任务");
+            }
+
             tududu::tasks::spawn(pool.clone(), files, config.trash_retention_days);
             http::serve(config, pool)
                 .await

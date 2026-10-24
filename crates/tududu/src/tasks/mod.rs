@@ -6,6 +6,8 @@ use serde::Serialize;
 use sqlx::PgPool;
 use uuid::Uuid;
 
+use crate::job::store as job_store;
+use crate::session::store as session_store;
 use crate::storage::local_store::LocalStore;
 
 /// 两轮之间的间隔。这两件事都不急，五分钟一次足够。
@@ -22,6 +24,7 @@ pub struct Mismatch {
 pub struct ReconcileReport {
     pub expired_closed: u64,
     pub purged: u64,
+    pub recovered_jobs: u64,
     pub mismatches: Vec<Mismatch>,
 }
 
@@ -41,6 +44,10 @@ pub fn spawn(db: PgPool, files: LocalStore, retention_days: i32) {
 
                     if report.purged > 0 {
                         tracing::info!(purged = report.purged, "清理回收站");
+                    }
+
+                    if report.recovered_jobs > 0 {
+                        tracing::warn!(count = report.recovered_jobs, "回收没有进程在跑的任务");
                     }
 
                     if !report.mismatches.is_empty() {
@@ -64,13 +71,61 @@ pub async fn run_once(
 ) -> sqlx::Result<ReconcileReport> {
     let expired_closed = close_expired_orders(db).await?;
     let purged = purge_trash(db, files, retention_days).await?;
+    let recovered_jobs = recover_orphan_jobs(db, ORPHAN_GRACE_SECS).await?;
     let mismatches = check_ledger(db).await?;
 
     Ok(ReconcileReport {
         expired_closed,
         purged,
+        recovered_jobs,
         mismatches,
     })
+}
+
+/// 定期扫描时给任务留的余量。正常任务最多几分钟，半小时还没结束肯定是孤儿。
+pub const ORPHAN_GRACE_SECS: i64 = 30 * 60;
+
+/// 把没有进程在跑的任务标成失败并退款。
+///
+/// 任务跑在进程内，服务一重启就全丢了，但库里状态还停在执行中，用户的钱也还扣着。
+/// 启动时调用时传 0，因为刚起来的进程不可能有正在跑的任务。
+pub async fn recover_orphan_jobs(db: &PgPool, older_than_secs: i64) -> sqlx::Result<u64> {
+    let orphans = job_store::find_orphans(db, older_than_secs).await?;
+    let mut recovered = 0_u64;
+
+    for job in orphans {
+        job_store::mark_failed(db, job.id, 30006, "服务重启，任务已中止，费用已退回").await?;
+
+        if let Some(message_id) = job.message_id {
+            let outcome =
+                session_store::finish_message(db, message_id, session_store::MSG_FAILED, None)
+                    .await;
+
+            if let Err(err) = outcome {
+                tracing::warn!(error = %err, %message_id, "回写会话消息失败");
+            }
+        }
+
+        if job.price > 0 {
+            let outcome = crate::billing::refund(
+                db,
+                job.user_id,
+                job.price,
+                Some("job"),
+                Some(job.id),
+                "任务中止退回",
+            )
+            .await;
+
+            if let Err(err) = outcome {
+                tracing::error!(error = %err, job_id = %job.id, "退回失败，需要人工核查");
+            }
+        }
+
+        recovered += 1;
+    }
+
+    Ok(recovered)
 }
 
 /// 把超过保留期的回收站条目真正清掉：先删文件，再把状态标成已删除。

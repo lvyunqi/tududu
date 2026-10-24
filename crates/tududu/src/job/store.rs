@@ -169,6 +169,27 @@ pub async fn insert_attempt(db: &PgPool, item: &NewAttempt<'_>) -> sqlx::Result<
     Ok(())
 }
 
+/// 启动时与定期扫到的孤儿任务：状态停在排队或执行中、但已经没有进程在跑它们。
+#[derive(Debug, sqlx::FromRow)]
+pub struct OrphanJob {
+    pub id: Uuid,
+    pub user_id: Uuid,
+    pub price: i64,
+    pub message_id: Option<Uuid>,
+}
+
+pub async fn find_orphans(db: &PgPool, older_than_secs: i64) -> sqlx::Result<Vec<OrphanJob>> {
+    sqlx::query_as::<_, OrphanJob>(
+        "SELECT id, user_id, price, message_id FROM jobs \
+          WHERE status IN (0, 1) \
+            AND created_at < now() - make_interval(secs => $1) \
+          ORDER BY created_at LIMIT 200",
+    )
+    .bind(older_than_secs as f64)
+    .fetch_all(db)
+    .await
+}
+
 /// 任务尝试的状态：1 成功 / 2 可重试失败 / 3 不可重试失败。
 pub const ATTEMPT_OK: i16 = 1;
 pub const ATTEMPT_RETRYABLE: i16 = 2;
