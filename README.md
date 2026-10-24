@@ -41,6 +41,13 @@ curl http://127.0.0.1:8080/api/v1/health
 | POST | `/api/v1/auth/refresh` | 刷新访问令牌，同时轮换刷新令牌 |
 | POST | `/api/v1/auth/logout` | 登出当前设备 |
 | GET | `/api/v1/me` | 当前登录用户资料 |
+| POST | `/api/v1/uploads` | 上传图片，multipart 字段名 `file`，仅 PNG/JPEG/WebP，单张不超过 20MB |
+| GET | `/api/v1/assets` | 我的图片列表，游标分页（`before`、`limit`） |
+| GET | `/api/v1/assets/{id}` | 图片详情 |
+| GET | `/api/v1/assets/{id}/file` | 取图片原始字节 |
+| DELETE | `/api/v1/assets/{id}` | 移入回收站 |
+
+图片落在 `TUDUDU_DATA_DIR` 下，库里只存相对路径。同一用户重复上传相同内容会直接复用已有记录。
 
 管理接口需要请求头 `x-admin-token`，值为 `TUDUDU_ADMIN_TOKEN`：
 
@@ -66,7 +73,7 @@ curl http://127.0.0.1:8080/api/v1/health
 | 变量 | 默认值 | 说明 |
 | --- | --- | --- |
 | `TUDUDU_LISTEN` | `0.0.0.0:8080` | HTTP 监听地址 |
-| `TUDUDU_DATA_DIR` | `./data` | 本地数据目录，存放上传与生成的图片 |
+| `TUDUDU_DATA_DIR` | `./data` | 本地数据目录，图片按 `u/{用户短编号}/{年}/{月}/` 存放 |
 | `TUDUDU_DATABASE_URL` | 无，必填 | PostgreSQL 连接串 |
 | `TUDUDU_DB_MAX_CONNECTIONS` | `10` | 连接池上限 |
 | `TUDUDU_JWT_SECRET` | 无，必填 | 访问令牌签名密钥，至少 32 位 |

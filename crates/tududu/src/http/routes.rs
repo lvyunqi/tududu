@@ -3,13 +3,14 @@ use std::sync::Arc;
 use axum::Json;
 use axum::Router;
 use axum::extract::State;
+use axum::extract::DefaultBodyLimit;
 use axum::routing::{get, patch, post};
 use serde::Serialize;
 use sqlx::PgPool;
 
 use crate::config::Config;
 use crate::error::ApiBody;
-use crate::http::{admin, auth};
+use crate::http::{admin, assets, auth};
 
 /// 进程级共享状态。连接池句柄可 Clone，配置只读所以放进 Arc。
 #[derive(Clone)]
@@ -20,6 +21,8 @@ pub struct AppState {
     pub provider_key: [u8; 32],
     /// 访问上游用的 HTTP 客户端，全局复用一个连接池。
     pub http: reqwest::Client,
+    /// 图片文件的本地存储。
+    pub files: crate::storage::local_store::LocalStore,
 }
 
 pub fn router(state: AppState) -> Router {
@@ -31,6 +34,18 @@ pub fn router(state: AppState) -> Router {
         .route("/api/v1/auth/refresh", post(auth::refresh))
         .route("/api/v1/auth/logout", post(auth::logout))
         .route("/api/v1/me", get(auth::me))
+        .route(
+            "/api/v1/uploads",
+            post(assets::upload).layer(DefaultBodyLimit::max(
+                crate::storage::MAX_UPLOAD_BYTES + 1024 * 1024,
+            )),
+        )
+        .route("/api/v1/assets", get(assets::list))
+        .route(
+            "/api/v1/assets/{id}",
+            get(assets::detail).delete(assets::delete),
+        )
+        .route("/api/v1/assets/{id}/file", get(assets::file))
         .route(
             "/api/v1/admin/providers",
             get(admin::list_providers).post(admin::create_provider),
