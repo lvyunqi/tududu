@@ -1,4 +1,5 @@
 pub mod admin;
+pub mod assets;
 pub mod auth;
 pub mod routes;
 
@@ -24,11 +25,14 @@ pub async fn serve(config: Config, db: PgPool) -> anyhow::Result<()> {
     );
 
     let provider_key = crate::provider::crypto::derive_key(&config.jwt_secret);
+    let files = crate::storage::local_store::LocalStore::new(data_dir.clone());
+
     let state = routes::AppState {
         db,
         config: Arc::new(config),
         provider_key,
         http: reqwest::Client::new(),
+        files,
     };
 
     axum::serve(listener, routes::router(state))
