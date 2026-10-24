@@ -9,7 +9,18 @@
 
 ```
 crates/tududu/     服务端（库 + 二进制）
+web/               前端（React + TypeScript + Vite）
 .github/workflows/ 持续集成
+```
+
+## 前端
+
+```bash
+cd web
+pnpm install
+pnpm dev      # 本地开发，/api 会转发到 127.0.0.1:8080
+pnpm typecheck
+pnpm build
 ```
 
 ## 本地开发

@@ -1,6 +1,9 @@
 # 构建产物
 /target
 **/target
+/web/node_modules
+/web/dist
+
 
 # 设计文档：只保留在本地，不进仓库
 /design
