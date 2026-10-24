@@ -15,7 +15,7 @@ pub async fn create(
     Json(req): Json<CreateJobRequest>,
 ) -> Result<Json<ApiBody<job::store::JobRow>>, ApiError> {
     let current = require_user(&state, &headers).await?;
-    let created = job::submit(&state.db, current.user_id, req).await?;
+    let created = job::submit(&state.db, current.user_id, req, job::JobLink::default()).await?;
 
     let background = state.clone();
     let job_id = created.id;

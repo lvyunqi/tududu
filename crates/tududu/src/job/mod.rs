@@ -26,10 +26,18 @@ pub struct CreateJobRequest {
     pub quality: Option<String>,
 }
 
+/// 任务与会话的关联。直接提交任务时不带，走会话时带上。
+#[derive(Debug, Default, Clone, Copy)]
+pub struct JobLink {
+    pub session_id: Option<Uuid>,
+    pub message_id: Option<Uuid>,
+}
+
 pub async fn submit(
     db: &PgPool,
     user_id: Uuid,
     req: CreateJobRequest,
+    link: JobLink,
 ) -> Result<store::JobRow, ApiError> {
     let prompt = req.prompt.trim();
     if prompt.is_empty() {
@@ -61,6 +69,8 @@ pub async fn submit(
         model,
         prompt,
         input_asset_id: req.input_asset_id,
+        session_id: link.session_id,
+        message_id: link.message_id,
         max_attempts: DEFAULT_MAX_ATTEMPTS,
         price,
     };
