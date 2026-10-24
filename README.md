@@ -46,6 +46,13 @@ cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --all -- --check
 ```
 
+计费与支付的集成测试需要一个 PostgreSQL：
+
+```bash
+TEST_DATABASE_URL=postgres://postgres:postgres@127.0.0.1:5432/tududu_test \
+  cargo test --test billing_flow -- --test-threads=1
+```
+
 启动 HTTP 服务（会在启动时自动执行数据库迁移）：
 
 ```bash
