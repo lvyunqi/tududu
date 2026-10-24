@@ -19,6 +19,7 @@ pub async fn upload(
     mut multipart: Multipart,
 ) -> Result<Json<ApiBody<asset_store::AssetRow>>, ApiError> {
     let current = require_user(&state, &headers).await?;
+    limit_uploads(&state, current.user_id)?;
 
     let mut payload: Option<Vec<u8>> = None;
     while let Some(field) = multipart.next_field().await.map_err(|err| {
@@ -53,6 +54,21 @@ pub async fn upload(
     .await?;
 
     Ok(Json(ApiBody::ok(asset)))
+}
+
+/// 单用户一小时最多传六十张。
+fn limit_uploads(state: &AppState, user_id: Uuid) -> Result<(), ApiError> {
+    let key = format!("upload:{user_id}");
+
+    state
+        .limiter
+        .check(&key, 60, std::time::Duration::from_secs(3600))
+        .map_err(|wait| {
+            ApiError::too_many_requests(format!(
+                "上传太频繁，请 {} 分钟后再试",
+                (wait.as_secs() / 60).max(1)
+            ))
+        })
 }
 
 #[derive(Debug, serde::Serialize)]

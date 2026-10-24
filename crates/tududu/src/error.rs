@@ -66,6 +66,11 @@ impl ApiError {
         Self::new(StatusCode::NOT_FOUND, 10005, message)
     }
 
+    /// 触发限流，错误码 10004。
+    pub fn too_many_requests(message: impl Into<String>) -> Self {
+        Self::new(StatusCode::TOO_MANY_REQUESTS, 10004, message)
+    }
+
     /// 资源冲突，比如重复注册，错误码由调用方按业务段传入。
     pub fn conflict(code: i32, message: impl Into<String>) -> Self {
         Self::new(StatusCode::CONFLICT, code, message)

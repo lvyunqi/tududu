@@ -15,6 +15,7 @@ pub mod job;
 pub mod payment;
 pub mod plaza;
 pub mod provider;
+pub mod ratelimit;
 pub mod session;
 pub mod storage;
 pub mod tasks;
