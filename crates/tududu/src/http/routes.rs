@@ -129,6 +129,7 @@ pub fn router(state: AppState) -> Router {
         )
         .route("/api/v1/admin/auth/login", post(admin_auth::login))
         .route("/api/v1/admin/overview", get(admin_ops::overview))
+        .route("/api/v1/admin/reconcile", get(admin_ops::reconcile))
         .route("/api/v1/admin/users", get(admin_ops::list_users))
         .route(
             "/api/v1/admin/users/{id}/status",
