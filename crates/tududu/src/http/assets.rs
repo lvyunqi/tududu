@@ -42,14 +42,8 @@ pub async fn upload(
         .await?
         .ok_or_else(ApiError::unauthorized)?;
 
-    let asset = storage::save_upload(
-        &state.db,
-        &state.files,
-        user.id,
-        &user.short_code,
-        &bytes,
-    )
-    .await?;
+    let asset =
+        storage::save_upload(&state.db, &state.files, user.id, &user.short_code, &bytes).await?;
 
     Ok(Json(ApiBody::ok(asset)))
 }
