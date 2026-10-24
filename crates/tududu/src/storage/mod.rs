@@ -70,7 +70,16 @@ pub async fn save_upload(
 
     let now = Utc::now();
     let prefix = format!("u/{short_code}/{}/{}", now.format("%Y"), now.format("%m"));
-    store_asset(db, files, owner, &prefix, bytes, "upload", Some(quota_bytes)).await
+    store_asset(
+        db,
+        files,
+        owner,
+        &prefix,
+        bytes,
+        "upload",
+        Some(quota_bytes),
+    )
+    .await
 }
 
 /// 保存模型生成的结果图。和上传一样按内容去重，同一张图不会重复占盘。
