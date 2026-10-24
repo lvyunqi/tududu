@@ -72,10 +72,7 @@ pub async fn publish(
     Ok(store::insert(db, &new_prompt).await?)
 }
 
-pub async fn detail(
-    db: &PgPool,
-    code: &str,
-) -> Result<store::PromptRow, ApiError> {
+pub async fn detail(db: &PgPool, code: &str) -> Result<store::PromptRow, ApiError> {
     let found = store::find_published(db, code)
         .await?
         .ok_or_else(|| ApiError::not_found("作品不存在或已下架"))?;
@@ -88,11 +85,7 @@ pub async fn detail(
     Ok(found)
 }
 
-pub async fn toggle_like(
-    db: &PgPool,
-    user_id: Uuid,
-    code: &str,
-) -> Result<LikeResult, ApiError> {
+pub async fn toggle_like(db: &PgPool, user_id: Uuid, code: &str) -> Result<LikeResult, ApiError> {
     let prompt = store::find_published(db, code)
         .await?
         .ok_or_else(|| ApiError::not_found("作品不存在或已下架"))?;
@@ -104,11 +97,7 @@ pub async fn toggle_like(
     Ok(LikeResult { liked, like_count })
 }
 
-pub async fn unpublish(
-    db: &PgPool,
-    user_id: Uuid,
-    code: &str,
-) -> Result<(), ApiError> {
+pub async fn unpublish(db: &PgPool, user_id: Uuid, code: &str) -> Result<(), ApiError> {
     if store::hide(db, code, user_id).await? {
         return Ok(());
     }

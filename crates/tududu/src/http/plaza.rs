@@ -28,13 +28,8 @@ pub async fn list(
     Query(query): Query<ListQuery>,
 ) -> Result<Json<ApiBody<Vec<plaza::store::PromptRow>>>, ApiError> {
     let limit = query.limit.unwrap_or(20).clamp(1, 100);
-    let rows = plaza::store::list_published(
-        &state.db,
-        query.category_id,
-        query.before,
-        limit,
-    )
-    .await?;
+    let rows =
+        plaza::store::list_published(&state.db, query.category_id, query.before, limit).await?;
 
     Ok(Json(ApiBody::ok(rows)))
 }
@@ -96,6 +91,7 @@ pub async fn mine(
     let current = require_user(&state, &headers).await?;
     let limit = query.limit.unwrap_or(20).clamp(1, 100);
 
-    let rows = plaza::store::list_by_author(&state.db, current.user_id, query.before, limit).await?;
+    let rows =
+        plaza::store::list_by_author(&state.db, current.user_id, query.before, limit).await?;
     Ok(Json(ApiBody::ok(rows)))
 }
