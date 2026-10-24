@@ -112,11 +112,17 @@ pub async fn send_message(
         return Err(ApiError::bad_request("提示词不能为空"));
     }
 
+    // 没指定输入图就接着上一版改，这样「再自然一点」知道指的是哪张
+    let input_asset_id = match req.input_asset_id {
+        Some(id) => Some(id),
+        None => store::latest_output_asset(db, session_id).await?,
+    };
+
     let user_message = store::NewMessage {
         session_id,
         role: "user",
         content: text,
-        input_asset_id: req.input_asset_id,
+        input_asset_id,
         status: store::MSG_DONE,
     };
     let user_message = store::insert_message(db, &user_message).await?;
@@ -134,7 +140,7 @@ pub async fn send_message(
         prompt: text.to_owned(),
         model: session.model.clone(),
         provider_id: req.provider_id,
-        input_asset_id: req.input_asset_id,
+        input_asset_id,
         size: req.size,
         quality: req.quality,
     };
