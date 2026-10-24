@@ -81,10 +81,17 @@ pub async fn detail(
 }
 
 /// 返回图片原始字节。只允许本人访问。
+#[derive(Debug, Deserialize)]
+pub struct FileQuery {
+    /// 传 thumb 时优先返回缩略图，没有缩略图就退回原图。
+    pub size: Option<String>,
+}
+
 pub async fn file(
     State(state): State<AppState>,
     headers: HeaderMap,
     Path(id): Path<Uuid>,
+    Query(query): Query<FileQuery>,
 ) -> Result<Response, ApiError> {
     let current = require_user(&state, &headers).await?;
 
@@ -92,12 +99,18 @@ pub async fn file(
         .await?
         .ok_or_else(|| ApiError::not_found("图片不存在"))?;
 
-    let bytes = state.files.read(&asset.object_key).await.map_err(|err| {
-        tracing::error!(error = %err, key = %asset.object_key, "读取本地文件失败");
+    let want_thumb = query.size.as_deref() == Some("thumb");
+    let (key, mime) = match (want_thumb, asset.thumb_key.as_deref()) {
+        (true, Some(thumb)) => (thumb, "image/jpeg"),
+        _ => (asset.object_key.as_str(), asset.mime.as_str()),
+    };
+
+    let bytes = state.files.read(key).await.map_err(|err| {
+        tracing::error!(error = %err, key = %key, "读取本地文件失败");
         ApiError::not_found("图片文件已丢失")
     })?;
 
-    Ok(([(header::CONTENT_TYPE, asset.mime)], bytes).into_response())
+    Ok(([(header::CONTENT_TYPE, mime)], bytes).into_response())
 }
 
 pub async fn delete(
