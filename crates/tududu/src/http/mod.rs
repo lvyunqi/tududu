@@ -1,6 +1,7 @@
 pub mod admin;
 pub mod assets;
 pub mod auth;
+pub mod jobs;
 pub mod routes;
 
 use std::sync::Arc;

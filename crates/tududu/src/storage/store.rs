@@ -50,11 +50,12 @@ pub struct NewAsset<'a> {
     pub mime: &'a str,
     pub byte_size: i64,
     pub sha256: &'a str,
+    pub source: &'a str,
 }
 
 pub async fn insert(db: &PgPool, item: &NewAsset<'_>) -> sqlx::Result<AssetRow> {
     let sql = format!(
-        "INSERT INTO assets (owner_user_id, object_key, mime, byte_size, sha256) VALUES ($1, $2, $3, $4, $5) RETURNING {ASSET_COLUMNS}"
+        "INSERT INTO assets (owner_user_id, object_key, mime, byte_size, sha256, source) VALUES ($1, $2, $3, $4, $5, $6) RETURNING {ASSET_COLUMNS}"
     );
 
     sqlx::query_as::<_, AssetRow>(&sql)
@@ -63,6 +64,7 @@ pub async fn insert(db: &PgPool, item: &NewAsset<'_>) -> sqlx::Result<AssetRow> 
         .bind(item.mime)
         .bind(item.byte_size)
         .bind(item.sha256)
+        .bind(item.source)
         .fetch_one(db)
         .await
 }
