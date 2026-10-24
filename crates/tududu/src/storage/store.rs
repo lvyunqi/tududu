@@ -91,6 +91,16 @@ pub async fn list(
         .await
 }
 
+/// 用户当前占用的字节数，只算正常状态的资产。
+pub async fn used_bytes(db: &PgPool, owner: Uuid) -> sqlx::Result<i64> {
+    sqlx::query_scalar(
+        "SELECT COALESCE(SUM(byte_size), 0)::bigint FROM assets WHERE owner_user_id = $1 AND status = 1",
+    )
+    .bind(owner)
+    .fetch_one(db)
+    .await
+}
+
 pub async fn soft_delete(db: &PgPool, id: Uuid, owner: Uuid) -> sqlx::Result<bool> {
     let result = sqlx::query(
         "UPDATE assets SET status = 2, trashed_at = now() WHERE id = $1 AND owner_user_id = $2 AND status = 1",

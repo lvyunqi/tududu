@@ -31,6 +31,8 @@ pub struct Config {
     pub admin_password: Option<String>,
     /// 回收站保留天数，来自 `TUDUDU_TRASH_DAYS`，默认 30。
     pub trash_retention_days: i32,
+    /// 单个用户的存储上限，字节，来自 `TUDUDU_QUOTA_BYTES`，默认 2GB。
+    pub user_quota_bytes: i64,
 }
 
 /// 签名密钥的最短长度，太短等于没签名。
@@ -105,6 +107,14 @@ impl Config {
             None => 30,
         };
 
+        let user_quota_bytes = match read_env("TUDUDU_QUOTA_BYTES") {
+            Some(raw) => raw.parse().map_err(|_| ConfigError::Env {
+                name: "TUDUDU_QUOTA_BYTES",
+                value: raw,
+            })?,
+            None => 2 * 1024 * 1024 * 1024,
+        };
+
         let admin_username = read_env("TUDUDU_ADMIN_USERNAME");
         let admin_password = read_env("TUDUDU_ADMIN_PASSWORD");
         let public_base_url =
@@ -123,6 +133,7 @@ impl Config {
             admin_username,
             admin_password,
             trash_retention_days,
+            user_quota_bytes,
         })
     }
 }

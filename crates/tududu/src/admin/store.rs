@@ -12,6 +12,7 @@ pub struct AdminUserRow {
     pub email: Option<String>,
     pub status: i16,
     pub balance: i64,
+    pub used_bytes: i64,
     pub created_at: DateTime<Utc>,
 }
 
@@ -69,7 +70,10 @@ pub async fn list_users(
 ) -> sqlx::Result<Vec<AdminUserRow>> {
     sqlx::query_as::<_, AdminUserRow>(
         "SELECT u.id, u.short_code, u.nickname, u.phone, u.email, u.status, \
-                COALESCE(w.balance, 0) AS balance, u.created_at \
+                COALESCE(w.balance, 0) AS balance, \
+                COALESCE((SELECT SUM(a.byte_size) FROM assets a \
+                           WHERE a.owner_user_id = u.id AND a.status = 1), 0)::bigint AS used_bytes, \
+                u.created_at \
            FROM users u LEFT JOIN wallets w ON w.user_id = u.id \
           WHERE ($1::timestamptz IS NULL OR u.created_at < $1) \
           ORDER BY u.created_at DESC LIMIT $2",

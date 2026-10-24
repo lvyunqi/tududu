@@ -42,10 +42,36 @@ pub async fn upload(
         .await?
         .ok_or_else(ApiError::unauthorized)?;
 
-    let asset =
-        storage::save_upload(&state.db, &state.files, user.id, &user.short_code, &bytes).await?;
+    let asset = storage::save_upload(
+        &state.db,
+        &state.files,
+        user.id,
+        &user.short_code,
+        &bytes,
+        state.config.user_quota_bytes,
+    )
+    .await?;
 
     Ok(Json(ApiBody::ok(asset)))
+}
+
+#[derive(Debug, serde::Serialize)]
+pub struct QuotaInfo {
+    pub used_bytes: i64,
+    pub limit_bytes: i64,
+}
+
+pub async fn quota(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+) -> Result<Json<ApiBody<QuotaInfo>>, ApiError> {
+    let current = require_user(&state, &headers).await?;
+    let used_bytes = asset_store::used_bytes(&state.db, current.user_id).await?;
+
+    Ok(Json(ApiBody::ok(QuotaInfo {
+        used_bytes,
+        limit_bytes: state.config.user_quota_bytes,
+    })))
 }
 
 #[derive(Debug, Deserialize)]
