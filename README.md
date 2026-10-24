@@ -86,7 +86,7 @@ curl http://127.0.0.1:8080/api/v1/health
 | GET | `/api/v1/assets` | 我的图片列表，游标分页（`before`、`limit`） |
 | GET | `/api/v1/assets/{id}` | 图片详情 |
 | GET | `/api/v1/assets/{id}/file` | 取图片原始字节，加 `?size=thumb` 取缩略图 |
-| DELETE | `/api/v1/assets/{id}` | 移入回收站 |
+| DELETE | `/api/v1/assets/{id}` | 移入回收站，默认保留 30 天后清理 |
 | POST | `/api/v1/jobs` | 提交修图任务，立即返回任务号，上游调用在后台执行 |
 | GET | `/api/v1/jobs/{id}` | 查询任务状态与结果图 |
 | GET/POST | `/api/v1/sessions` | 会话列表与新建 |
@@ -178,6 +178,7 @@ curl http://127.0.0.1:8080/api/v1/health
 | `TUDUDU_ADMIN_USERNAME` | 空 | 初始管理员账号，只在库里没有管理员时创建 |
 | `TUDUDU_ADMIN_PASSWORD` | 空 | 初始管理员密码，同上 |
 | `TUDUDU_ADMIN_TOKEN` | 空 | 旧的单一令牌，保留作为过渡，账号体系就绪后可以不配 |
+| `TUDUDU_TRASH_DAYS` | `30` | 回收站保留天数，到期后文件会被真正删掉 |
 | `TUDUDU_PUBLIC_BASE_URL` | 空 | 对外访问地址，用于拼接支付回调地址 |
 | `TUDUDU_LOG` | `info` | 日志过滤规则，语法同 `RUST_LOG` |
 

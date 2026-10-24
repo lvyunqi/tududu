@@ -15,7 +15,8 @@ async fn main() -> anyhow::Result<()> {
         Command::Serve => {
             let config = Config::from_env().context("加载配置失败")?;
             let pool = open_database(&config).await?;
-            tududu::tasks::spawn(pool.clone());
+            let files = tududu::storage::local_store::LocalStore::new(config.data_dir.clone());
+            tududu::tasks::spawn(pool.clone(), files, config.trash_retention_days);
             http::serve(config, pool)
                 .await
                 .context("HTTP 服务异常退出")?;

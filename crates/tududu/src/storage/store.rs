@@ -93,7 +93,7 @@ pub async fn list(
 
 pub async fn soft_delete(db: &PgPool, id: Uuid, owner: Uuid) -> sqlx::Result<bool> {
     let result = sqlx::query(
-        "UPDATE assets SET status = 2 WHERE id = $1 AND owner_user_id = $2 AND status = 1",
+        "UPDATE assets SET status = 2, trashed_at = now() WHERE id = $1 AND owner_user_id = $2 AND status = 1",
     )
     .bind(id)
     .bind(owner)
