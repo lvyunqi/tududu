@@ -17,14 +17,13 @@ pub struct AssetRow {
     pub created_at: DateTime<Utc>,
 }
 
-const ASSET_COLUMNS: &str = "id, owner_user_id, object_key, mime, byte_size, sha256, source, status, created_at";
+const ASSET_COLUMNS: &str =
+    "id, owner_user_id, object_key, mime, byte_size, sha256, source, status, created_at";
 
-pub async fn find_by_sha(
-    db: &PgPool,
-    owner: Uuid,
-    sha256: &str,
-) -> sqlx::Result<Option<AssetRow>> {
-    let sql = format!("SELECT {ASSET_COLUMNS} FROM assets WHERE owner_user_id = $1 AND sha256 = $2 AND status = 1");
+pub async fn find_by_sha(db: &PgPool, owner: Uuid, sha256: &str) -> sqlx::Result<Option<AssetRow>> {
+    let sql = format!(
+        "SELECT {ASSET_COLUMNS} FROM assets WHERE owner_user_id = $1 AND sha256 = $2 AND status = 1"
+    );
 
     sqlx::query_as::<_, AssetRow>(&sql)
         .bind(owner)
@@ -34,7 +33,9 @@ pub async fn find_by_sha(
 }
 
 pub async fn find_owned(db: &PgPool, id: Uuid, owner: Uuid) -> sqlx::Result<Option<AssetRow>> {
-    let sql = format!("SELECT {ASSET_COLUMNS} FROM assets WHERE id = $1 AND owner_user_id = $2 AND status = 1");
+    let sql = format!(
+        "SELECT {ASSET_COLUMNS} FROM assets WHERE id = $1 AND owner_user_id = $2 AND status = 1"
+    );
 
     sqlx::query_as::<_, AssetRow>(&sql)
         .bind(id)
@@ -52,7 +53,9 @@ pub struct NewAsset<'a> {
 }
 
 pub async fn insert(db: &PgPool, item: &NewAsset<'_>) -> sqlx::Result<AssetRow> {
-    let sql = format!("INSERT INTO assets (owner_user_id, object_key, mime, byte_size, sha256) VALUES ($1, $2, $3, $4, $5) RETURNING {ASSET_COLUMNS}");
+    let sql = format!(
+        "INSERT INTO assets (owner_user_id, object_key, mime, byte_size, sha256) VALUES ($1, $2, $3, $4, $5) RETURNING {ASSET_COLUMNS}"
+    );
 
     sqlx::query_as::<_, AssetRow>(&sql)
         .bind(item.owner_user_id)
@@ -83,11 +86,13 @@ pub async fn list(
 }
 
 pub async fn soft_delete(db: &PgPool, id: Uuid, owner: Uuid) -> sqlx::Result<bool> {
-    let result = sqlx::query("UPDATE assets SET status = 2 WHERE id = $1 AND owner_user_id = $2 AND status = 1")
-        .bind(id)
-        .bind(owner)
-        .execute(db)
-        .await?;
+    let result = sqlx::query(
+        "UPDATE assets SET status = 2 WHERE id = $1 AND owner_user_id = $2 AND status = 1",
+    )
+    .bind(id)
+    .bind(owner)
+    .execute(db)
+    .await?;
 
     Ok(result.rows_affected() > 0)
 }
