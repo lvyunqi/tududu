@@ -1,0 +1,27 @@
+[package]
+name = "tududu"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+description = "图嘟嘟服务端"
+
+[[bin]]
+name = "tududu"
+path = "src/main.rs"
+
+[lib]
+name = "tududu"
+path = "src/lib.rs"
+
+[dependencies]
+anyhow.workspace = true
+axum.workspace = true
+clap.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
