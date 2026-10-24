@@ -25,6 +25,10 @@ pub struct Config {
     pub admin_token: Option<String>,
     /// 对外访问地址，来自 `TUDUDU_PUBLIC_BASE_URL`，用于拼接支付回调地址。
     pub public_base_url: Option<String>,
+    /// 初始管理员用户名，来自 `TUDUDU_ADMIN_USERNAME`，只在库里没有管理员时使用。
+    pub admin_username: Option<String>,
+    /// 初始管理员密码，来自 `TUDUDU_ADMIN_PASSWORD`，同上。
+    pub admin_password: Option<String>,
 }
 
 /// 签名密钥的最短长度，太短等于没签名。
@@ -91,6 +95,8 @@ impl Config {
         };
 
         let admin_token = read_env("TUDUDU_ADMIN_TOKEN");
+        let admin_username = read_env("TUDUDU_ADMIN_USERNAME");
+        let admin_password = read_env("TUDUDU_ADMIN_PASSWORD");
         let public_base_url =
             read_env("TUDUDU_PUBLIC_BASE_URL").map(|value| value.trim_end_matches('/').to_owned());
 
@@ -104,6 +110,8 @@ impl Config {
             refresh_token_ttl_secs,
             admin_token,
             public_base_url,
+            admin_username,
+            admin_password,
         })
     }
 }

@@ -1,4 +1,5 @@
 pub mod admin;
+pub mod admin_auth;
 pub mod admin_ops;
 pub mod assets;
 pub mod auth;

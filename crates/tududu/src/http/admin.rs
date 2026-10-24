@@ -9,13 +9,24 @@ use crate::provider::{self, CreateChannelRequest, CreateProviderRequest, UpdateP
 
 const ADMIN_TOKEN_HEADER: &str = "x-admin-token";
 
-/// 管理接口的临时门禁：比对环境变量里配置的管理令牌。
+/// 管理接口的调用方。走账号登录时有 id，走旧令牌时只有名字。
+#[derive(Debug, Clone)]
+pub struct AdminIdentity {
+    pub id: Option<Uuid>,
+    pub name: String,
+}
+
+/// 先看 Authorization 里有没有管理员令牌，没有再退回旧的 x-admin-token。
 ///
-/// 后续换成管理员账号体系后，这里替换成会话校验即可，调用方不用改。
-pub fn require_admin(state: &AppState, headers: &HeaderMap) -> Result<(), ApiError> {
+/// 旧令牌保留是为了过渡期：已经配好的部署不用立刻改，新部署直接用账号登录。
+pub fn require_admin(state: &AppState, headers: &HeaderMap) -> Result<AdminIdentity, ApiError> {
+    if let Some(identity) = from_bearer(state, headers) {
+        return Ok(identity);
+    }
+
     let Some(expected) = state.config.admin_token.as_deref() else {
         return Err(ApiError::forbidden(
-            "管理接口未启用，请先配置 TUDUDU_ADMIN_TOKEN",
+            "管理接口未启用，请用管理员账号登录，或配置 TUDUDU_ADMIN_TOKEN",
         ));
     };
 
@@ -28,7 +39,25 @@ pub fn require_admin(state: &AppState, headers: &HeaderMap) -> Result<(), ApiErr
         return Err(ApiError::unauthorized());
     }
 
-    Ok(())
+    Ok(AdminIdentity {
+        id: None,
+        name: "旧令牌".to_owned(),
+    })
+}
+
+fn from_bearer(state: &AppState, headers: &HeaderMap) -> Option<AdminIdentity> {
+    let raw = headers
+        .get(axum::http::header::AUTHORIZATION)?
+        .to_str()
+        .ok()?;
+
+    let token = raw.strip_prefix("Bearer ")?;
+    let claims = crate::admin_auth::verify(&state.config.jwt_secret, token.trim())?;
+
+    Some(AdminIdentity {
+        id: Uuid::parse_str(&claims.sub).ok(),
+        name: claims.name,
+    })
 }
 
 pub async fn list_providers(
