@@ -19,6 +19,7 @@ web/               前端（React + TypeScript + Vite）
 cd web
 pnpm install
 pnpm dev      # 本地开发，/api 会转发到 127.0.0.1:8080
+              # 页面路由用 hash：创作 / 广场 / 相册 / 我的 / 充值
 pnpm typecheck
 pnpm build
 ```

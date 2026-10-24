@@ -237,3 +237,34 @@ button.danger {
   font-variant-numeric: tabular-nums;
   font-weight: 600;
 }
+
+.compare {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.placeholder {
+  background: var(--line);
+}
+
+.plan {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.plan-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.price {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.back {
+  align-self: flex-start;
+}

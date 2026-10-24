@@ -6,6 +6,7 @@ import GalleryPage from "./pages/Gallery";
 import LoginPage from "./pages/Login";
 import MePage from "./pages/Me";
 import PlazaPage from "./pages/Plaza";
+import RechargePage from "./pages/Recharge";
 
 const TABS = [
   { key: "create", label: "创作" },
@@ -15,22 +16,29 @@ const TABS = [
 ] as const;
 
 type TabKey = (typeof TABS)[number]["key"];
+type Route = TabKey | "recharge";
 
-function currentTab(): TabKey {
+function currentRoute(): Route {
   const hash = window.location.hash.replace("#/", "");
+  if (hash === "recharge") return "recharge";
+
   const found = TABS.find((tab) => tab.key === hash);
   return found ? found.key : "create";
 }
 
 export default function App() {
   const auth = useAuth();
-  const [tab, setTab] = useState<TabKey>(currentTab);
+  const [route, setRoute] = useState<Route>(currentRoute);
 
   useEffect(() => {
-    const onHash = () => setTab(currentTab());
+    const onHash = () => setRoute(currentRoute());
     window.addEventListener("hashchange", onHash);
     return () => window.removeEventListener("hashchange", onHash);
   }, []);
+
+  function go(next: Route) {
+    window.location.hash = `#/${next}`;
+  }
 
   if (auth.loading) {
     return <div className="boot">正在加载…</div>;
@@ -39,6 +47,8 @@ export default function App() {
   if (!auth.user) {
     return <LoginPage auth={auth} />;
   }
+
+  const activeTab: TabKey = route === "recharge" ? "me" : route;
 
   return (
     <div className="shell">
@@ -50,17 +60,20 @@ export default function App() {
       </header>
 
       <main className="content">
-        {tab === "create" && <CreatePage auth={auth} />}
-        {tab === "plaza" && <PlazaPage />}
-        {tab === "gallery" && <GalleryPage />}
-        {tab === "me" && <MePage auth={auth} />}
+        {route === "create" && <CreatePage auth={auth} />}
+        {route === "plaza" && <PlazaPage />}
+        {route === "gallery" && <GalleryPage />}
+        {route === "me" && <MePage auth={auth} onRecharge={() => go("recharge")} />}
+        {route === "recharge" && (
+          <RechargePage auth={auth} onBack={() => go("me")} />
+        )}
       </main>
 
       <nav className="tabbar">
         {TABS.map((item) => (
           <a
             key={item.key}
-            className={item.key === tab ? "tab active" : "tab"}
+            className={item.key === activeTab ? "tab active" : "tab"}
             href={`#/${item.key}`}
           >
             {item.label}
