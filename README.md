@@ -94,6 +94,16 @@ curl http://127.0.0.1:8080/api/v1/health
 | POST | `/api/v1/admin/users/{id}/credits` | 手工增减余额，写流水 |
 | GET/POST | `/api/v1/admin/recharge-plans` | 充值套餐的查询与新增 |
 | GET/POST | `/api/v1/admin/pay-channels` | 易支付通道的查询与新增（商户密钥加密入库） |
+| GET | `/api/v1/admin/overview` | 看板数据：用户、充值、任务、作品数 |
+| GET | `/api/v1/admin/users` | 用户列表，带余额 |
+| PATCH | `/api/v1/admin/users/{id}/status` | 改用户状态（正常 / 禁言 / 封禁） |
+| GET | `/api/v1/admin/pay-orders` | 充值订单列表 |
+| GET | `/api/v1/admin/jobs` | 任务列表，可按状态筛 |
+| GET | `/api/v1/admin/jobs/{id}` | 任务详情，含每次上游调用记录 |
+| GET | `/api/v1/admin/prompts` | 广场作品列表，可按状态筛 |
+| POST | `/api/v1/admin/prompts/{code}/status` | 下架或恢复作品 |
+
+管理端的写操作会写一条 `audit_logs` 留痕。
 
 价格表里 `size`、`quality` 留空表示通配，匹配时优先用更具体的规则。
 

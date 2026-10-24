@@ -155,6 +155,35 @@ pub async fn adjust_like_count(db: &PgPool, prompt_id: Uuid, delta: i32) -> sqlx
     .await
 }
 
+pub async fn list_by_status(
+    db: &PgPool,
+    status: i16,
+    before: Option<DateTime<Utc>>,
+    limit: i64,
+) -> sqlx::Result<Vec<PromptRow>> {
+    let sql = format!(
+        "SELECT {PROMPT_COLUMNS} FROM prompts WHERE status = $1 AND ($2::timestamptz IS NULL OR created_at < $2) ORDER BY created_at DESC LIMIT $3"
+    );
+
+    sqlx::query_as::<_, PromptRow>(&sql)
+        .bind(status)
+        .bind(before)
+        .bind(limit)
+        .fetch_all(db)
+        .await
+}
+
+/// 管理端直接改状态，用于下架或恢复。
+pub async fn set_status(db: &PgPool, code: &str, status: i16) -> sqlx::Result<bool> {
+    let result = sqlx::query("UPDATE prompts SET status = $2 WHERE short_code = $1")
+        .bind(code)
+        .bind(status)
+        .execute(db)
+        .await?;
+
+    Ok(result.rows_affected() > 0)
+}
+
 pub async fn hide(db: &PgPool, code: &str, author: Uuid) -> sqlx::Result<bool> {
     let result = sqlx::query(
         "UPDATE prompts SET status = 3 WHERE short_code = $1 AND author_user_id = $2 AND status = 2",
