@@ -3,6 +3,7 @@ use serde::Serialize;
 use sqlx::PgPool;
 use uuid::Uuid;
 
+pub const STATUS_REVIEWING: i16 = 1;
 pub const STATUS_PUBLISHED: i16 = 2;
 pub const STATUS_HIDDEN: i16 = 3;
 
@@ -48,11 +49,12 @@ pub struct NewPrompt<'a> {
     pub category_id: Option<i64>,
     pub cover_asset_id: Option<Uuid>,
     pub source_session_id: Option<Uuid>,
+    pub status: i16,
 }
 
 pub async fn insert(db: &PgPool, item: &NewPrompt<'_>) -> sqlx::Result<PromptRow> {
     let sql = format!(
-        "INSERT INTO prompts (short_code, author_user_id, title, prompt_text, model, category_id, cover_asset_id, source_session_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING {PROMPT_COLUMNS}"
+        "INSERT INTO prompts (short_code, author_user_id, title, prompt_text, model, category_id, cover_asset_id, source_session_id, status) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING {PROMPT_COLUMNS}"
     );
 
     sqlx::query_as::<_, PromptRow>(&sql)
@@ -64,6 +66,7 @@ pub async fn insert(db: &PgPool, item: &NewPrompt<'_>) -> sqlx::Result<PromptRow
         .bind(item.category_id)
         .bind(item.cover_asset_id)
         .bind(item.source_session_id)
+        .bind(item.status)
         .fetch_one(db)
         .await
 }
@@ -153,6 +156,50 @@ pub async fn adjust_like_count(db: &PgPool, prompt_id: Uuid, delta: i32) -> sqlx
     .bind(delta)
     .fetch_one(db)
     .await
+}
+
+/// 命中任一词就返回命中的词，用于决定是否转人工审核。
+pub async fn sensitive_hits(db: &PgPool, text: &str) -> sqlx::Result<Vec<String>> {
+    let words: Vec<String> =
+        sqlx::query_scalar("SELECT word FROM sensitive_words WHERE enabled")
+            .fetch_all(db)
+            .await?;
+
+    Ok(words
+        .into_iter()
+        .filter(|word| !word.is_empty() && text.contains(word.as_str()))
+        .collect())
+}
+
+#[derive(Debug, Serialize, sqlx::FromRow)]
+pub struct SensitiveWordRow {
+    pub id: i64,
+    pub word: String,
+    pub enabled: bool,
+}
+
+pub async fn list_sensitive_words(db: &PgPool) -> sqlx::Result<Vec<SensitiveWordRow>> {
+    sqlx::query_as::<_, SensitiveWordRow>("SELECT id, word, enabled FROM sensitive_words ORDER BY id")
+        .fetch_all(db)
+        .await
+}
+
+pub async fn add_sensitive_word(db: &PgPool, word: &str) -> sqlx::Result<SensitiveWordRow> {
+    sqlx::query_as::<_, SensitiveWordRow>(
+        "INSERT INTO sensitive_words (word) VALUES ($1) RETURNING id, word, enabled",
+    )
+    .bind(word)
+    .fetch_one(db)
+    .await
+}
+
+pub async fn remove_sensitive_word(db: &PgPool, id: i64) -> sqlx::Result<bool> {
+    let result = sqlx::query("DELETE FROM sensitive_words WHERE id = $1")
+        .bind(id)
+        .execute(db)
+        .await?;
+
+    Ok(result.rows_affected() > 0)
 }
 
 pub async fn list_by_status(

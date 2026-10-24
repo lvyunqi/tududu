@@ -134,3 +134,9 @@ export const USER_STATUS: Record<number, string> = {
   2: "禁言",
   3: "封禁"
 };
+
+export interface SensitiveWord {
+  id: number;
+  word: string;
+  enabled: boolean;
+}
