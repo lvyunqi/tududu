@@ -24,13 +24,14 @@ pub struct PromptRow {
     pub model: String,
     pub category_id: Option<i64>,
     pub cover_asset_id: Option<Uuid>,
+    pub status: i16,
     pub like_count: i32,
     pub view_count: i32,
     pub published_at: DateTime<Utc>,
     pub created_at: DateTime<Utc>,
 }
 
-const PROMPT_COLUMNS: &str = "id, short_code, author_user_id, title, prompt_text, model, category_id, cover_asset_id, like_count, view_count, published_at, created_at";
+const PROMPT_COLUMNS: &str = "id, short_code, author_user_id, title, prompt_text, model, category_id, cover_asset_id, status, like_count, view_count, published_at, created_at";
 
 pub async fn list_categories(db: &PgPool) -> sqlx::Result<Vec<CategoryRow>> {
     sqlx::query_as::<_, CategoryRow>(
@@ -160,10 +161,9 @@ pub async fn adjust_like_count(db: &PgPool, prompt_id: Uuid, delta: i32) -> sqlx
 
 /// 命中任一词就返回命中的词，用于决定是否转人工审核。
 pub async fn sensitive_hits(db: &PgPool, text: &str) -> sqlx::Result<Vec<String>> {
-    let words: Vec<String> =
-        sqlx::query_scalar("SELECT word FROM sensitive_words WHERE enabled")
-            .fetch_all(db)
-            .await?;
+    let words: Vec<String> = sqlx::query_scalar("SELECT word FROM sensitive_words WHERE enabled")
+        .fetch_all(db)
+        .await?;
 
     Ok(words
         .into_iter()
@@ -179,9 +179,11 @@ pub struct SensitiveWordRow {
 }
 
 pub async fn list_sensitive_words(db: &PgPool) -> sqlx::Result<Vec<SensitiveWordRow>> {
-    sqlx::query_as::<_, SensitiveWordRow>("SELECT id, word, enabled FROM sensitive_words ORDER BY id")
-        .fetch_all(db)
-        .await
+    sqlx::query_as::<_, SensitiveWordRow>(
+        "SELECT id, word, enabled FROM sensitive_words ORDER BY id",
+    )
+    .fetch_all(db)
+    .await
 }
 
 pub async fn add_sensitive_word(db: &PgPool, word: &str) -> sqlx::Result<SensitiveWordRow> {
