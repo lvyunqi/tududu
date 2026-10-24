@@ -1,7 +1,5 @@
 //! 管理员账号：登录、令牌签发与校验。
 
-use std::collections::BTreeMap;
-
 use chrono::{Duration, Utc};
 use jsonwebtoken::{Algorithm, DecodingKey, EncodingKey, Header, Validation, decode, encode};
 use serde::{Deserialize, Serialize};
@@ -123,11 +121,7 @@ pub fn verify(secret: &str, token: &str) -> Option<AdminClaims> {
 }
 
 /// 首次启动时如果库里没有管理员，用环境变量里的一组账号建一个，省得进不去。
-pub async fn bootstrap(
-    db: &PgPool,
-    username: &str,
-    plain_password: &str,
-) -> anyhow::Result<()> {
+pub async fn bootstrap(db: &PgPool, username: &str, plain_password: &str) -> anyhow::Result<()> {
     let count: i64 = sqlx::query_scalar("SELECT count(*) FROM admin_users")
         .fetch_one(db)
         .await?;
@@ -136,7 +130,8 @@ pub async fn bootstrap(
         return Ok(());
     }
 
-    let hash = password::hash(plain_password).map_err(|err| anyhow::anyhow!("生成密码散列失败：{err}"))?;
+    let hash =
+        password::hash(plain_password).map_err(|err| anyhow::anyhow!("生成密码散列失败：{err}"))?;
 
     sqlx::query(
         "INSERT INTO admin_users (username, password_hash, display_name) VALUES ($1, $2, $3)",
@@ -180,10 +175,24 @@ mod tests {
     }
 
     #[test]
-    fn login_payload_ignores_extra_fields() {
-        let mut raw = BTreeMap::new();
-        raw.insert("username", "root");
-        raw.insert("password", "secret-value");
-        assert_eq!(raw.len(), 2);
+    fn wrong_audience_is_rejected() {
+        let secret = "test-secret-that-is-long-enough-for-hs256";
+        let now = Utc::now().timestamp();
+        let claims = AdminClaims {
+            sub: Uuid::nil().to_string(),
+            name: "测试".to_owned(),
+            aud: "tududu-user".to_owned(),
+            iat: now,
+            exp: now + 600,
+        };
+
+        let token = encode(
+            &Header::new(Algorithm::HS256),
+            &claims,
+            &EncodingKey::from_secret(secret.as_bytes()),
+        )
+        .expect("签发失败");
+
+        assert!(verify(secret, &token).is_none());
     }
 }
