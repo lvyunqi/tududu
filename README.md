@@ -23,12 +23,26 @@ cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --all -- --check
 ```
 
-启动 HTTP 服务：
+启动 HTTP 服务（会在启动时自动执行数据库迁移）：
 
 ```bash
 cargo run -- serve
 curl http://127.0.0.1:8080/api/v1/health
 ```
+
+## 接口
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| GET | `/healthz` | 存活探针，不访问数据库 |
+| GET | `/api/v1/health` | 健康检查，包含数据库连通性 |
+| POST | `/api/v1/auth/register` | 注册，手机号或邮箱加密码 |
+| POST | `/api/v1/auth/login` | 登录，返回访问令牌与刷新令牌 |
+| POST | `/api/v1/auth/refresh` | 刷新访问令牌，同时轮换刷新令牌 |
+| POST | `/api/v1/auth/logout` | 登出当前设备 |
+| GET | `/api/v1/me` | 当前登录用户资料 |
+
+除注册、登录、刷新外，其余接口需要 `Authorization: Bearer <access_token>`。
 
 ## 配置
 
@@ -38,7 +52,11 @@ curl http://127.0.0.1:8080/api/v1/health
 | --- | --- | --- |
 | `TUDUDU_LISTEN` | `0.0.0.0:8080` | HTTP 监听地址 |
 | `TUDUDU_DATA_DIR` | `./data` | 本地数据目录，存放上传与生成的图片 |
-| `TUDUDU_DATABASE_URL` | 空 | PostgreSQL 连接串 |
+| `TUDUDU_DATABASE_URL` | 无，必填 | PostgreSQL 连接串 |
+| `TUDUDU_DB_MAX_CONNECTIONS` | `10` | 连接池上限 |
+| `TUDUDU_JWT_SECRET` | 无，必填 | 访问令牌签名密钥，至少 32 位 |
+| `TUDUDU_ACCESS_TTL` | `900` | 访问令牌有效期，单位秒 |
+| `TUDUDU_REFRESH_TTL` | `2592000` | 刷新令牌有效期，单位秒 |
 | `TUDUDU_LOG` | `info` | 日志过滤规则，语法同 `RUST_LOG` |
 
 ## 构建
