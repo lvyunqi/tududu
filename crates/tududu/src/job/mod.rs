@@ -20,6 +20,10 @@ pub struct CreateJobRequest {
     pub provider_id: Option<Uuid>,
     #[serde(default)]
     pub input_asset_id: Option<Uuid>,
+    #[serde(default)]
+    pub size: Option<String>,
+    #[serde(default)]
+    pub quality: Option<String>,
 }
 
 pub async fn submit(
@@ -48,6 +52,14 @@ pub async fn submit(
         }
     }
 
+    let price = crate::billing::price_for(
+        db,
+        model,
+        req.size.as_deref(),
+        req.quality.as_deref(),
+    )
+    .await?;
+
     let new_job = store::NewJob {
         user_id,
         provider_id: req.provider_id,
@@ -55,9 +67,27 @@ pub async fn submit(
         prompt,
         input_asset_id: req.input_asset_id,
         max_attempts: DEFAULT_MAX_ATTEMPTS,
+        price,
     };
 
-    Ok(store::insert(db, &new_job).await?)
+    let created = store::insert(db, &new_job).await?;
+
+    // 先扣费再执行，失败原路退回，避免跑完才发现余额不够
+    if let Err(err) = crate::billing::charge(
+        db,
+        user_id,
+        price,
+        Some("job"),
+        Some(created.id),
+        "提交修图任务",
+    )
+    .await
+    {
+        let _ = store::mark_failed(db, created.id, 40201, "余额不足").await;
+        return Err(err);
+    }
+
+    Ok(created)
 }
 
 pub async fn get(db: &PgPool, user_id: Uuid, job_id: Uuid) -> Result<store::JobRow, ApiError> {

@@ -81,12 +81,12 @@ pub async fn execute(
                     Ok(bytes) => Some(bytes),
                     Err(err) => {
                         tracing::error!(error = %err, %asset_id, "读取输入图片失败");
-                        store::mark_failed(db, job_id, ERR_INPUT_MISSING, "输入图片已丢失").await?;
+                        fail_and_refund(db, &job, ERR_INPUT_MISSING, "输入图片已丢失").await?;
                         return Ok(());
                     }
                 },
                 None => {
-                    store::mark_failed(db, job_id, ERR_INPUT_MISSING, "输入图片不存在").await?;
+                    fail_and_refund(db, &job, ERR_INPUT_MISSING, "输入图片不存在").await?;
                     return Ok(());
                 }
             }
@@ -96,7 +96,7 @@ pub async fn execute(
 
     let targets = list_targets(db, job.provider_id).await?;
     if targets.is_empty() {
-        store::mark_failed(db, job_id, ERR_NO_CHANNEL, "当前没有可用的模型渠道").await?;
+        fail_and_refund(db, &job, ERR_NO_CHANNEL, "当前没有可用的模型渠道").await?;
         return Ok(());
     }
 
@@ -162,7 +162,35 @@ pub async fn execute(
         }
     }
 
-    store::mark_failed(db, job_id, ERR_UPSTREAM, &truncate(&last_message, 300)).await?;
+    fail_and_refund(db, &job, ERR_UPSTREAM, &truncate(&last_message, 300)).await?;
+    Ok(())
+}
+
+/// 任务失败时把预扣的额度退回去。退款失败只记日志，不影响任务状态。
+async fn fail_and_refund(
+    db: &PgPool,
+    job: &store::JobRow,
+    error_code: i32,
+    message: &str,
+) -> Result<(), ApiError> {
+    store::mark_failed(db, job.id, error_code, message).await?;
+
+    if job.price > 0 {
+        let outcome = crate::billing::refund(
+            db,
+            job.user_id,
+            job.price,
+            Some("job"),
+            Some(job.id),
+            "任务失败退回",
+        )
+        .await;
+
+        if let Err(err) = outcome {
+            tracing::error!(error = %err, job_id = %job.id, "退回预扣额度失败");
+        }
+    }
+
     Ok(())
 }
 
