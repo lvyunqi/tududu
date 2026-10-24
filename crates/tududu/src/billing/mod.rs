@@ -113,6 +113,27 @@ pub async fn grant(db: &PgPool, user_id: Uuid, amount: i64, remark: &str) -> Res
     apply_delta(db, user_id, amount, KIND_GRANT, None, None, remark).await
 }
 
+/// 带业务引用的发放，用于保证同一笔订单重复回调只入账一次。
+pub async fn grant_ref(
+    db: &PgPool,
+    user_id: Uuid,
+    amount: i64,
+    ref_type: &str,
+    ref_id: Uuid,
+    remark: &str,
+) -> Result<i64, ApiError> {
+    apply_delta(
+        db,
+        user_id,
+        amount,
+        KIND_GRANT,
+        Some(ref_type),
+        Some(ref_id),
+        remark,
+    )
+    .await
+}
+
 /// 改余额并记一条流水。整个过程在一个事务里，余额加行锁。
 async fn apply_delta(
     db: &PgPool,
@@ -147,17 +168,12 @@ async fn apply_delta(
 
     let credited = if kind == KIND_GRANT { delta.max(0) } else { 0 };
 
-    sqlx::query(
-        "UPDATE wallets SET balance = $2, total_charged = total_charged + $3, updated_at = now() WHERE user_id = $1",
-    )
-    .bind(user_id)
-    .bind(after)
-    .bind(credited)
-    .execute(&mut *tx)
-    .await?;
-
-    sqlx::query(
-        "INSERT INTO ledger_entries (user_id, kind, amount, balance_after, ref_type, ref_id, remark) VALUES ($1, $2, $3, $4, $5, $6, $7)",
+    // 先写流水。同一业务对象同一类型只会成功一次，重复调用直接返回原余额。
+    let inserted: Option<i64> = sqlx::query_scalar(
+        "INSERT INTO ledger_entries (user_id, kind, amount, balance_after, ref_type, ref_id, remark) \
+         VALUES ($1, $2, $3, $4, $5, $6, $7) \
+         ON CONFLICT DO NOTHING \
+         RETURNING balance_after",
     )
     .bind(user_id)
     .bind(kind)
@@ -166,6 +182,20 @@ async fn apply_delta(
     .bind(ref_type)
     .bind(ref_id)
     .bind(remark)
+    .fetch_optional(&mut *tx)
+    .await?;
+
+    if inserted.is_none() {
+        tx.rollback().await?;
+        return Ok(balance);
+    }
+
+    sqlx::query(
+        "UPDATE wallets SET balance = $2, total_charged = total_charged + $3, updated_at = now() WHERE user_id = $1",
+    )
+    .bind(user_id)
+    .bind(after)
+    .bind(credited)
     .execute(&mut *tx)
     .await?;
 

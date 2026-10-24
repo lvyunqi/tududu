@@ -23,6 +23,8 @@ pub struct Config {
     pub refresh_token_ttl_secs: i64,
     /// 管理接口令牌，来自 `TUDUDU_ADMIN_TOKEN`。不配置就关闭管理接口。
     pub admin_token: Option<String>,
+    /// 对外访问地址，来自 `TUDUDU_PUBLIC_BASE_URL`，用于拼接支付回调地址。
+    pub public_base_url: Option<String>,
 }
 
 /// 签名密钥的最短长度，太短等于没签名。
@@ -89,6 +91,8 @@ impl Config {
         };
 
         let admin_token = read_env("TUDUDU_ADMIN_TOKEN");
+        let public_base_url =
+            read_env("TUDUDU_PUBLIC_BASE_URL").map(|value| value.trim_end_matches('/').to_owned());
 
         Ok(Self {
             listen,
@@ -99,6 +103,7 @@ impl Config {
             access_token_ttl_secs,
             refresh_token_ttl_secs,
             admin_token,
+            public_base_url,
         })
     }
 }
