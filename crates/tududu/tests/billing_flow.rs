@@ -233,3 +233,53 @@ async fn epay_notify_rejects_bad_signature() {
     assert_eq!(result, "fail");
     assert_eq!(balance(&pool, fixture.user).await, 0);
 }
+
+#[tokio::test]
+async fn expired_orders_are_closed() {
+    let pool = pool().await;
+    let fixture = pay_fixture(&pool).await;
+
+    sqlx::query("UPDATE pay_orders SET expire_at = now() - interval '1 minute' WHERE order_no = $1")
+        .bind(&fixture.order_no)
+        .execute(&pool)
+        .await
+        .expect("改过期时间失败");
+
+    let closed = tududu::tasks::close_expired_orders(&pool)
+        .await
+        .expect("关闭过期订单失败");
+    assert!(closed >= 1);
+
+    let status: i16 = sqlx::query_scalar("SELECT status FROM pay_orders WHERE order_no = $1")
+        .bind(&fixture.order_no)
+        .fetch_one(&pool)
+        .await
+        .expect("读订单状态失败");
+
+    assert_eq!(status, 2);
+}
+
+#[tokio::test]
+async fn reconcile_detects_broken_balance() {
+    let pool = pool().await;
+    let user = new_user(&pool).await;
+
+    billing::grant(&pool, user, 100, "测试发放")
+        .await
+        .expect("发放失败");
+
+    // 绕过接口直接改余额，模拟账目被改坏
+    sqlx::query("UPDATE wallets SET balance = 999 WHERE user_id = $1")
+        .bind(user)
+        .execute(&pool)
+        .await
+        .expect("改余额失败");
+
+    let mismatches = tududu::tasks::check_ledger(&pool).await.expect("对账失败");
+    let found = mismatches.iter().find(|item| item.user_id == user);
+
+    assert!(found.is_some(), "没有发现被改坏的账目");
+    let row = found.expect("找不到异常记录");
+    assert_eq!(row.balance, 999);
+    assert_eq!(row.ledger_sum, 100);
+}

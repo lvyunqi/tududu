@@ -10,6 +10,7 @@ use crate::error::{ApiBody, ApiError};
 use crate::http::admin::require_admin;
 use crate::http::routes::AppState;
 use crate::plaza::store as plaza_store;
+use crate::tasks;
 
 #[derive(Debug, Deserialize)]
 pub struct PageQuery {
@@ -19,6 +20,16 @@ pub struct PageQuery {
 
 fn page_limit(limit: Option<i64>) -> i64 {
     limit.unwrap_or(20).clamp(1, 100)
+}
+
+/// 手动跑一轮对账，返回关闭的过期订单数与账本异常。
+pub async fn reconcile(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+) -> Result<Json<ApiBody<tasks::ReconcileReport>>, ApiError> {
+    require_admin(&state, &headers)?;
+    let report = tasks::run_once(&state.db).await?;
+    Ok(Json(ApiBody::ok(report)))
 }
 
 pub async fn overview(

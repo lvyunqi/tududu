@@ -17,4 +17,5 @@ pub mod plaza;
 pub mod provider;
 pub mod session;
 pub mod storage;
+pub mod tasks;
 pub mod telemetry;
