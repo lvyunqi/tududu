@@ -5,6 +5,13 @@ import { adminRequest } from "../lib/api";
 import type { AdminUser } from "../lib/types";
 import { USER_STATUS } from "../lib/types";
 
+function formatBytes(value: number): string {
+  if (value < 1024) return `${value} B`;
+  if (value < 1024 * 1024) return `${(value / 1024).toFixed(1)} KB`;
+  if (value < 1024 * 1024 * 1024) return `${(value / 1024 / 1024).toFixed(1)} MB`;
+  return `${(value / 1024 / 1024 / 1024).toFixed(2)} GB`;
+}
+
 export default function UsersPage() {
   const { data, error, loading, reload } = useLoad(() =>
     adminRequest<AdminUser[]>("/api/v1/admin/users?limit=50")
@@ -38,6 +45,7 @@ export default function UsersPage() {
             <th>昵称</th>
             <th>手机号</th>
             <th>余额</th>
+            <th>占用</th>
             <th>状态</th>
             <th>操作</th>
           </tr>
@@ -49,6 +57,7 @@ export default function UsersPage() {
               <td>{user.nickname}</td>
               <td className="mono">{user.phone ?? "—"}</td>
               <td className="mono">{user.balance}</td>
+              <td className="mono">{formatBytes(user.used_bytes)}</td>
               <td>{USER_STATUS[user.status] ?? user.status}</td>
               <td className="actions">
                 {[1, 2, 3].map((status) => (

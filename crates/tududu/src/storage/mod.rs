@@ -36,6 +36,21 @@ pub fn sha256_hex(bytes: &[u8]) -> String {
     hex::encode(Sha256::digest(bytes))
 }
 
+/// 配额检查。重复上传命中已有资产时不占新空间，所以这个要在去重之后调。
+pub fn ensure_quota(used: i64, incoming: usize, limit: i64) -> Result<(), ApiError> {
+    let incoming = i64::try_from(incoming).unwrap_or(i64::MAX);
+
+    if used.saturating_add(incoming) <= limit {
+        return Ok(());
+    }
+
+    Err(ApiError::new(
+        axum::http::StatusCode::PAYLOAD_TOO_LARGE,
+        50002,
+        "存储空间不足，先清理回收站或联系管理员扩容",
+    ))
+}
+
 /// 保存一次上传。同一用户重复上传相同内容时直接返回已有资产。
 pub async fn save_upload(
     db: &PgPool,
@@ -43,6 +58,7 @@ pub async fn save_upload(
     owner: Uuid,
     short_code: &str,
     bytes: &[u8],
+    quota_bytes: i64,
 ) -> Result<store::AssetRow, ApiError> {
     if bytes.is_empty() {
         return Err(ApiError::bad_request("文件是空的"));
@@ -54,7 +70,16 @@ pub async fn save_upload(
 
     let now = Utc::now();
     let prefix = format!("u/{short_code}/{}/{}", now.format("%Y"), now.format("%m"));
-    store_asset(db, files, owner, &prefix, bytes, "upload").await
+    store_asset(
+        db,
+        files,
+        owner,
+        &prefix,
+        bytes,
+        "upload",
+        Some(quota_bytes),
+    )
+    .await
 }
 
 /// 保存模型生成的结果图。和上传一样按内容去重，同一张图不会重复占盘。
@@ -70,7 +95,8 @@ pub async fn save_generated(
 
     let now = Utc::now();
     let prefix = format!("g/{owner}/{}/{}", now.format("%Y"), now.format("%m"));
-    store_asset(db, files, owner, &prefix, bytes, "job").await
+    // 生成图不查配额：用户已经付过钱，任务跑完却因为配额入库失败等于扣钱没图
+    store_asset(db, files, owner, &prefix, bytes, "job", None).await
 }
 
 async fn store_asset(
@@ -80,6 +106,7 @@ async fn store_asset(
     prefix: &str,
     bytes: &[u8],
     source: &str,
+    quota_bytes: Option<i64>,
 ) -> Result<store::AssetRow, ApiError> {
     let (mime, ext) =
         detect_image(bytes).ok_or_else(|| ApiError::bad_request("只支持 PNG、JPEG、WebP"))?;
@@ -87,6 +114,12 @@ async fn store_asset(
     let sha256 = sha256_hex(bytes);
     if let Some(existing) = store::find_by_sha(db, owner, &sha256).await? {
         return Ok(existing);
+    }
+
+    // 去重之后才查配额：同一张图重复上传不该被算成新占用
+    if let Some(limit) = quota_bytes {
+        let used = store::used_bytes(db, owner).await?;
+        ensure_quota(used, bytes.len(), limit)?;
     }
 
     let file_id = Uuid::new_v4().simple().to_string();
@@ -138,6 +171,20 @@ async fn store_asset(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn quota_allows_within_limit() {
+        assert!(ensure_quota(0, 1024, 2048).is_ok());
+        assert!(ensure_quota(1024, 1024, 2048).is_ok());
+    }
+
+    #[test]
+    fn quota_rejects_when_exceeded() {
+        let err = ensure_quota(2048, 1, 2048).expect_err("超限却放过了");
+        assert_eq!(err.code, 50002);
+
+        assert!(ensure_quota(i64::MAX, 1, 2048).is_err());
+    }
 
     #[test]
     fn detects_known_image_headers() {

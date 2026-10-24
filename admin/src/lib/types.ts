@@ -16,6 +16,7 @@ export interface AdminUser {
   email: string | null;
   status: number;
   balance: number;
+  used_bytes: number;
   created_at: string;
 }
 

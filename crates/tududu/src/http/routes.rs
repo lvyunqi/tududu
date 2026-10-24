@@ -43,6 +43,7 @@ pub fn router(state: AppState) -> Router {
                 crate::storage::MAX_UPLOAD_BYTES + 1024 * 1024,
             )),
         )
+        .route("/api/v1/storage/quota", get(assets::quota))
         .route("/api/v1/assets", get(assets::list))
         .route(
             "/api/v1/assets/{id}",
