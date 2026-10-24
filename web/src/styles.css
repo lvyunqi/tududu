@@ -268,3 +268,34 @@ button.danger {
 .back {
   align-self: flex-start;
 }
+
+a.button {
+  display: inline-block;
+  border-radius: 10px;
+  padding: 11px 16px;
+  font-weight: 600;
+  background: var(--accent);
+  color: #fff;
+  text-decoration: none;
+  text-align: center;
+}
+
+a.link {
+  color: var(--ink-2);
+  text-decoration: none;
+  font-size: 14px;
+}
+
+.row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.row:last-child {
+  border-bottom: none;
+}

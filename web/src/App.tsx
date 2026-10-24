@@ -7,6 +7,7 @@ import LoginPage from "./pages/Login";
 import MePage from "./pages/Me";
 import PlazaPage from "./pages/Plaza";
 import RechargePage from "./pages/Recharge";
+import SessionDetailPage from "./pages/SessionDetail";
 
 const TABS = [
   { key: "create", label: "创作" },
@@ -16,29 +17,33 @@ const TABS = [
 ] as const;
 
 type TabKey = (typeof TABS)[number]["key"];
-type Route = TabKey | "recharge";
 
-function currentRoute(): Route {
+type Route =
+  | { kind: "tab"; tab: TabKey }
+  | { kind: "recharge" }
+  | { kind: "session"; id: string };
+
+function parseRoute(): Route {
   const hash = window.location.hash.replace("#/", "");
-  if (hash === "recharge") return "recharge";
+
+  if (hash === "recharge") return { kind: "recharge" };
+  if (hash.startsWith("session/")) {
+    return { kind: "session", id: hash.slice("session/".length) };
+  }
 
   const found = TABS.find((tab) => tab.key === hash);
-  return found ? found.key : "create";
+  return { kind: "tab", tab: found ? found.key : "create" };
 }
 
 export default function App() {
   const auth = useAuth();
-  const [route, setRoute] = useState<Route>(currentRoute);
+  const [route, setRoute] = useState<Route>(parseRoute);
 
   useEffect(() => {
-    const onHash = () => setRoute(currentRoute());
+    const onHash = () => setRoute(parseRoute());
     window.addEventListener("hashchange", onHash);
     return () => window.removeEventListener("hashchange", onHash);
   }, []);
-
-  function go(next: Route) {
-    window.location.hash = `#/${next}`;
-  }
 
   if (auth.loading) {
     return <div className="boot">正在加载…</div>;
@@ -48,7 +53,8 @@ export default function App() {
     return <LoginPage auth={auth} />;
   }
 
-  const activeTab: TabKey = route === "recharge" ? "me" : route;
+  const activeTab: TabKey =
+    route.kind === "tab" ? route.tab : route.kind === "recharge" ? "me" : "me";
 
   return (
     <div className="shell">
@@ -60,12 +66,13 @@ export default function App() {
       </header>
 
       <main className="content">
-        {route === "create" && <CreatePage auth={auth} />}
-        {route === "plaza" && <PlazaPage />}
-        {route === "gallery" && <GalleryPage />}
-        {route === "me" && <MePage auth={auth} onRecharge={() => go("recharge")} />}
-        {route === "recharge" && (
-          <RechargePage auth={auth} onBack={() => go("me")} />
+        {route.kind === "tab" && route.tab === "create" && <CreatePage auth={auth} />}
+        {route.kind === "tab" && route.tab === "plaza" && <PlazaPage />}
+        {route.kind === "tab" && route.tab === "gallery" && <GalleryPage />}
+        {route.kind === "tab" && route.tab === "me" && <MePage auth={auth} />}
+        {route.kind === "recharge" && <RechargePage auth={auth} />}
+        {route.kind === "session" && (
+          <SessionDetailPage auth={auth} sessionId={route.id} />
         )}
       </main>
 

@@ -6,7 +6,7 @@ import type { CheckoutInfo, PayOrder, RechargePlan } from "../lib/types";
 
 type Auth = ReturnType<typeof useAuth>;
 
-export default function RechargePage({ auth, onBack }: { auth: Auth; onBack: () => void }) {
+export default function RechargePage({ auth }: { auth: Auth }) {
   const [plans, setPlans] = useState<RechargePlan[]>([]);
   const [pending, setPending] = useState<CheckoutInfo | null>(null);
   const [status, setStatus] = useState<string | null>(null);
@@ -63,9 +63,9 @@ export default function RechargePage({ auth, onBack }: { auth: Auth; onBack: () 
 
   return (
     <div className="page">
-      <button className="link back" onClick={onBack}>
+      <a className="link back" href="#/me">
         返回
-      </button>
+      </a>
 
       <h2>充值</h2>
       <p className="hint">

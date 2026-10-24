@@ -2,17 +2,22 @@ import { useEffect, useState } from "react";
 
 import { request } from "../lib/api";
 import type { useAuth } from "../lib/store";
-import type { PromptItem } from "../lib/types";
+import type { PromptItem, Session } from "../lib/types";
 
 type Auth = ReturnType<typeof useAuth>;
 
-export default function MePage({ auth, onRecharge }: { auth: Auth; onRecharge: () => void }) {
+export default function MePage({ auth }: { auth: Auth }) {
   const [works, setWorks] = useState<PromptItem[]>([]);
+  const [sessions, setSessions] = useState<Session[]>([]);
 
   useEffect(() => {
     void request<PromptItem[]>("/api/v1/my/prompts?limit=20")
       .then(setWorks)
       .catch(() => setWorks([]));
+
+    void request<Session[]>("/api/v1/sessions?limit=20")
+      .then(setSessions)
+      .catch(() => setSessions([]));
   }, []);
 
   return (
@@ -25,7 +30,20 @@ export default function MePage({ auth, onRecharge }: { auth: Auth; onRecharge: (
         <p className="balance-line">
           {auth.balance} {auth.unitName}
         </p>
-        <button onClick={onRecharge}>去充值</button>
+        <a className="button" href="#/recharge">
+          去充值
+        </a>
+      </section>
+
+      <section className="card">
+        <h3>我的会话</h3>
+        {sessions.length === 0 && <p className="hint">还没有创作记录</p>}
+        {sessions.map((item) => (
+          <a key={item.id} className="row" href={`#/session/${item.id}`}>
+            <span>{item.title}</span>
+            <span className="hint">{formatTime(item.last_active_at)}</span>
+          </a>
+        ))}
       </section>
 
       <section className="card">
@@ -43,4 +61,10 @@ export default function MePage({ auth, onRecharge }: { auth: Auth; onRecharge: (
       </button>
     </div>
   );
+}
+
+function formatTime(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return `${date.getMonth() + 1}月${date.getDate()}日`;
 }
