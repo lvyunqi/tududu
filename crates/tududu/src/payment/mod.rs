@@ -4,8 +4,8 @@ pub mod store;
 
 use std::collections::BTreeMap;
 
-use chrono::{Duration, Utc};
 use axum::http::StatusCode;
+use chrono::{Duration, Utc};
 use md5::{Digest, Md5};
 use percent_encoding::{NON_ALPHANUMERIC, utf8_percent_encode};
 use serde::Serialize;
@@ -239,15 +239,8 @@ pub async fn handle_notify(
     }
 
     let total = order.credit + order.bonus;
-    let charged = crate::billing::grant_ref(
-        db,
-        order.user_id,
-        total,
-        "order",
-        order.id,
-        "充值",
-    )
-    .await;
+    let charged =
+        crate::billing::grant_ref(db, order.user_id, total, "order", order.id, "充值").await;
 
     if let Err(err) = charged {
         tracing::error!(error = %err, %order_no, "充值入账失败");
@@ -278,15 +271,8 @@ async fn audit(
     let trade_no = params.get("trade_no").map(String::as_str);
 
     let trimmed: String = raw_body.chars().take(4000).collect();
-    let outcome = store::record_notify(
-        db,
-        order_no,
-        trade_no,
-        &trimmed,
-        sign_valid,
-        verify_result,
-    )
-    .await;
+    let outcome =
+        store::record_notify(db, order_no, trade_no, &trimmed, sign_valid, verify_result).await;
 
     if let Err(err) = outcome {
         tracing::error!(error = %err, "写回调记录失败");
@@ -379,7 +365,10 @@ mod tests {
         let params = sample();
         let text = "money=12.00&out_trade_no=20261025010101abcdef&pid=1001secret";
 
-        assert_eq!(sign(&params, "secret"), hex::encode(Md5::digest(text.as_bytes())));
+        assert_eq!(
+            sign(&params, "secret"),
+            hex::encode(Md5::digest(text.as_bytes()))
+        );
     }
 
     #[test]

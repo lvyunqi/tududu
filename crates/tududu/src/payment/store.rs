@@ -187,7 +187,8 @@ pub async fn find_order_owned(
     order_no: &str,
     user_id: Uuid,
 ) -> sqlx::Result<Option<OrderRow>> {
-    let sql = format!("SELECT {ORDER_COLUMNS} FROM pay_orders WHERE order_no = $1 AND user_id = $2");
+    let sql =
+        format!("SELECT {ORDER_COLUMNS} FROM pay_orders WHERE order_no = $1 AND user_id = $2");
 
     sqlx::query_as::<_, OrderRow>(&sql)
         .bind(order_no)
