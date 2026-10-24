@@ -58,6 +58,15 @@ pub async fn publish(
         }
     }
 
+    // 命中敏感词就转人工审核，不直接上架
+    let hits = store::sensitive_hits(db, &format!("{title}\n{text}")).await?;
+    let status = if hits.is_empty() {
+        store::STATUS_PUBLISHED
+    } else {
+        tracing::info!(words = ?hits, "作品命中敏感词，转人工审核");
+        store::STATUS_REVIEWING
+    };
+
     let new_prompt = store::NewPrompt {
         short_code: &new_short_code(),
         author_user_id: user_id,
@@ -67,6 +76,7 @@ pub async fn publish(
         category_id: req.category_id,
         cover_asset_id: req.cover_asset_id,
         source_session_id: req.source_session_id,
+        status,
     };
 
     Ok(store::insert(db, &new_prompt).await?)

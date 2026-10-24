@@ -4,7 +4,7 @@ use axum::Json;
 use axum::Router;
 use axum::extract::DefaultBodyLimit;
 use axum::extract::State;
-use axum::routing::{get, patch, post};
+use axum::routing::{delete, get, patch, post};
 use serde::Serialize;
 use sqlx::PgPool;
 
@@ -140,6 +140,14 @@ pub fn router(state: AppState) -> Router {
         .route("/api/v1/admin/jobs", get(admin_ops::list_jobs))
         .route("/api/v1/admin/jobs/{id}", get(admin_ops::job_detail))
         .route("/api/v1/admin/prompts", get(admin_ops::list_prompts))
+        .route(
+            "/api/v1/admin/sensitive-words",
+            get(admin_ops::list_words).post(admin_ops::add_word),
+        )
+        .route(
+            "/api/v1/admin/sensitive-words/{id}",
+            delete(admin_ops::remove_word),
+        )
         .route(
             "/api/v1/admin/prompts/{code}/status",
             post(admin_ops::set_prompt_status),

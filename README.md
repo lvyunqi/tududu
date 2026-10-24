@@ -101,6 +101,8 @@ curl http://127.0.0.1:8080/api/v1/health
 
 发布时校验标题与提示词长度，封面图必须是自己的图片。广场列表只展示已发布的作品，按发布时间倒序。
 
+标题或提示词命中敏感词时，作品会进入待审核状态而不是直接上架；管理端通过后才公开。
+
 会话是带图的连续对话：每轮写一条用户消息和一条助手消息，任务跑完由执行器把结果图回写到助手消息上。
 
 提交一轮修改时如果没带 `input_asset_id`，服务端会自动拿本会话最近一张结果图当输入，
@@ -153,7 +155,9 @@ curl http://127.0.0.1:8080/api/v1/health
 | GET | `/api/v1/admin/pay-orders` | 充值订单列表 |
 | GET | `/api/v1/admin/jobs` | 任务列表，可按状态筛 |
 | GET | `/api/v1/admin/jobs/{id}` | 任务详情，含每次上游调用记录 |
-| GET | `/api/v1/admin/prompts` | 广场作品列表，可按状态筛 |
+| GET | `/api/v1/admin/prompts` | 广场作品列表，可按状态筛（1 待审 / 2 已发布 / 3 已下架） |
+| GET/POST | `/api/v1/admin/sensitive-words` | 敏感词表查询与新增 |
+| DELETE | `/api/v1/admin/sensitive-words/{id}` | 删除词条 |
 | POST | `/api/v1/admin/prompts/{code}/status` | 下架或恢复作品 |
 
 管理端的写操作会写一条 `audit_logs` 留痕。

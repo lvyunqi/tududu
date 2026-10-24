@@ -189,6 +189,54 @@ pub struct PromptStatusRequest {
     pub status: i16,
 }
 
+#[derive(Debug, Deserialize)]
+pub struct AddWordRequest {
+    pub word: String,
+}
+
+pub async fn list_words(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+) -> Result<Json<ApiBody<Vec<plaza_store::SensitiveWordRow>>>, ApiError> {
+    require_admin(&state, &headers)?;
+    let rows = plaza_store::list_sensitive_words(&state.db).await?;
+    Ok(Json(ApiBody::ok(rows)))
+}
+
+pub async fn add_word(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Json(req): Json<AddWordRequest>,
+) -> Result<Json<ApiBody<plaza_store::SensitiveWordRow>>, ApiError> {
+    require_admin(&state, &headers)?;
+
+    let word = req.word.trim();
+    if word.is_empty() || word.chars().count() > 64 {
+        return Err(ApiError::bad_request("词条需要 1 到 64 个字"));
+    }
+
+    let row = plaza_store::add_sensitive_word(&state.db, word).await?;
+    Ok(Json(ApiBody::ok(row)))
+}
+
+pub async fn remove_word(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(id): Path<i64>,
+) -> Result<Json<ApiBody<()>>, ApiError> {
+    require_admin(&state, &headers)?;
+
+    if !plaza_store::remove_sensitive_word(&state.db, id).await? {
+        return Err(ApiError::not_found("词条不存在"));
+    }
+
+    Ok(Json(ApiBody {
+        code: 0,
+        message: "ok".to_owned(),
+        data: None,
+    }))
+}
+
 pub async fn set_prompt_status(
     State(state): State<AppState>,
     headers: HeaderMap,
