@@ -10,7 +10,7 @@ use sqlx::PgPool;
 
 use crate::config::Config;
 use crate::error::ApiBody;
-use crate::http::{admin, assets, auth, billing, jobs, payment, sessions};
+use crate::http::{admin, assets, auth, billing, jobs, payment, plaza, sessions};
 
 /// 进程级共享状态。连接池句柄可 Clone，配置只读所以放进 Arc。
 #[derive(Clone)]
@@ -76,6 +76,14 @@ pub fn router(state: AppState) -> Router {
             "/api/v1/sessions/{id}/messages",
             post(sessions::send_message),
         )
+        .route("/api/v1/prompt-categories", get(plaza::categories))
+        .route("/api/v1/prompts", get(plaza::list).post(plaza::publish))
+        .route("/api/v1/my/prompts", get(plaza::mine))
+        .route(
+            "/api/v1/prompts/{code}",
+            get(plaza::detail).delete(plaza::unpublish),
+        )
+        .route("/api/v1/prompts/{code}/like", post(plaza::like))
         .route(
             "/api/v1/admin/providers",
             get(admin::list_providers).post(admin::create_provider),

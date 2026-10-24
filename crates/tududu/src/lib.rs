@@ -11,6 +11,7 @@ pub mod error;
 pub mod http;
 pub mod job;
 pub mod payment;
+pub mod plaza;
 pub mod provider;
 pub mod session;
 pub mod storage;
