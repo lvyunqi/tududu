@@ -16,6 +16,21 @@ pub struct CurrentUser {
     pub session_id: Uuid,
 }
 
+/// 同一账号五分钟内最多试十次，挡住密码爆破。
+fn limit_login(state: &AppState, account: &str) -> Result<(), ApiError> {
+    let key = format!("login:{}", account.trim().to_lowercase());
+
+    state
+        .limiter
+        .check(&key, 10, std::time::Duration::from_secs(300))
+        .map_err(|wait| {
+            ApiError::too_many_requests(format!(
+                "尝试太频繁，请 {} 秒后再试",
+                wait.as_secs().max(1)
+            ))
+        })
+}
+
 pub async fn register(
     State(state): State<AppState>,
     headers: HeaderMap,
@@ -31,6 +46,7 @@ pub async fn login(
     headers: HeaderMap,
     Json(req): Json<LoginRequest>,
 ) -> Result<Json<ApiBody<AuthResponse>>, ApiError> {
+    limit_login(&state, &req.account)?;
     let meta = meta_from_headers(&headers);
     let resp = auth::login(&state.db, &state.config, req, meta).await?;
     Ok(Json(ApiBody::ok(resp)))

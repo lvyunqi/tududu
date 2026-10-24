@@ -15,6 +15,7 @@ pub async fn create(
     Json(req): Json<CreateJobRequest>,
 ) -> Result<Json<ApiBody<job::store::JobRow>>, ApiError> {
     let current = require_user(&state, &headers).await?;
+    limit_jobs(&state, current.user_id)?;
     let created = job::submit(&state.db, current.user_id, req, job::JobLink::default()).await?;
 
     let background = state.clone();
@@ -35,6 +36,21 @@ pub async fn create(
     });
 
     Ok(Json(ApiBody::ok(created)))
+}
+
+/// 单用户一小时最多提交三十个任务。
+fn limit_jobs(state: &AppState, user_id: Uuid) -> Result<(), ApiError> {
+    let key = format!("job:{user_id}");
+
+    state
+        .limiter
+        .check(&key, 30, std::time::Duration::from_secs(3600))
+        .map_err(|wait| {
+            ApiError::too_many_requests(format!(
+                "提交太频繁，请 {} 分钟后再试",
+                (wait.as_secs() / 60).max(1)
+            ))
+        })
 }
 
 pub async fn detail(

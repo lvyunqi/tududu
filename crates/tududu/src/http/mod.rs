@@ -41,6 +41,7 @@ pub async fn serve(config: Config, db: PgPool) -> anyhow::Result<()> {
         provider_key,
         http: reqwest::Client::new(),
         files,
+        limiter: Arc::new(crate::ratelimit::RateLimiter::new()),
     };
 
     axum::serve(listener, routes::router(state))

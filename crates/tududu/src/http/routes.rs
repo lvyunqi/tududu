@@ -26,6 +26,8 @@ pub struct AppState {
     pub http: reqwest::Client,
     /// 图片文件的本地存储。
     pub files: crate::storage::local_store::LocalStore,
+    /// 进程内限流器，挡住密码爆破与刷接口。
+    pub limiter: Arc<crate::ratelimit::RateLimiter>,
 }
 
 pub fn router(state: AppState) -> Router {
