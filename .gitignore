@@ -8,6 +8,7 @@
 # 运行时数据与本地环境
 /data
 /tmp
+/.tmp
 *.log
 .env
 .env.*

@@ -1,10 +1,11 @@
 pub mod routes;
 
 use anyhow::Context;
+use sqlx::PgPool;
 
 use crate::config::Config;
 
-pub async fn serve(config: Config) -> anyhow::Result<()> {
+pub async fn serve(config: Config, db: PgPool) -> anyhow::Result<()> {
     let listener = tokio::net::TcpListener::bind(config.listen)
         .await
         .with_context(|| format!("监听 {} 失败", config.listen))?;
@@ -15,7 +16,9 @@ pub async fn serve(config: Config) -> anyhow::Result<()> {
         "http server listening"
     );
 
-    axum::serve(listener, routes::router())
+    let state = routes::AppState { db };
+
+    axum::serve(listener, routes::router(state))
         .with_graceful_shutdown(shutdown_signal())
         .await
         .context("axum serve 失败")?;
