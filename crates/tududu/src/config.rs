@@ -21,6 +21,8 @@ pub struct Config {
     pub access_token_ttl_secs: i64,
     /// 刷新令牌有效期秒数，来自 `TUDUDU_REFRESH_TTL`，默认 30 天。
     pub refresh_token_ttl_secs: i64,
+    /// 管理接口令牌，来自 `TUDUDU_ADMIN_TOKEN`。不配置就关闭管理接口。
+    pub admin_token: Option<String>,
 }
 
 /// 签名密钥的最短长度，太短等于没签名。
@@ -86,6 +88,8 @@ impl Config {
             None => 2_592_000,
         };
 
+        let admin_token = read_env("TUDUDU_ADMIN_TOKEN");
+
         Ok(Self {
             listen,
             data_dir,
@@ -94,6 +98,7 @@ impl Config {
             jwt_secret,
             access_token_ttl_secs,
             refresh_token_ttl_secs,
+            admin_token,
         })
     }
 }

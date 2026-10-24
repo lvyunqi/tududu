@@ -52,7 +52,11 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - name: 安装 musl 工具链
         run: sudo apt-get update && sudo apt-get install -y musl-tools
-      - run: cargo build --release --target x86_64-unknown-linux-musl
+      - name: 编译静态二进制
+        env:
+          CC_x86_64_unknown_linux_musl: musl-gcc
+          AR_x86_64_unknown_linux_musl: ar
+        run: cargo build --release --target x86_64-unknown-linux-musl
       - name: 校验产物
         run: |
           file target/x86_64-unknown-linux-musl/release/tududu
