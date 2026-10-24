@@ -60,11 +60,7 @@ pub async fn submit(
     Ok(store::insert(db, &new_job).await?)
 }
 
-pub async fn get(
-    db: &PgPool,
-    user_id: Uuid,
-    job_id: Uuid,
-) -> Result<store::JobRow, ApiError> {
+pub async fn get(db: &PgPool, user_id: Uuid, job_id: Uuid) -> Result<store::JobRow, ApiError> {
     let job = store::find_owned(db, job_id, user_id)
         .await?
         .ok_or_else(|| ApiError::not_found("任务不存在"))?;

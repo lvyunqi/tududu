@@ -113,7 +113,18 @@ pub async fn execute(
 
         match outcome {
             Ok(bytes) => {
-                record(db, job_id, attempt, target.channel_id, store::ATTEMPT_OK, Some(200), latency_ms, None, None).await?;
+                record(
+                    db,
+                    job_id,
+                    attempt,
+                    target.channel_id,
+                    store::ATTEMPT_OK,
+                    Some(200),
+                    latency_ms,
+                    None,
+                    None,
+                )
+                .await?;
                 let asset = storage::save_generated(db, files, job.user_id, &bytes).await?;
                 store::mark_succeeded(db, job_id, asset.id).await?;
                 return Ok(());
@@ -125,7 +136,18 @@ pub async fn execute(
                     store::ATTEMPT_FATAL
                 };
                 let body = truncate(&err.message, 2000);
-                record(db, job_id, attempt, target.channel_id, status, err.http_status, latency_ms, Some(err.code.as_str()), Some(body.as_str())).await?;
+                record(
+                    db,
+                    job_id,
+                    attempt,
+                    target.channel_id,
+                    status,
+                    err.http_status,
+                    latency_ms,
+                    Some(err.code.as_str()),
+                    Some(body.as_str()),
+                )
+                .await?;
 
                 last_message = err.message;
                 if !err.retryable {
@@ -133,7 +155,7 @@ pub async fn execute(
                 }
 
                 if attempt < max_attempts {
-                    let backoff = u64::from(attempt) * 1000;
+                    let backoff = (attempt as u64) * 1000;
                     tokio::time::sleep(std::time::Duration::from_millis(backoff)).await;
                 }
             }
@@ -257,12 +279,14 @@ async fn call_once(
     })?;
 
     if let Some(encoded) = item.b64_json {
-        return STANDARD.decode(encoded.as_bytes()).map_err(|err| CallError {
-            retryable: true,
-            http_status: None,
-            code: "decode".to_owned(),
-            message: format!("解码图片失败：{err}"),
-        });
+        return STANDARD
+            .decode(encoded.as_bytes())
+            .map_err(|err| CallError {
+                retryable: true,
+                http_status: None,
+                code: "decode".to_owned(),
+                message: format!("解码图片失败：{err}"),
+            });
     }
 
     if let Some(url) = item.url {

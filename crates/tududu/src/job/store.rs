@@ -104,12 +104,14 @@ pub async fn bump_attempt(
 }
 
 pub async fn mark_succeeded(db: &PgPool, id: Uuid, output_asset_id: Uuid) -> sqlx::Result<()> {
-    sqlx::query("UPDATE jobs SET status = $2, output_asset_id = $3, finished_at = now() WHERE id = $1")
-        .bind(id)
-        .bind(STATUS_SUCCEEDED)
-        .bind(output_asset_id)
-        .execute(db)
-        .await?;
+    sqlx::query(
+        "UPDATE jobs SET status = $2, output_asset_id = $3, finished_at = now() WHERE id = $1",
+    )
+    .bind(id)
+    .bind(STATUS_SUCCEEDED)
+    .bind(output_asset_id)
+    .execute(db)
+    .await?;
 
     Ok(())
 }
