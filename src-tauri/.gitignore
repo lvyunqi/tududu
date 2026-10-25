@@ -1,0 +1,4 @@
+# Tauri 生成物
+/target
+/gen
+/gen/android

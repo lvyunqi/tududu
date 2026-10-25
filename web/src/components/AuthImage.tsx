@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-import { getToken } from "../lib/api";
+import { BASE, getToken } from "../lib/api";
 
 /**
  * 图片接口要带令牌，直接把地址丢给 img 标签拿不到，这里先取成 blob 再显示。
@@ -25,7 +25,7 @@ export default function AuthImage({
     async function load() {
       const token = getToken();
       const suffix = variant === "thumb" ? "?size=thumb" : "";
-      const response = await fetch(`/api/v1/assets/${assetId}/file${suffix}`, {
+      const response = await fetch(`${BASE}/api/v1/assets/${assetId}/file${suffix}`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {}
       });
 

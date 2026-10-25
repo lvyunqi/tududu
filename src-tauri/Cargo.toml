@@ -1,0 +1,28 @@
+[package]
+name = "tududu-app"
+version = "0.1.0"
+description = "图嘟嘟移动端外壳"
+edition = "2021"
+rust-version = "1.77"
+
+# 刻意独立于仓库根目录的 workspace：
+# Tauri 在 Linux 上依赖 webkit2gtk 等系统库，混进主 workspace 会让服务端的静态构建装不上。
+[workspace]
+
+[lib]
+name = "tududu_app_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[profile.release]
+codegen-units = 1
+lto = "thin"
+strip = true
+panic = "abort"
