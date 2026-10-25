@@ -23,6 +23,7 @@ axum.workspace = true
 base64.workspace = true
 chrono.workspace = true
 clap.workspace = true
+dotenvy.workspace = true
 hex.workspace = true
 image.workspace = true
 jsonwebtoken.workspace = true
