@@ -190,6 +190,7 @@ curl http://127.0.0.1:8080/api/v1/health
 | `TUDUDU_ADMIN_TOKEN` | 空 | 旧的单一令牌，保留作为过渡，账号体系就绪后可以不配 |
 | `TUDUDU_TRASH_DAYS` | `30` | 回收站保留天数，到期后文件会被真正删掉 |
 | `TUDUDU_QUOTA_BYTES` | `2147483648` | 单用户存储上限（字节），默认 2GB |
+| `TUDUDU_CORS_ORIGINS` | `tauri://localhost` 等 | 允许跨域的来源，逗号分隔；默认放行 App 的 WebView |
 | `TUDUDU_PUBLIC_BASE_URL` | 空 | 对外访问地址，用于拼接支付回调地址 |
 | `TUDUDU_LOG` | `info` | 日志过滤规则，语法同 `RUST_LOG` |
 

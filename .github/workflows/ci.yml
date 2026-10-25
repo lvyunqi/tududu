@@ -4,6 +4,7 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
 
 env:
   CARGO_TERM_COLOR: always
@@ -187,8 +188,21 @@ jobs:
         env:
           VITE_API_BASE: ${{ vars.ANDROID_API_BASE }}
         run: |
+          set -euo pipefail
+          if [ -z "${VITE_API_BASE:-}" ]; then
+            echo "缺少仓库变量 ANDROID_API_BASE，App 的接口会打到本地，装上去也没法用"
+            exit 1
+          fi
+          echo "后端地址: $VITE_API_BASE"
           pnpm install --frozen-lockfile
           pnpm build
+
+          # 确认地址真的被打进了产物，而不只是设了环境变量
+          if ! grep -rq "$VITE_API_BASE" dist; then
+            echo "产物里没有找到后端地址，构建没有生效"
+            exit 1
+          fi
+          echo "产物已包含后端地址"
 
       - name: 安装 Tauri CLI
         run: pnpm install --no-frozen-lockfile
