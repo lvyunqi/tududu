@@ -1,0 +1,265 @@
+name: 发版
+
+# 推 v* 标签触发：编译静态二进制与安卓包，一起挂到 Release。
+# 手动触发用于补发或重跑。
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "版本号，例如 v0.1.1"
+        required: true
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: 0
+
+jobs:
+  linux:
+    name: 构建服务端
+    runs-on: ubuntu-latest
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 安装 Rust 1.98
+        uses: dtolnay/rust-toolchain@1.98.0
+        with:
+          targets: x86_64-unknown-linux-musl
+
+      - name: 恢复编译缓存
+        uses: Swatinem/rust-cache@v2
+
+      - name: 安装 pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: 安装 Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: 构建用户端
+        working-directory: web
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm build
+
+      - name: 构建管理后台
+        working-directory: admin
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm build
+
+      - name: 安装 musl 工具链
+        run: sudo apt-get update && sudo apt-get install -y musl-tools
+
+      - name: 编译静态二进制
+        env:
+          CC_x86_64_unknown_linux_musl: musl-gcc
+          AR_x86_64_unknown_linux_musl: ar
+        run: cargo build --release --target x86_64-unknown-linux-musl
+
+      - name: 整理产物
+        run: |
+          set -euo pipefail
+          VERSION="${GITHUB_REF_NAME}"
+          mkdir -p dist
+          cp target/x86_64-unknown-linux-musl/release/tududu "dist/tududu-${VERSION}-linux-x86_64"
+          chmod +x "dist/tududu-${VERSION}-linux-x86_64"
+          ls -lh dist/
+
+      - name: 上传产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-linux
+          path: dist/*
+          if-no-files-found: error
+
+  android:
+    name: 构建安卓包
+    runs-on: ubuntu-latest
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 安装 JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: 安装 Rust 1.98
+        uses: dtolnay/rust-toolchain@1.98.0
+        with:
+          targets: aarch64-linux-android
+
+      - name: 恢复编译缓存
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: 安装 pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: 安装 Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: 安装系统依赖
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libwebkit2gtk-4.1-dev build-essential curl wget file \
+            libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev
+
+      - name: 安装 NDK
+        run: |
+          SDKMANAGER=$(find "$ANDROID_HOME/cmdline-tools" -name sdkmanager -type f | head -1)
+          yes | "$SDKMANAGER" --licenses > /dev/null 2>&1 || true
+          "$SDKMANAGER" --install "ndk;26.1.10909125"
+          echo "NDK_HOME=$ANDROID_HOME/ndk/26.1.10909125" >> "$GITHUB_ENV"
+
+      - name: 安装 cargo-ndk
+        run: cargo install cargo-ndk --locked
+
+      - name: 构建前端
+        working-directory: web
+        env:
+          VITE_API_BASE: ${{ vars.ANDROID_API_BASE }}
+        run: |
+          set -euo pipefail
+          if [ -z "${VITE_API_BASE:-}" ]; then
+            echo "缺少仓库变量 ANDROID_API_BASE"
+            exit 1
+          fi
+          pnpm install --frozen-lockfile
+          pnpm build
+
+      - name: 安装 Tauri CLI
+        run: pnpm install --no-frozen-lockfile
+
+      - name: 初始化安卓工程
+        run: pnpm tauri android init --ci
+
+      - name: 打包 APK
+        run: pnpm tauri android build --apk --target aarch64
+
+      - name: 签名并整理产物
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          STORE_PASS: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_PASS: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+        run: |
+          set -euo pipefail
+          printf '%s' "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/release.jks"
+
+          UNSIGNED=$(find src-tauri/gen/android -name '*-release-unsigned.apk' | head -1)
+          if [ -z "$UNSIGNED" ]; then
+            echo "没有找到未签名的 APK"
+            find src-tauri/gen/android -name '*.apk'
+            exit 1
+          fi
+
+          BUILD_TOOLS=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
+          "$BUILD_TOOLS/zipalign" -f -p 4 "$UNSIGNED" "$RUNNER_TEMP/aligned.apk"
+
+          VERSION="${GITHUB_REF_NAME}"
+          mkdir -p dist
+          "$BUILD_TOOLS/apksigner" sign \
+            --ks "$RUNNER_TEMP/release.jks" \
+            --ks-key-alias "$KEY_ALIAS" \
+            --ks-pass "pass:$STORE_PASS" \
+            --key-pass "pass:$KEY_PASS" \
+            --out "dist/tududu-${VERSION}-arm64.apk" \
+            "$RUNNER_TEMP/aligned.apk"
+
+          "$BUILD_TOOLS/apksigner" verify --print-certs "dist/tududu-${VERSION}-arm64.apk" | head -5
+          ls -lh dist/
+
+      - name: 上传产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-android
+          path: dist/*
+          if-no-files-found: error
+
+  publish:
+    name: 发布
+    runs-on: ubuntu-latest
+    needs: [linux, android]
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 取回产物
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: 生成校验和
+        run: |
+          set -euo pipefail
+          cd dist
+          ls -lh
+          sha256sum * > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+
+      - name: 写入发布说明
+        run: |
+          set -euo pipefail
+          cat > notes.md <<'NOTES'
+          ## 这次发的东西
+
+          - linux-x86_64：服务端，静态链接，单文件，接口与两个前端都在里面
+          - arm64.apk：安卓包，已用发布密钥签名
+          - SHA256SUMS.txt：上面两个文件的校验和
+
+          ## 服务端怎么跑
+
+          复制 .env.example 为 .env，至少填 TUDUDU_DATABASE_URL 与 TUDUDU_JWT_SECRET，
+          然后 ./tududu serve。启动时自动建表。
+
+          浏览器打开 http://机器地址:8080 是用户端，/admin 是管理后台；
+          首次启动会用环境变量里的账号建一个管理员。
+
+          ## 装安卓包之前
+
+          这个包的后端地址在构建时写死成仓库变量 ANDROID_API_BASE 的值。
+          如果服务器还没部署、域名还没解析，装上去会提示网络错误，先确保服务端能访问。
+
+          ## 签名
+
+          证书 SHA-256：D45BED1BB8A1BBD09D4B191B4B8E1A69881AFFCC650A324480441C47B000FEFC
+
+          可以用 apksigner verify --print-certs 核对。后续版本用同一把密钥，能覆盖升级。
+          NOTES
+
+      - name: 创建 Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          VERSION="${GITHUB_REF_NAME}"
+
+          if gh release view "$VERSION" > /dev/null 2>&1; then
+            echo "Release 已存在，改为上传附件"
+            gh release upload "$VERSION" dist/* --clobber
+          else
+            gh release create "$VERSION" \
+              --title "$VERSION" \
+              --notes-file notes.md \
+              dist/*
+          fi
