@@ -31,6 +31,7 @@ fn request(title: &str, text: &str) -> PublishRequest {
         prompt_text: text.to_owned(),
         model: "gpt-image-1".to_owned(),
         category_id: None,
+        category_name: None,
         cover_asset_id: None,
         source_session_id: None,
     }
@@ -66,8 +67,47 @@ async fn word_hit_sends_prompt_to_review() {
     assert_eq!(row.status, plaza::store::STATUS_REVIEWING);
 
     // 待审的作品不该出现在公开列表里
-    let listed = plaza::store::list_published(&pool, None, None, 100)
+    let listed = plaza::store::list_published(&pool, None, None, None, 100)
         .await
         .expect("查列表失败");
     assert!(!listed.iter().any(|item| item.id == row.id));
+}
+
+#[tokio::test]
+async fn search_matches_title_and_prompt() {
+    let pool = pool().await;
+    let user = new_user(&pool).await;
+
+    let word = format!("检索词{}", &Uuid::new_v4().simple().to_string()[..6]);
+
+    plaza::publish(&pool, user, request(&format!("标题含{word}"), "普通描述"))
+        .await
+        .expect("发布失败");
+
+    let keyword = format!("%{word}%");
+
+    let by_title = plaza::store::list_published(&pool, None, Some(&keyword), None, 50)
+        .await
+        .expect("搜索失败");
+    assert_eq!(by_title.len(), 1);
+
+    let missing = plaza::store::list_published(&pool, None, Some("%没有这个词%"), None, 50)
+        .await
+        .expect("搜索失败");
+    assert!(missing.is_empty());
+}
+
+#[tokio::test]
+async fn custom_category_is_created_once() {
+    let pool = pool().await;
+    let name = format!("自定义{}", &Uuid::new_v4().simple().to_string()[..6]);
+
+    let first = plaza::store::ensure_category(&pool, &name)
+        .await
+        .expect("建分类失败");
+    let second = plaza::store::ensure_category(&pool, &name)
+        .await
+        .expect("重复建分类失败");
+
+    assert_eq!(first, second);
 }

@@ -19,6 +19,9 @@ pub struct PublishRequest {
     pub model: String,
     #[serde(default)]
     pub category_id: Option<i64>,
+    /// 自定义分类名。填了就按名字找，找不到就新建一个。
+    #[serde(default)]
+    pub category_name: Option<String>,
     #[serde(default)]
     pub cover_asset_id: Option<Uuid>,
     #[serde(default)]
@@ -67,13 +70,24 @@ pub async fn publish(
         store::STATUS_REVIEWING
     };
 
+    // 自定义分类优先：填了名字就按名字找或建，否则用选中的 id
+    let category_id = match req
+        .category_name
+        .as_deref()
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+    {
+        Some(name) => Some(store::ensure_category(db, name).await?),
+        None => req.category_id,
+    };
+
     let new_prompt = store::NewPrompt {
         short_code: &new_short_code(),
         author_user_id: user_id,
         title,
         prompt_text: text,
         model,
-        category_id: req.category_id,
+        category_id,
         cover_asset_id: req.cover_asset_id,
         source_session_id: req.source_session_id,
         status,
