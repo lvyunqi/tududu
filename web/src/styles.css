@@ -13,6 +13,13 @@
   --ok: #37d39a;
   --radius: 20px;
   --shadow: 0 18px 40px -20px rgba(0, 0, 0, 0.9);
+
+  /* 刘海、挖孔、圆角、底部指示条占用的空间 */
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+  --tabbar-h: 62px;
 }
 
 * {
@@ -23,6 +30,7 @@
 body {
   margin: 0;
   min-height: 100vh;
+  min-height: 100dvh;
   background: var(--bg);
   color: var(--ink);
   font-family: -apple-system, "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
@@ -110,9 +118,12 @@ body::after {
   position: relative;
   z-index: 1;
   height: 100vh;
+  height: 100dvh;
   display: flex;
   flex-direction: column;
-  padding-bottom: 68px;
+  padding-bottom: calc(var(--tabbar-h) + var(--safe-bottom));
+  padding-left: var(--safe-left);
+  padding-right: var(--safe-right);
 }
 
 .topbar {
@@ -122,7 +133,10 @@ body::after {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 14px 18px;
+  gap: 12px;
+  padding: 12px 16px;
+  /* 状态栏、挖孔屏要单独留出来，不然标题会被顶到屏幕外面 */
+  padding-top: calc(12px + var(--safe-top));
   background: rgba(11, 10, 9, 0.72);
   backdrop-filter: blur(18px);
   border-bottom: 1px solid var(--line);
@@ -162,10 +176,11 @@ body::after {
   width: 100%;
   max-width: 760px;
   margin: 0 auto;
-  padding: 18px 16px 24px;
+  padding: 18px calc(16px + var(--safe-right)) 24px calc(16px + var(--safe-left));
   flex: 1;
   min-height: 0;
   overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .card {
@@ -314,9 +329,11 @@ button.danger {
   z-index: 6;
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  padding: 6px 8px calc(6px + env(safe-area-inset-bottom));
+  /* 底部指示条和屏幕圆角都要让开，否则最后一排字会被切掉 */
+  padding: 6px calc(10px + var(--safe-right)) calc(8px + var(--safe-bottom))
+    calc(10px + var(--safe-left));
   gap: 4px;
-  background: rgba(11, 10, 9, 0.82);
+  background: rgba(11, 10, 9, 0.86);
   backdrop-filter: blur(20px);
   border-top: 1px solid var(--line);
 }
@@ -467,7 +484,7 @@ button.danger {
   width: 100%;
   max-width: 760px;
   margin: 0 auto;
-  padding: 0 14px;
+  padding: 0 calc(14px + var(--safe-right)) 0 calc(14px + var(--safe-left));
 }
 
 .chat-scroll {
@@ -477,6 +494,7 @@ button.danger {
   padding: 18px 2px 12px;
   scrollbar-width: none;
   scroll-behavior: smooth;
+  overscroll-behavior: contain;
 }
 
 .chat-scroll::-webkit-scrollbar {
@@ -726,6 +744,61 @@ button.danger {
   color: var(--ink-2);
   border: 1px solid var(--line);
   width: fit-content;
+}
+
+/* ---------- 小屏适配 ---------- */
+
+@media (max-width: 420px) {
+  .hero {
+    padding: 26px 4px 6px;
+  }
+
+  .hero h1 {
+    font-size: 27px;
+  }
+
+  .bubble {
+    max-width: 88%;
+    padding: 11px 13px;
+  }
+
+  .tab {
+    font-size: 12px;
+    padding: 9px 0 7px;
+  }
+
+  .brand {
+    font-size: 15px;
+  }
+
+  .balance {
+    font-size: 13px;
+    padding: 5px 10px;
+  }
+
+  .shimmer {
+    width: 180px;
+    height: 180px;
+  }
+
+  .chat-scroll {
+    padding-top: 14px;
+  }
+}
+
+/* 横屏时高度紧张，把留白收紧 */
+@media (max-height: 520px) and (orientation: landscape) {
+  .hero {
+    padding: 12px 4px 4px;
+  }
+
+  .hero h1 {
+    font-size: 22px;
+  }
+
+  .composer {
+    padding: 4px 0 6px;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
