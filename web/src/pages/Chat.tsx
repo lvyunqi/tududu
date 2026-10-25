@@ -335,6 +335,7 @@ export default function ChatPage({ auth, sessionId }: { auth: Auth; sessionId?: 
         <PublishSheet
           message={publishTarget}
           sessionId={sid}
+          model={detail?.session.model ?? model}
           onClose={() => setPublishTarget(null)}
         />
       )}
@@ -477,10 +478,12 @@ function MessageRow({
 function PublishSheet({
   message,
   sessionId,
+  model,
   onClose
 }: {
   message: Message;
   sessionId: string | null;
+  model: string;
   onClose: () => void;
 }) {
   const [title, setTitle] = useState(message.content.slice(0, 24) || "我的作品");
@@ -505,7 +508,7 @@ function PublishSheet({
         body: {
           title: title.trim(),
           prompt_text: message.content,
-          model: MODEL,
+          model,
           category_id: categoryId,
           cover_asset_id: message.output_asset_id,
           source_session_id: sessionId
