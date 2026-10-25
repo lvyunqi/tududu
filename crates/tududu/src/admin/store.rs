@@ -159,7 +159,8 @@ pub async fn overview(db: &PgPool) -> sqlx::Result<OverviewRow> {
             (SELECT count(*) FROM users) AS users_total,
             (SELECT count(*) FROM users WHERE created_at >= date_trunc('day', now())) AS users_today,
             (SELECT count(*) FROM pay_orders WHERE status = 1 AND paid_at >= date_trunc('day', now())) AS paid_orders_today,
-            (SELECT COALESCE(sum(amount_fen), 0) FROM pay_orders WHERE status = 1 AND paid_at >= date_trunc('day', now())) AS revenue_fen_today,
+            -- sum() 在 Postgres 里返回 numeric，这里必须转成 bigint，否则按 i64 解码会失败
+            (SELECT COALESCE(sum(amount_fen), 0)::bigint FROM pay_orders WHERE status = 1 AND paid_at >= date_trunc('day', now())) AS revenue_fen_today,
             (SELECT count(*) FROM jobs WHERE created_at >= date_trunc('day', now())) AS jobs_today,
             (SELECT count(*) FROM jobs WHERE status = 3 AND created_at >= date_trunc('day', now())) AS jobs_failed_today,
             (SELECT count(*) FROM prompts WHERE status = 2) AS prompts_published"

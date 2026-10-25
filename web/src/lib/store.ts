@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 
-import { request, saveTokens, clearTokens, getRefreshToken } from "./api";
+import { ApiError, request, saveTokens, clearTokens, getRefreshToken } from "./api";
 import type { AuthResponse, BillingConfig, UserInfo } from "./types";
 
 export interface AuthState {
@@ -32,9 +32,16 @@ export function useAuth() {
         balance: wallet.balance,
         loading: false
       });
-    } catch {
-      clearTokens();
-      setState({ ...emptyState, loading: false });
+    } catch (err) {
+      // 只有真的没登录才清掉凭证。网络抖一下就把人踢出去，体验太差
+      const unauthorized = err instanceof ApiError && (err.code === 10002 || err.code === 401);
+
+      if (unauthorized) {
+        clearTokens();
+        setState({ ...emptyState, loading: false });
+      } else {
+        setState((prev) => ({ ...prev, loading: false }));
+      }
     }
   }, []);
 

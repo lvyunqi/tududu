@@ -45,6 +45,54 @@ interface RequestOptions {
   auth?: boolean;
 }
 
+// 同一时间只允许一次刷新，避免多个请求同时进来把刷新令牌用掉又互相覆盖
+let rotating: Promise<boolean> | null = null;
+
+/**
+ * 用刷新令牌换一套新的。
+ *
+ * 访问令牌只有 15 分钟，而刷新令牌有 30 天。没有这一步的话，
+ * 用户关掉页面超过 15 分钟再打开就会被判成未登录。
+ */
+async function rotateTokens(): Promise<boolean> {
+  if (rotating) return rotating;
+
+  const task = (async () => {
+    const refresh = getRefreshToken();
+    if (!refresh) return false;
+
+    try {
+      const response = await fetch(BASE + "/api/v1/auth/refresh", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ refresh_token: refresh })
+      });
+
+      if (!response.ok) return false;
+
+      const parsed = (await response.json()) as ApiBody<{
+        access_token: string;
+        refresh_token: string;
+      }>;
+
+      if (parsed.code !== 0 || !parsed.data) return false;
+
+      saveTokens(parsed.data.access_token, parsed.data.refresh_token);
+      return true;
+    } catch {
+      return false;
+    }
+  })();
+
+  rotating = task;
+
+  try {
+    return await task;
+  } finally {
+    if (rotating === task) rotating = null;
+  }
+}
+
 export async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const headers: Record<string, string> = {};
   const token = getToken();
@@ -60,11 +108,26 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
     payload = JSON.stringify(options.body);
   }
 
-  const response = await fetch(`${BASE}${path}`, {
+  const url = BASE + path;
+  const init: RequestInit = {
     method: options.method ?? "GET",
     headers,
     body: payload
-  });
+  };
+
+  let response = await fetch(url, init);
+
+  // 访问令牌过期：换一套再重试一次，用户不用重新登录
+  if (response.status === 401 && options.auth !== false && !path.startsWith("/api/v1/auth/refresh")) {
+    if (await rotateTokens()) {
+      const retryHeaders: Record<string, string> = { ...headers };
+      const token = getToken();
+      if (token) retryHeaders.Authorization = `Bearer ${token}`;
+      response = await fetch(url, { ...init, headers: retryHeaders });
+    } else {
+      clearTokens();
+    }
+  }
 
   const text = await response.text();
   let parsed: ApiBody<T> | null = null;
