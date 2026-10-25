@@ -84,7 +84,32 @@ pub async fn return_page() -> Html<&'static str> {
     Html(RETURN_HTML)
 }
 
-const RETURN_HTML: &str = "<!doctype html><html lang='zh-CN'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>支付结果</title></head><body style='font-family:system-ui;padding:48px;text-align:center'><h2>支付已提交</h2><p>请回到图嘟嘟查看余额，到账可能有几秒延迟。</p></body></html>";
+const RETURN_HTML: &str = r#"<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>支付结果</title>
+<style>
+  body { margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center;
+         font-family:-apple-system,"PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+         background:#f7f3ec; color:#241f1a; }
+  .box { text-align:center; padding:32px 24px; }
+  h2 { margin:0 0 12px; font-size:22px; }
+  p { margin:0 0 24px; color:#726858; line-height:1.7; }
+  a { display:inline-block; padding:12px 26px; border-radius:14px; text-decoration:none;
+      color:#fff; font-weight:600;
+      background:linear-gradient(120deg,#ff9a3d,#ff4d8d 55%,#a855f7); }
+</style>
+</head>
+<body>
+  <div class="box">
+    <h2>支付已提交</h2>
+    <p>到账可能有几秒延迟。<br>回到图嘟嘟即可看到最新余额。</p>
+    <a href="/">回到图嘟嘟</a>
+  </div>
+</body>
+</html>"#;
 
 #[derive(Debug, Deserialize)]
 pub struct CreatePlanRequest {
