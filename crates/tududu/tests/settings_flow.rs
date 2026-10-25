@@ -30,8 +30,13 @@ async fn saved_value_is_loaded_back() {
         .expect("保存失败");
     assert_eq!(next.trash_retention_days, 15);
 
-    let stored = tududu::settings::load_stored(&pool).await.expect("读取失败");
-    assert_eq!(stored.get("trash_retention_days").map(String::as_str), Some("15"));
+    let stored = tududu::settings::load_stored(&pool)
+        .await
+        .expect("读取失败");
+    assert_eq!(
+        stored.get("trash_retention_days").map(String::as_str),
+        Some("15")
+    );
 }
 
 #[tokio::test]
@@ -43,7 +48,9 @@ async fn invalid_value_is_rejected_before_writing() {
         .expect_err("越界值却通过了");
     assert_eq!(err.code, 10001);
 
-    let stored = tududu::settings::load_stored(&pool).await.expect("读取失败");
+    let stored = tududu::settings::load_stored(&pool)
+        .await
+        .expect("读取失败");
     assert_ne!(
         stored.get("trash_retention_days").map(String::as_str),
         Some("0")
@@ -58,7 +65,9 @@ async fn stored_value_overrides_config() {
         .await
         .expect("保存失败");
 
-    let stored = tududu::settings::load_stored(&pool).await.expect("读取失败");
+    let stored = tududu::settings::load_stored(&pool)
+        .await
+        .expect("读取失败");
     let mut live = sample();
 
     for (key, raw) in &stored {
