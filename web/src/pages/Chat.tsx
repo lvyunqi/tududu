@@ -32,8 +32,11 @@ export default function ChatPage({ auth, sessionId }: { auth: Auth; sessionId?: 
   const [uploading, setUploading] = useState(false);
   const [sending, setSending] = useState(false);
   const [runningJob, setRunningJob] = useState<string | null>(null);
+  const [jobPhase, setJobPhase] = useState(0);
+  const [startedAt, setStartedAt] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [publishTarget, setPublishTarget] = useState<Message | null>(null);
+  const [atBottom, setAtBottom] = useState(true);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -63,6 +66,17 @@ export default function ChatPage({ auth, sessionId }: { auth: Auth; sessionId?: 
     const el = scrollRef.current;
     if (el) el.scrollTop = el.scrollHeight;
   }, [detail, runningJob]);
+
+  function onScroll() {
+    const el = scrollRef.current;
+    if (!el) return;
+    setAtBottom(el.scrollHeight - el.scrollTop - el.clientHeight < 80);
+  }
+
+  function scrollToBottom() {
+    const el = scrollRef.current;
+    if (el) el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+  }
 
   async function pickFile(file: File) {
     setUploading(true);
@@ -122,12 +136,16 @@ export default function ChatPage({ auth, sessionId }: { auth: Auth; sessionId?: 
 
   async function poll(jobId: string, id: string) {
     setRunningJob(jobId);
+    setJobPhase(0);
+    setStartedAt(Date.now());
 
     for (let i = 0; i < 120; i += 1) {
       await new Promise((resolve) => setTimeout(resolve, 2500));
 
       try {
         const latest = await request<Job>("/api/v1/jobs/" + jobId);
+        setJobPhase(latest.status);
+
         if (latest.status === 2 || latest.status === 3) {
           await load(id);
           void auth.refresh();
@@ -156,7 +174,9 @@ export default function ChatPage({ auth, sessionId }: { auth: Auth; sessionId?: 
 
   return (
     <div className="chat">
-      <div className="chat-scroll" ref={scrollRef}>
+      {runningJob && <div className="gen-bar" />}
+
+      <div className="chat-scroll" ref={scrollRef} onScroll={onScroll}>
         {empty && (
           <div className="hero">
             <h1>
@@ -188,18 +208,19 @@ export default function ChatPage({ auth, sessionId }: { auth: Auth; sessionId?: 
           <div className="msg bot">
             <div className="bubble">
               <span className="who">图嘟嘟</span>
-              <div className="shimmer" />
-              <span className="dots">
-                <i />
-                <i />
-                <i />
-              </span>
+              <Generating phase={jobPhase} startedAt={startedAt} />
             </div>
           </div>
         )}
 
         {error && <p className="error">{error}</p>}
       </div>
+
+      {!atBottom && (
+        <button className="to-bottom" onClick={scrollToBottom} aria-label="回到最新">
+          ↓
+        </button>
+      )}
 
       <div className="composer">
         <div className="composer-inner">
@@ -266,6 +287,41 @@ export default function ChatPage({ auth, sessionId }: { auth: Auth; sessionId?: 
           onClose={() => setPublishTarget(null)}
         />
       )}
+    </div>
+  );
+}
+
+/** 生成中的占位：像素格子错峰闪，配当前阶段和已用时间。 */
+function Generating({ phase, startedAt }: { phase: number; startedAt: number }) {
+  const [elapsed, setElapsed] = useState(0);
+
+  useEffect(() => {
+    if (!startedAt) return;
+
+    const timer = window.setInterval(() => {
+      setElapsed((Date.now() - startedAt) / 1000);
+    }, 100);
+
+    return () => window.clearInterval(timer);
+  }, [startedAt]);
+
+  const label = phase === 0 ? "排队中" : phase === 1 ? "正在生成" : "收尾中";
+
+  return (
+    <div className="gen">
+      <div className="pixel-grid" aria-hidden="true">
+        {Array.from({ length: 25 }).map((_, index) => (
+          <i
+            key={index}
+            style={{ animationDelay: (index % 5 + Math.floor(index / 5)) * 0.07 + "s" }}
+          />
+        ))}
+      </div>
+
+      <div className="gen-meta">
+        <span className="gen-phase">{label}</span>
+        <span className="gen-time">{elapsed.toFixed(1)}s</span>
+      </div>
     </div>
   );
 }
