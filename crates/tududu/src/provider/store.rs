@@ -186,6 +186,55 @@ pub fn is_unique_violation(err: &sqlx::Error) -> bool {
     }
 }
 
+/// 全部模型，带所属渠道商的名称，后台列表用。
+#[derive(Debug, Serialize, sqlx::FromRow)]
+pub struct AdminModelRow {
+    pub id: Uuid,
+    pub provider_id: Uuid,
+    pub provider_name: String,
+    pub code: String,
+    pub display_name: String,
+    pub enabled: bool,
+}
+
+pub async fn list_all_models(db: &PgPool) -> sqlx::Result<Vec<AdminModelRow>> {
+    sqlx::query_as::<_, AdminModelRow>(
+        "SELECT m.id, m.provider_id, p.name AS provider_name, m.code, m.display_name, m.enabled \
+           FROM models m JOIN providers p ON p.id = m.provider_id \
+          ORDER BY p.name, m.code",
+    )
+    .fetch_all(db)
+    .await
+}
+
+/// 手工添加一个模型。唯一键冲突说明这个渠道商下已经有同名模型。
+pub async fn insert_model(
+    db: &PgPool,
+    provider_id: Uuid,
+    code: &str,
+    display_name: &str,
+) -> sqlx::Result<ModelRow> {
+    sqlx::query_as::<_, ModelRow>(
+        "INSERT INTO models (provider_id, code, display_name) VALUES ($1, $2, $3) \
+         RETURNING id, provider_id, code, display_name, enabled, discovered_at",
+    )
+    .bind(provider_id)
+    .bind(code)
+    .bind(display_name)
+    .fetch_one(db)
+    .await
+}
+
+pub async fn set_model_enabled(db: &PgPool, id: Uuid, enabled: bool) -> sqlx::Result<bool> {
+    let result = sqlx::query("UPDATE models SET enabled = $2 WHERE id = $1")
+        .bind(id)
+        .bind(enabled)
+        .execute(db)
+        .await?;
+
+    Ok(result.rows_affected() > 0)
+}
+
 pub async fn list_models(db: &PgPool, provider_id: Uuid) -> sqlx::Result<Vec<ModelRow>> {
     sqlx::query_as::<_, ModelRow>("SELECT id, provider_id, code, display_name, enabled, discovered_at FROM models WHERE provider_id = $1 ORDER BY code")
         .bind(provider_id)

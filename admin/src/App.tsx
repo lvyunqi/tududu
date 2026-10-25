@@ -3,6 +3,7 @@ import { useState } from "react";
 import { adminRequest, getAdminToken, setAdminToken } from "./lib/api";
 import BillingPage from "./pages/Billing";
 import JobsPage from "./pages/Jobs";
+import ModelsPage from "./pages/Models";
 import OrdersPage from "./pages/Orders";
 import OverviewPage from "./pages/Overview";
 import PayChannelsPage from "./pages/PayChannels";
@@ -18,6 +19,7 @@ const SECTIONS = [
   { key: "jobs", label: "任务" },
   { key: "prompts", label: "广场" },
   { key: "providers", label: "渠道" },
+  { key: "models", label: "模型" },
   { key: "billing", label: "计费" },
   { key: "pay", label: "支付" },
   { key: "settings", label: "配置" }
@@ -64,6 +66,7 @@ export default function App() {
         {section === "jobs" && <JobsPage />}
         {section === "prompts" && <PromptsPage />}
         {section === "providers" && <ProvidersPage />}
+        {section === "models" && <ModelsPage />}
         {section === "billing" && <BillingPage />}
         {section === "pay" && <PayChannelsPage />}
         {section === "settings" && <SettingsPage />}

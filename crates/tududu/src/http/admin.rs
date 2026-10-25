@@ -145,6 +145,89 @@ pub async fn list_models(
     Ok(Json(ApiBody::ok(rows)))
 }
 
+/// 全部模型，后台统一管理用户能用哪些。
+pub async fn list_all_models(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+) -> Result<Json<ApiBody<Vec<provider::store::AdminModelRow>>>, ApiError> {
+    require_admin(&state, &headers)?;
+    let rows = provider::store::list_all_models(&state.db).await?;
+    Ok(Json(ApiBody::ok(rows)))
+}
+
+#[derive(Debug, Deserialize)]
+pub struct CreateModelRequest {
+    pub provider_id: Uuid,
+    pub code: String,
+    #[serde(default)]
+    pub display_name: Option<String>,
+}
+
+pub async fn create_model(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Json(req): Json<CreateModelRequest>,
+) -> Result<Json<ApiBody<provider::store::ModelRow>>, ApiError> {
+    require_admin(&state, &headers)?;
+
+    let code = req.code.trim();
+    if code.is_empty() || code.len() > 120 {
+        return Err(ApiError::bad_request("模型代码需要 1 到 120 个字符"));
+    }
+
+    let display = req
+        .display_name
+        .as_deref()
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .unwrap_or(code);
+
+    let row = provider::store::insert_model(&state.db, req.provider_id, code, display).await;
+    match row {
+        Ok(row) => Ok(Json(ApiBody::ok(row))),
+        Err(err) if provider::store::is_unique_violation(&err) => Err(ApiError::bad_request(
+            "这个渠道商下已经有同名模型了",
+        )),
+        Err(err) => Err(err.into()),
+    }
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ModelStatusRequest {
+    pub enabled: bool,
+}
+
+/// 关掉之后用户端就选不到这个模型了。
+pub async fn set_model_status(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(id): Path<Uuid>,
+    Json(req): Json<ModelStatusRequest>,
+) -> Result<Json<ApiBody<()>>, ApiError> {
+    let operator = require_admin(&state, &headers)?;
+
+    if !provider::store::set_model_enabled(&state.db, id, req.enabled).await? {
+        return Err(ApiError::not_found("模型不存在"));
+    }
+
+    let detail = format!("enabled={}", req.enabled);
+    let _ = crate::admin::store::record_audit(
+        &state.db,
+        operator.id,
+        "model_status",
+        "model",
+        &id.to_string(),
+        &detail,
+    )
+    .await;
+
+    Ok(Json(ApiBody {
+        code: 0,
+        message: "ok".to_owned(),
+        data: None,
+    }))
+}
+
 fn constant_time_eq(a: &[u8], b: &[u8]) -> bool {
     if a.len() != b.len() {
         return false;
