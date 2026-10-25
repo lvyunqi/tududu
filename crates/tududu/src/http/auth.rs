@@ -37,7 +37,8 @@ pub async fn register(
     Json(req): Json<RegisterRequest>,
 ) -> Result<Json<ApiBody<AuthResponse>>, ApiError> {
     let meta = meta_from_headers(&headers);
-    let resp = auth::register(&state.db, &state.config, req, meta).await?;
+    let live = state.live();
+    let resp = auth::register(&state.db, &state.config, &live, req, meta).await?;
     Ok(Json(ApiBody::ok(resp)))
 }
 
@@ -48,7 +49,8 @@ pub async fn login(
 ) -> Result<Json<ApiBody<AuthResponse>>, ApiError> {
     limit_login(&state, &req.account)?;
     let meta = meta_from_headers(&headers);
-    let resp = auth::login(&state.db, &state.config, req, meta).await?;
+    let live = state.live();
+    let resp = auth::login(&state.db, &state.config, &live, req, meta).await?;
     Ok(Json(ApiBody::ok(resp)))
 }
 
@@ -56,7 +58,8 @@ pub async fn refresh(
     State(state): State<AppState>,
     Json(req): Json<RefreshRequest>,
 ) -> Result<Json<ApiBody<AuthResponse>>, ApiError> {
-    let resp = auth::refresh(&state.db, &state.config, req).await?;
+    let live = state.live();
+    let resp = auth::refresh(&state.db, &state.config, &live, req).await?;
     Ok(Json(ApiBody::ok(resp)))
 }
 

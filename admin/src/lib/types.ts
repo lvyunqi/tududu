@@ -140,3 +140,10 @@ export interface SensitiveWord {
   word: string;
   enabled: boolean;
 }
+
+export interface SettingItem {
+  key: string;
+  value: string;
+  description: string;
+  from_db: boolean;
+}

@@ -28,6 +28,28 @@ pub struct AppState {
     pub files: crate::storage::local_store::LocalStore,
     /// 进程内限流器，挡住密码爆破与刷接口。
     pub limiter: Arc<crate::ratelimit::RateLimiter>,
+    /// 后台可改的运行时配置，改完立刻写回这里。
+    pub settings: Arc<std::sync::RwLock<crate::settings::LiveSettings>>,
+}
+
+impl AppState {
+    /// 取一份当前生效的配置。读锁只在克隆期间持有，不会跨越 await。
+    pub fn live(&self) -> crate::settings::LiveSettings {
+        self.settings
+            .read()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .clone()
+    }
+
+    /// 写入新的配置。调用方负责先落库，再调这里。
+    pub fn set_live(&self, next: crate::settings::LiveSettings) {
+        let mut guard = self
+            .settings
+            .write()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+
+        *guard = next;
+    }
 }
 
 pub fn router(state: AppState) -> Router {
@@ -133,6 +155,11 @@ pub fn router(state: AppState) -> Router {
         .route("/api/v1/admin/auth/login", post(admin_auth::login))
         .route("/api/v1/admin/overview", get(admin_ops::overview))
         .route("/api/v1/admin/reconcile", get(admin_ops::reconcile))
+        .route("/api/v1/admin/settings", get(admin_ops::list_settings))
+        .route(
+            "/api/v1/admin/settings/{key}",
+            axum::routing::put(admin_ops::update_setting),
+        )
         .route("/api/v1/admin/users", get(admin_ops::list_users))
         .route(
             "/api/v1/admin/users/{id}/status",

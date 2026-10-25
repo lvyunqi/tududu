@@ -29,12 +29,22 @@ pub struct ReconcileReport {
 }
 
 /// 起一个后台循环。进程退出时随之结束，没有额外的关闭逻辑。
-pub fn spawn(db: PgPool, files: LocalStore, retention_days: i32) {
+pub fn spawn(
+    db: PgPool,
+    files: LocalStore,
+    settings: std::sync::Arc<std::sync::RwLock<crate::settings::LiveSettings>>,
+) {
     tokio::spawn(async move {
         let mut ticker = tokio::time::interval(INTERVAL);
 
         loop {
             ticker.tick().await;
+
+            // 每轮都读一次，后台改完保留天数下一轮就生效
+            let retention_days = settings
+                .read()
+                .unwrap_or_else(|poisoned| poisoned.into_inner())
+                .trash_retention_days;
 
             match run_once(&db, &files, retention_days).await {
                 Ok(report) => {

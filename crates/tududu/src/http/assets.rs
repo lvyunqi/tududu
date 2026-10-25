@@ -49,7 +49,7 @@ pub async fn upload(
         user.id,
         &user.short_code,
         &bytes,
-        state.config.user_quota_bytes,
+        state.live().user_quota_bytes,
     )
     .await?;
 
@@ -83,10 +83,11 @@ pub async fn quota(
 ) -> Result<Json<ApiBody<QuotaInfo>>, ApiError> {
     let current = require_user(&state, &headers).await?;
     let used_bytes = asset_store::used_bytes(&state.db, current.user_id).await?;
+    let limit_bytes = state.live().user_quota_bytes;
 
     Ok(Json(ApiBody::ok(QuotaInfo {
         used_bytes,
-        limit_bytes: state.config.user_quota_bytes,
+        limit_bytes,
     })))
 }
 

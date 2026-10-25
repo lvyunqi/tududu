@@ -7,6 +7,7 @@ import OrdersPage from "./pages/Orders";
 import OverviewPage from "./pages/Overview";
 import PromptsPage from "./pages/Prompts";
 import ProvidersPage from "./pages/Providers";
+import SettingsPage from "./pages/Settings";
 import UsersPage from "./pages/Users";
 
 const SECTIONS = [
@@ -16,7 +17,8 @@ const SECTIONS = [
   { key: "jobs", label: "任务" },
   { key: "prompts", label: "广场" },
   { key: "providers", label: "渠道" },
-  { key: "billing", label: "计费" }
+  { key: "billing", label: "计费" },
+  { key: "settings", label: "配置" }
 ] as const;
 
 type SectionKey = (typeof SECTIONS)[number]["key"];
@@ -61,6 +63,7 @@ export default function App() {
         {section === "prompts" && <PromptsPage />}
         {section === "providers" && <ProvidersPage />}
         {section === "billing" && <BillingPage />}
+        {section === "settings" && <SettingsPage />}
       </main>
     </div>
   );
