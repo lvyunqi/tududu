@@ -19,6 +19,8 @@ pub async fn categories(
 #[derive(Debug, Deserialize)]
 pub struct ListQuery {
     pub category_id: Option<i64>,
+    /// 搜索词，同时匹配标题与提示词
+    pub q: Option<String>,
     pub before: Option<DateTime<Utc>>,
     pub limit: Option<i64>,
 }
@@ -28,8 +30,22 @@ pub async fn list(
     Query(query): Query<ListQuery>,
 ) -> Result<Json<ApiBody<Vec<plaza::store::PromptRow>>>, ApiError> {
     let limit = query.limit.unwrap_or(20).clamp(1, 100);
-    let rows =
-        plaza::store::list_published(&state.db, query.category_id, query.before, limit).await?;
+
+    let keyword = query
+        .q
+        .as_deref()
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(|value| format!("%{value}%"));
+
+    let rows = plaza::store::list_published(
+        &state.db,
+        query.category_id,
+        keyword.as_deref(),
+        query.before,
+        limit,
+    )
+    .await?;
 
     Ok(Json(ApiBody::ok(rows)))
 }

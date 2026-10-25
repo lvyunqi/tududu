@@ -1,5 +1,6 @@
 use chrono::{DateTime, Utc};
 use serde::Serialize;
+use sha2::{Digest, Sha256};
 use sqlx::PgPool;
 use uuid::Uuid;
 
@@ -84,19 +85,56 @@ pub async fn find_published(db: &PgPool, code: &str) -> sqlx::Result<Option<Prom
 pub async fn list_published(
     db: &PgPool,
     category_id: Option<i64>,
+    keyword: Option<&str>,
     before: Option<DateTime<Utc>>,
     limit: i64,
 ) -> sqlx::Result<Vec<PromptRow>> {
     let sql = format!(
-        "SELECT {PROMPT_COLUMNS} FROM prompts WHERE status = 2 AND ($1::bigint IS NULL OR category_id = $1) AND ($2::timestamptz IS NULL OR published_at < $2) ORDER BY published_at DESC LIMIT $3"
+        "SELECT {PROMPT_COLUMNS} FROM prompts \
+          WHERE status = 2 \
+            AND ($1::bigint IS NULL OR category_id = $1) \
+            AND ($2::text IS NULL OR title ILIKE $2 OR prompt_text ILIKE $2) \
+            AND ($3::timestamptz IS NULL OR published_at < $3) \
+          ORDER BY published_at DESC LIMIT $4"
     );
 
     sqlx::query_as::<_, PromptRow>(&sql)
         .bind(category_id)
+        .bind(keyword)
         .bind(before)
         .bind(limit)
         .fetch_all(db)
         .await
+}
+
+/// 按名字取分类，没有就建一个。返回分类 id。
+pub async fn ensure_category(db: &PgPool, name: &str) -> sqlx::Result<i64> {
+    let name = name.trim();
+
+    if let Some(id) = sqlx::query_scalar::<_, i64>(
+        "SELECT id FROM prompt_categories WHERE lower(name) = lower($1) LIMIT 1",
+    )
+    .bind(name)
+    .fetch_optional(db)
+    .await?
+    {
+        return Ok(id);
+    }
+
+    // slug 用名字的十六进制摘要，避免中文转拼音的麻烦
+    let digest = hex::encode(Sha256::digest(name.as_bytes()));
+    let slug = format!("u{}", &digest[..12]);
+
+    let id = sqlx::query_scalar::<_, i64>(
+        "INSERT INTO prompt_categories (name, slug, sort) VALUES ($1, $2, 50) \
+         ON CONFLICT (slug) DO UPDATE SET name = EXCLUDED.name RETURNING id",
+    )
+    .bind(name)
+    .bind(&slug)
+    .fetch_one(db)
+    .await?;
+
+    Ok(id)
 }
 
 pub async fn list_by_author(

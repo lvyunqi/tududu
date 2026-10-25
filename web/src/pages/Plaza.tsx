@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 
+import AuthImage from "../components/AuthImage";
+import Lightbox from "../components/Lightbox";
 import { request } from "../lib/api";
 import type { PromptCategory, PromptItem } from "../lib/types";
 
@@ -7,7 +9,10 @@ export default function PlazaPage() {
   const [items, setItems] = useState<PromptItem[]>([]);
   const [categories, setCategories] = useState<PromptCategory[]>([]);
   const [active, setActive] = useState<number | null>(null);
+  const [keyword, setKeyword] = useState("");
+  const [submitted, setSubmitted] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [viewing, setViewing] = useState<PromptItem | null>(null);
 
   useEffect(() => {
     void request<PromptCategory[]>("/api/v1/prompt-categories", { auth: false })
@@ -20,8 +25,15 @@ export default function PlazaPage() {
 
     async function load() {
       try {
-        const query = active ? `?category_id=${active}&limit=30` : "?limit=30";
-        const rows = await request<PromptItem[]>(`/api/v1/prompts${query}`, { auth: false });
+        const params = new URLSearchParams();
+        if (active) params.set("category_id", String(active));
+        if (submitted) params.set("q", submitted);
+        params.set("limit", "30");
+
+        const rows = await request<PromptItem[]>("/api/v1/prompts?" + params.toString(), {
+          auth: false
+        });
+
         if (!cancelled) setItems(rows);
       } catch (err) {
         if (!cancelled) {
@@ -34,11 +46,26 @@ export default function PlazaPage() {
     return () => {
       cancelled = true;
     };
-  }, [active]);
+  }, [active, submitted]);
 
   return (
     <div className="page">
       <h2>提示词广场</h2>
+
+      <form
+        className="search"
+        onSubmit={(event) => {
+          event.preventDefault();
+          setSubmitted(keyword.trim());
+        }}
+      >
+        <input
+          value={keyword}
+          onChange={(event) => setKeyword(event.target.value)}
+          placeholder="搜标题或提示词"
+        />
+        <button type="submit">搜索</button>
+      </form>
 
       <div className="chips">
         <button className={active === null ? "chip active" : "chip"} onClick={() => setActive(null)}>
@@ -61,6 +88,16 @@ export default function PlazaPage() {
       <div className="list">
         {items.map((item) => (
           <article key={item.id} className="card">
+            {item.cover_asset_id && (
+              <button
+                className="image-tap"
+                onClick={() => setViewing(item)}
+                aria-label="查看作品"
+              >
+                <AuthImage assetId={item.cover_asset_id} alt={item.title} variant="thumb" />
+              </button>
+            )}
+
             <h3>{item.title}</h3>
             <p className="prompt">{item.prompt_text}</p>
             <p className="hint">
@@ -69,6 +106,10 @@ export default function PlazaPage() {
           </article>
         ))}
       </div>
+
+      {viewing?.cover_asset_id && (
+        <Lightbox assetId={viewing.cover_asset_id} onClose={() => setViewing(null)} />
+      )}
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import AuthImage from "../components/AuthImage";
+import Lightbox from "../components/Lightbox";
 import { request } from "../lib/api";
 import type { useAuth } from "../lib/store";
 import type {
@@ -41,6 +42,7 @@ export default function ChatPage({ auth, sessionId }: { auth: Auth; sessionId?: 
   const [models, setModels] = useState<PublicModel[]>([]);
   const [model, setModel] = useState(FALLBACK_MODEL);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [viewing, setViewing] = useState<Message | null>(null);
   const [sessions, setSessions] = useState<Session[]>([]);
 
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -55,6 +57,15 @@ export default function ChatPage({ auth, sessionId }: { auth: Auth; sessionId?: 
   useEffect(() => {
     if (sid) void load(sid);
   }, [sid, load]);
+
+  // 从相册点「以这张继续改」过来时，把那张图接进输入框
+  useEffect(() => {
+    const pending = localStorage.getItem("tududu.pendingInput");
+    if (!pending) return;
+
+    localStorage.removeItem("tududu.pendingInput");
+    setAsset({ id: pending } as Asset);
+  }, []);
 
   // 可选的模型由后台配置决定，一个都没配时退回默认值，让请求照样发出去
   useEffect(() => {
@@ -97,6 +108,13 @@ export default function ChatPage({ auth, sessionId }: { auth: Auth; sessionId?: 
   function scrollToBottom() {
     const el = scrollRef.current;
     if (el) el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+  }
+
+  /// 把已有的图设为下一轮输入，实现「以图改图」。
+  async function continueWith(assetId: string) {
+    setAsset({ id: assetId } as Asset);
+    setError(null);
+    textRef.current?.focus();
   }
 
   async function pickFile(file: File) {
@@ -231,6 +249,7 @@ export default function ChatPage({ auth, sessionId }: { auth: Auth; sessionId?: 
             key={message.id}
             message={message}
             busy={runningJob !== null}
+            onOpen={() => setViewing(message)}
             onPublish={() => setPublishTarget(message)}
           />
         ))}
@@ -257,7 +276,14 @@ export default function ChatPage({ auth, sessionId }: { auth: Auth; sessionId?: 
         <div className="composer-inner">
           {asset && (
             <div className="attach-preview">
-              <AuthImage assetId={asset.id} alt="待发送的图片" variant="thumb" />
+              <button
+                type="button"
+                className="attach-thumb"
+                onClick={() => setViewing({ output_asset_id: asset.id } as Message)}
+                aria-label="查看待发送的图片"
+              >
+                <AuthImage assetId={asset.id} alt="待发送的图片" variant="thumb" />
+              </button>
               <button onClick={() => setAsset(null)} aria-label="移除图片">
                 ×
               </button>
@@ -330,6 +356,23 @@ export default function ChatPage({ auth, sessionId }: { auth: Auth; sessionId?: 
           </div>
         </div>
       </div>
+
+      {viewing?.output_asset_id && (
+        <Lightbox
+          assetId={viewing.output_asset_id}
+          onClose={() => setViewing(null)}
+          onEdit={() => {
+            const id = viewing.output_asset_id;
+            setViewing(null);
+            if (id) void continueWith(id);
+          }}
+          onPublish={() => {
+            const target = viewing;
+            setViewing(null);
+            setPublishTarget(target);
+          }}
+        />
+      )}
 
       {publishTarget && (
         <PublishSheet
@@ -423,10 +466,12 @@ function Generating({ phase, startedAt }: { phase: number; startedAt: number }) 
 function MessageRow({
   message,
   busy,
+  onOpen,
   onPublish
 }: {
   message: Message;
   busy: boolean;
+  onOpen: () => void;
   onPublish: () => void;
 }) {
   const mine = message.role === "user";
@@ -445,7 +490,9 @@ function MessageRow({
         )}
 
         {message.output_asset_id && (
-          <AuthImage assetId={message.output_asset_id} alt="结果图" />
+          <button className="image-tap" onClick={onOpen} aria-label="查看大图">
+            <AuthImage assetId={message.output_asset_id} alt="结果图" />
+          </button>
         )}
 
         {!mine && !message.output_asset_id && message.status === 1 && (
@@ -487,7 +534,10 @@ function PublishSheet({
   onClose: () => void;
 }) {
   const [title, setTitle] = useState(message.content.slice(0, 24) || "我的作品");
+  // 提示词默认带出这一段说的话，可以改
+  const [promptText, setPromptText] = useState(message.content);
   const [categoryId, setCategoryId] = useState<number | null>(null);
+  const [categoryName, setCategoryName] = useState("");
   const [categories, setCategories] = useState<PromptCategory[]>([]);
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<string | null>(null);
@@ -507,9 +557,10 @@ function PublishSheet({
         method: "POST",
         body: {
           title: title.trim(),
-          prompt_text: message.content,
+          prompt_text: promptText.trim(),
           model,
-          category_id: categoryId,
+          category_id: categoryName.trim() ? null : categoryId,
+          category_name: categoryName.trim() || null,
           cover_asset_id: message.output_asset_id,
           source_session_id: sessionId
         }
@@ -536,12 +587,28 @@ function PublishSheet({
           placeholder="给作品起个名字"
         />
 
+        <textarea
+          rows={3}
+          value={promptText}
+          onChange={(event) => setPromptText(event.target.value)}
+          placeholder="提示词：描述这张图是怎么做出来的"
+        />
+
+        <input
+          value={categoryName}
+          onChange={(event) => setCategoryName(event.target.value)}
+          placeholder="自定义分类（填了就不用选下面的）"
+        />
+
         <div className="chips">
           {categories.map((item) => (
             <button
               key={item.id}
-              className={categoryId === item.id ? "chip active" : "chip"}
-              onClick={() => setCategoryId(item.id)}
+              className={categoryId === item.id && !categoryName.trim() ? "chip active" : "chip"}
+              onClick={() => {
+                setCategoryId(item.id);
+                setCategoryName("");
+              }}
             >
               {item.name}
             </button>
@@ -555,7 +622,10 @@ function PublishSheet({
             取消
           </button>
           <span className="spacer" />
-          <button onClick={() => void submit()} disabled={busy || !title.trim()}>
+          <button
+            onClick={() => void submit()}
+            disabled={busy || !title.trim() || !promptText.trim()}
+          >
             {busy ? "提交中…" : "发布"}
           </button>
         </div>
