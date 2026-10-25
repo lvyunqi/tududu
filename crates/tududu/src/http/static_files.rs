@@ -29,48 +29,51 @@ pub async fn fallback(uri: Uri) -> Response {
 
     if path == "/admin" || path.starts_with("/admin/") {
         let rest = path.trim_start_matches("/admin").trim_start_matches('/');
-        return respond(pick_admin(rest), rest);
+        return respond(pick_admin(rest));
     }
 
     let rest = path.trim_start_matches('/');
-    respond(pick_web(rest), rest)
+    respond(pick_web(rest))
 }
 
-fn pick_web(rest: &str) -> Option<rust_embed::EmbeddedFile> {
+fn pick_web(rest: &str) -> Option<(String, rust_embed::EmbeddedFile)> {
     pick::<WebAssets>(rest)
 }
 
-fn pick_admin(rest: &str) -> Option<rust_embed::EmbeddedFile> {
+fn pick_admin(rest: &str) -> Option<(String, rust_embed::EmbeddedFile)> {
     pick::<AdminAssets>(rest)
 }
 
 /// 具体文件优先；路径看起来不像文件时回退到 index.html，交给前端路由处理。
-fn pick<T: RustEmbed>(rest: &str) -> Option<rust_embed::EmbeddedFile> {
+///
+/// 返回实际命中的文件名：Content-Type 必须按它判断，不能用请求路径。
+/// 否则访问 `/` 时路径是空串，会被当成二进制流，浏览器直接下载页面而不是显示。
+fn pick<T: RustEmbed>(rest: &str) -> Option<(String, rust_embed::EmbeddedFile)> {
     if rest.is_empty() {
-        return T::get("index.html");
+        return T::get("index.html").map(|file| ("index.html".to_owned(), file));
     }
 
     if let Some(file) = T::get(rest) {
-        return Some(file);
+        return Some((rest.to_owned(), file));
     }
 
     if rest.contains('.') {
         return None;
     }
 
-    T::get("index.html")
+    T::get("index.html").map(|file| ("index.html".to_owned(), file))
 }
 
-fn respond(file: Option<rust_embed::EmbeddedFile>, path: &str) -> Response {
-    let Some(file) = file else {
+fn respond(picked: Option<(String, rust_embed::EmbeddedFile)>) -> Response {
+    let Some((name, file)) = picked else {
         return (StatusCode::NOT_FOUND, "文件不存在").into_response();
     };
 
-    if file.data.is_empty() && path.is_empty() {
+    if file.data.is_empty() {
         return (StatusCode::SERVICE_UNAVAILABLE, UI_MISSING).into_response();
     }
 
-    let mime = content_type(path);
+    let mime = content_type(&name);
     let body = Body::from(file.data.into_owned());
 
     ([(header::CONTENT_TYPE, mime)], body).into_response()
@@ -119,6 +122,13 @@ fn content_type(path: &str) -> &'static str {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn index_is_served_as_html() {
+        // 访问根路径时命中 index.html，类型必须是 html，
+        // 否则浏览器会把它当文件下载
+        assert_eq!(content_type("index.html"), "text/html; charset=utf-8");
+    }
 
     #[test]
     fn content_type_covers_frontend_assets() {
