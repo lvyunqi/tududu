@@ -4,10 +4,13 @@ use sqlx::PgPool;
 
 use tududu::cli::{Cli, Command};
 use tududu::config::Config;
-use tududu::{db, http, telemetry};
+use tududu::{db, env_file, http, telemetry};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
+    // 先读 .env，后面的 clap 与 Config 才能看到里面的变量
+    env_file::load();
+
     let cli = Cli::parse();
     telemetry::init(&cli.log_filter);
 

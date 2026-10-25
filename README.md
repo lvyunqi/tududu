@@ -174,7 +174,15 @@ curl http://127.0.0.1:8080/api/v1/health
 
 ## 配置
 
-启动参数目前全部来自环境变量：
+启动参数从环境变量读取，也可以写进 `.env` 文件。服务启动时会自动加载当前目录的 `.env`，
+真实环境变量优先级更高，不会被文件覆盖；用 `TUDUDU_ENV_FILE` 可以指定别的路径。
+
+仓库里有 `.env.example`，复制成 `.env` 按需改即可：
+
+```bash
+cp .env.example .env
+```
+
 
 | 变量 | 默认值 | 说明 |
 | --- | --- | --- |
@@ -193,6 +201,7 @@ curl http://127.0.0.1:8080/api/v1/health
 | `TUDUDU_CORS_ORIGINS` | `tauri://localhost` 等 | 允许跨域的来源，逗号分隔；默认放行 App 的 WebView |
 | `TUDUDU_PUBLIC_BASE_URL` | 空 | 对外访问地址，用于拼接支付回调地址 |
 | `TUDUDU_LOG` | `info` | 日志过滤规则，语法同 `RUST_LOG` |
+| `TUDUDU_ENV_FILE` | `./.env` | 环境变量文件路径 |
 
 ## 构建
 
