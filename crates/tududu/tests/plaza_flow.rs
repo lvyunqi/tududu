@@ -31,6 +31,7 @@ fn request(title: &str, text: &str) -> PublishRequest {
         prompt_text: text.to_owned(),
         model: "gpt-image-1".to_owned(),
         category_id: None,
+        category_name: None,
         cover_asset_id: None,
         source_session_id: None,
     }
@@ -79,13 +80,9 @@ async fn search_matches_title_and_prompt() {
 
     let word = format!("检索词{}", &Uuid::new_v4().simple().to_string()[..6]);
 
-    plaza::publish(
-        &pool,
-        user,
-        request(&format!("标题含{word}"), "普通描述"),
-    )
-    .await
-    .expect("发布失败");
+    plaza::publish(&pool, user, request(&format!("标题含{word}"), "普通描述"))
+        .await
+        .expect("发布失败");
 
     let keyword = format!("%{word}%");
 
