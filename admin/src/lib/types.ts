@@ -167,3 +167,12 @@ export interface RechargePlan {
   sort: number;
   enabled: boolean;
 }
+
+export interface AdminModel {
+  id: string;
+  provider_id: string;
+  provider_name: string;
+  code: string;
+  display_name: string;
+  enabled: boolean;
+}
