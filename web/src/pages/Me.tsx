@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-import { request } from "../lib/api";
+import { BASE, request } from "../lib/api";
 import type { useAuth } from "../lib/store";
 import type { PromptItem, Session } from "../lib/types";
 
@@ -37,6 +37,9 @@ export default function MePage({ auth }: { auth: Auth }) {
 
       <section className="card">
         <h3>我的会话</h3>
+        <a className="chip" href="#/" style={{ width: "fit-content" }}>
+          开始新的对话
+        </a>
         {sessions.length === 0 && <p className="hint">还没有创作记录</p>}
         {sessions.map((item) => (
           <a key={item.id} className="row" href={`#/session/${item.id}`}>
@@ -54,6 +57,12 @@ export default function MePage({ auth }: { auth: Auth }) {
             {item.title} · 赞 {item.like_count}
           </p>
         ))}
+      </section>
+
+      <section className="card">
+        <h3>调试信息</h3>
+        <p className="hint">接口地址：{BASE || "当前站点同源"}</p>
+        <p className="hint">版本：{import.meta.env.MODE}</p>
       </section>
 
       <button className="danger" onClick={() => void auth.logout()}>
