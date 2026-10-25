@@ -201,6 +201,22 @@ CI 在 Linux 上编译静态二进制并作为构建产物上传：
 cargo build --release --target x86_64-unknown-linux-musl
 ```
 
+### Android 签名
+
+安卓包的签名密钥库存在仓库 Secrets 里，构建时还原成文件再签名。
+
+| Secret | 用途 |
+| --- | --- |
+| `ANDROID_KEYSTORE_BASE64` | 密钥库文件，base64 编码 |
+| `ANDROID_KEYSTORE_PASSWORD` | 密钥库口令 |
+| `ANDROID_KEY_PASSWORD` | 密钥口令 |
+| `ANDROID_KEY_ALIAS` | 密钥别名 |
+| `ANDROID_KEYSTORE_SHA256` | 证书 SHA-256 指纹，用于核对签名是否一致 |
+
+当前证书指纹：`D45BED1BB8A1BBD09D4B191B4B8E1A69881AFFCC650A324480441C47B000FEFC`。
+
+这个密钥库是最终发布用的，丢了就没法给已安装的用户推更新。改动它之前先想清楚。
+
 ## 开发约定
 
 - 改动走分支和 Pull Request，CI 通过后再合并到 `main`。
