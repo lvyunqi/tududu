@@ -81,6 +81,7 @@ export interface PromptItem {
   prompt_text: string;
   model: string;
   cover_asset_id: string | null;
+  status: number;
   like_count: number;
   view_count: number;
   published_at: string;
