@@ -5,6 +5,7 @@ pub mod assets;
 pub mod auth;
 pub mod billing;
 pub mod jobs;
+pub mod models;
 pub mod payment;
 pub mod plaza;
 pub mod routes;

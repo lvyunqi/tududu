@@ -175,7 +175,14 @@ async fn fail_and_refund(
     message: &str,
 ) -> Result<(), ApiError> {
     store::mark_failed(db, job.id, error_code, message).await?;
-    finish_message(db, job, crate::session::store::MSG_FAILED, None).await;
+
+    // 失败原因直接写进助手消息，前端不用再查任务表
+    if let Some(message_id) = job.message_id {
+        let outcome = crate::session::store::fail_message(db, message_id, message).await;
+        if let Err(err) = outcome {
+            tracing::error!(error = %err, %message_id, "回写失败原因失败");
+        }
+    }
 
     if job.price > 0 {
         let outcome = crate::billing::refund(

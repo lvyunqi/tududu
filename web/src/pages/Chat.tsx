@@ -9,6 +9,7 @@ import type {
   Message,
   PromptCategory,
   PromptItem,
+  PublicModel,
   Session,
   SessionDetail,
   TurnResult
@@ -16,7 +17,7 @@ import type {
 
 type Auth = ReturnType<typeof useAuth>;
 
-const MODEL = "gpt-image-1";
+const FALLBACK_MODEL = "gpt-image-1";
 
 const SUGGESTIONS = [
   "把背景换成海边日落，光线柔和一点",
@@ -37,6 +38,10 @@ export default function ChatPage({ auth, sessionId }: { auth: Auth; sessionId?: 
   const [error, setError] = useState<string | null>(null);
   const [publishTarget, setPublishTarget] = useState<Message | null>(null);
   const [atBottom, setAtBottom] = useState(true);
+  const [models, setModels] = useState<PublicModel[]>([]);
+  const [model, setModel] = useState(FALLBACK_MODEL);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [sessions, setSessions] = useState<Session[]>([]);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -50,6 +55,22 @@ export default function ChatPage({ auth, sessionId }: { auth: Auth; sessionId?: 
   useEffect(() => {
     if (sid) void load(sid);
   }, [sid, load]);
+
+  // 可选的模型由后台配置决定，一个都没配时退回默认值，让请求照样发出去
+  useEffect(() => {
+    void request<PublicModel[]>("/api/v1/models", { auth: false })
+      .then((list) => {
+        setModels(list);
+        if (list.length > 0) setModel(list[0].code);
+      })
+      .catch(() => setModels([]));
+  }, []);
+
+  useEffect(() => {
+    void request<Session[]>("/api/v1/sessions?limit=50")
+      .then(setSessions)
+      .catch(() => setSessions([]));
+  }, [sid, drawerOpen]);
 
   // 从别的页面切回正在跑的会话时，接着轮询，不然进度会停在那
   useEffect(() => {
@@ -107,7 +128,7 @@ export default function ChatPage({ auth, sessionId }: { auth: Auth; sessionId?: 
       if (!current) {
         const created = await request<Session>("/api/v1/sessions", {
           method: "POST",
-          body: { model: MODEL, title: content.slice(0, 20) }
+          body: { model, title: content.slice(0, 20) }
         });
 
         current = created.id;
@@ -174,6 +195,16 @@ export default function ChatPage({ auth, sessionId }: { auth: Auth; sessionId?: 
 
   return (
     <div className="chat">
+      <div className="chat-tools">
+        <button className="tool-btn" onClick={() => setDrawerOpen(true)} aria-label="历史对话">
+          ☰
+        </button>
+        <span className="chat-title">{detail?.session.title ?? "新对话"}</span>
+        <a className="tool-btn" href="#/" aria-label="新对话">
+          ＋
+        </a>
+      </div>
+
       {runningJob && <div className="gen-bar" />}
 
       <div className="chat-scroll" ref={scrollRef} onScroll={onScroll}>
@@ -233,6 +264,26 @@ export default function ChatPage({ auth, sessionId }: { auth: Auth; sessionId?: 
             </div>
           )}
 
+          {models.length > 0 && (
+            <div className="model-row">
+              <span className="model-label">模型</span>
+              {models.map((item) => (
+                <button
+                  key={item.code}
+                  className={model === item.code ? "chip active" : "chip"}
+                  onClick={() => setModel(item.code)}
+                  type="button"
+                >
+                  {item.display_name || item.code}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {models.length === 0 && (
+            <p className="model-warn">后台还没有配置可用模型，发出去可能失败</p>
+          )}
+
           <textarea
             ref={textRef}
             rows={1}
@@ -287,8 +338,50 @@ export default function ChatPage({ auth, sessionId }: { auth: Auth; sessionId?: 
           onClose={() => setPublishTarget(null)}
         />
       )}
+
+      {drawerOpen && (
+        <div className="drawer-backdrop" onClick={() => setDrawerOpen(false)}>
+          <aside className="drawer" onClick={(event) => event.stopPropagation()}>
+            <div className="drawer-head">
+              <strong>历史对话</strong>
+              <a className="chip" href="#/" onClick={() => setDrawerOpen(false)}>
+                新对话
+              </a>
+            </div>
+
+            <div className="drawer-list">
+              {sessions.length === 0 && <p className="hint">还没有对话</p>}
+
+              {sessions.map((item) => (
+                <a
+                  key={item.id}
+                  className={item.id === sid ? "drawer-item active" : "drawer-item"}
+                  href={"#/session/" + item.id}
+                  onClick={() => setDrawerOpen(false)}
+                >
+                  <span className="drawer-title">{item.title || "未命名对话"}</span>
+                  <span className="drawer-time">{shortTime(item.last_active_at)}</span>
+                </a>
+              ))}
+            </div>
+          </aside>
+        </div>
+      )}
     </div>
   );
+}
+
+function shortTime(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+
+  const now = Date.now();
+  const diff = now - date.getTime();
+
+  if (diff < 60_000) return "刚刚";
+  if (diff < 3_600_000) return Math.floor(diff / 60_000) + " 分钟前";
+  if (diff < 86_400_000) return Math.floor(diff / 3_600_000) + " 小时前";
+  return date.getMonth() + 1 + "月" + date.getDate() + "日";
 }
 
 /** 生成中的占位：像素格子错峰闪，配当前阶段和已用时间。 */
@@ -346,7 +439,9 @@ function MessageRow({
           <AuthImage assetId={message.input_asset_id} alt="原图" variant="thumb" />
         )}
 
-        {message.content && <p className="prompt">{message.content}</p>}
+        {message.content && message.status !== 4 && (
+          <p className="prompt">{message.content}</p>
+        )}
 
         {message.output_asset_id && (
           <AuthImage assetId={message.output_asset_id} alt="结果图" />
@@ -360,7 +455,9 @@ function MessageRow({
           </span>
         )}
 
-        {message.status === 4 && <p className="error">这一步没成功，换个说法再试</p>}
+        {message.status === 4 && (
+          <p className="error">{message.content || "这一步没成功，换个说法再试"}</p>
+        )}
 
         {!mine && message.output_asset_id && (
           <button
