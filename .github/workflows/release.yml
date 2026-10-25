@@ -1,7 +1,7 @@
 name: 发版
 
-# 推 v* 标签触发：编译静态二进制与安卓包，一起挂到 Release。
-# 手动触发用于补发或重跑。
+# 推 v* 标签触发；也可以手动指定版本号补发。
+# 版本号优先取手动输入的 inputs.version，没有就用标签名。
 
 on:
   push:
@@ -19,6 +19,7 @@ permissions:
 env:
   CARGO_TERM_COLOR: always
   CARGO_INCREMENTAL: 0
+  RELEASE_VERSION: ${ inputs.version || github.ref_name }
 
 jobs:
   linux:
@@ -70,10 +71,10 @@ jobs:
       - name: 整理产物
         run: |
           set -euo pipefail
-          VERSION="${GITHUB_REF_NAME}"
           mkdir -p dist
-          cp target/x86_64-unknown-linux-musl/release/tududu "dist/tududu-${VERSION}-linux-x86_64"
-          chmod +x "dist/tududu-${VERSION}-linux-x86_64"
+          OUT="dist/tududu-${RELEASE_VERSION}-linux-x86_64"
+          cp target/x86_64-unknown-linux-musl/release/tududu "$OUT"
+          chmod +x "$OUT"
           ls -lh dist/
 
       - name: 上传产物
@@ -175,17 +176,20 @@ jobs:
           BUILD_TOOLS=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
           "$BUILD_TOOLS/zipalign" -f -p 4 "$UNSIGNED" "$RUNNER_TEMP/aligned.apk"
 
-          VERSION="${GITHUB_REF_NAME}"
           mkdir -p dist
+          OUT="dist/tududu-${RELEASE_VERSION}-arm64.apk"
+
+          # 关掉 v4 签名，否则会多出一个 .idsig 文件混进发布附件
           "$BUILD_TOOLS/apksigner" sign \
+            --v4-signing-enabled false \
             --ks "$RUNNER_TEMP/release.jks" \
             --ks-key-alias "$KEY_ALIAS" \
             --ks-pass "pass:$STORE_PASS" \
             --key-pass "pass:$KEY_PASS" \
-            --out "dist/tududu-${VERSION}-arm64.apk" \
+            --out "$OUT" \
             "$RUNNER_TEMP/aligned.apk"
 
-          "$BUILD_TOOLS/apksigner" verify --print-certs "dist/tududu-${VERSION}-arm64.apk" | head -5
+          "$BUILD_TOOLS/apksigner" verify --print-certs "$OUT" | head -5
           ls -lh dist/
 
       - name: 上传产物
@@ -214,7 +218,7 @@ jobs:
           set -euo pipefail
           cd dist
           ls -lh
-          sha256sum * > SHA256SUMS.txt
+          sha256sum tududu-* > SHA256SUMS.txt
           cat SHA256SUMS.txt
 
       - name: 写入发布说明
@@ -223,14 +227,14 @@ jobs:
           cat > notes.md <<'NOTES'
           ## 这次发的东西
 
-          - linux-x86_64：服务端，静态链接，单文件，接口与两个前端都在里面
-          - arm64.apk：安卓包，已用发布密钥签名
+          - tududu-*-linux-x86_64：服务端，静态链接，单文件，接口与两个前端都在里面
+          - tududu-*-arm64.apk：安卓包，已用发布密钥签名
           - SHA256SUMS.txt：上面两个文件的校验和
 
           ## 服务端怎么跑
 
-          复制 .env.example 为 .env，至少填 TUDUDU_DATABASE_URL 与 TUDUDU_JWT_SECRET，
-          然后 ./tududu serve。启动时自动建表。
+          复制 .env.example 为 .env，至少填 TUDUDU_DATABASE_URL 与 TUDUDU_JWT_SECRET
+          （密钥用 openssl rand -hex 32 生成），然后执行 ./tududu serve。启动时自动建表。
 
           浏览器打开 http://机器地址:8080 是用户端，/admin 是管理后台；
           首次启动会用环境变量里的账号建一个管理员。
@@ -247,19 +251,30 @@ jobs:
           可以用 apksigner verify --print-certs 核对。后续版本用同一把密钥，能覆盖升级。
           NOTES
 
-      - name: 创建 Release
+      - name: 创建或更新 Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          VERSION="${GITHUB_REF_NAME}"
+          VERSION="${RELEASE_VERSION}"
 
           if gh release view "$VERSION" > /dev/null 2>&1; then
-            echo "Release 已存在，改为上传附件"
+            echo "Release 已存在，覆盖附件"
+            gh release delete-asset "$VERSION" "tududu-$VERSION-arm64.apk.idsig" --yes || true
             gh release upload "$VERSION" dist/* --clobber
           else
             gh release create "$VERSION" \
               --title "$VERSION" \
               --notes-file notes.md \
               dist/*
+          fi
+
+          echo "=== 最终附件 ==="
+          gh release view "$VERSION" --json assets --jq '.assets[] | "\(.name)  \(.size)"'
+
+          # 两个包加一份校验和，少一个就说明上传不完整
+          COUNT=$(gh release view "$VERSION" --json assets --jq '.assets | length')
+          if [ "$COUNT" -lt 3 ]; then
+            echo "附件只有 $COUNT 个，上传不完整"
+            exit 1
           fi
