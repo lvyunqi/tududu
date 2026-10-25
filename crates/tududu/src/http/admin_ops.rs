@@ -22,14 +22,60 @@ fn page_limit(limit: Option<i64>) -> i64 {
     limit.unwrap_or(20).clamp(1, 100)
 }
 
+/// 列出所有可在线修改的配置，以及当前是否被数据库覆盖。
+pub async fn list_settings(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+) -> Result<Json<ApiBody<Vec<crate::settings::SettingView>>>, ApiError> {
+    require_admin(&state, &headers)?;
+
+    let live = state.live();
+    let rows = crate::settings::describe(&state.db, &state.config, &live).await?;
+    Ok(Json(ApiBody::ok(rows)))
+}
+
+#[derive(Debug, Deserialize)]
+pub struct UpdateSettingRequest {
+    pub value: String,
+}
+
+/// 改一项配置。先落库，再更新内存，接口返回后立刻生效。
+pub async fn update_setting(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(key): Path<String>,
+    Json(req): Json<UpdateSettingRequest>,
+) -> Result<Json<ApiBody<Vec<crate::settings::SettingView>>>, ApiError> {
+    let operator = require_admin(&state, &headers)?;
+
+    let current = state.live();
+    let next = crate::settings::save(&state.db, &key, &req.value, &current).await?;
+    state.set_live(next);
+
+    let detail = format!("{}={}", key, req.value);
+    let _ = admin_store::record_audit(
+        &state.db,
+        operator.id,
+        "setting_update",
+        "setting",
+        &key,
+        &detail,
+    )
+    .await;
+
+    let live = state.live();
+    let rows = crate::settings::describe(&state.db, &state.config, &live).await?;
+    Ok(Json(ApiBody::ok(rows)))
+}
+
 /// 手动跑一轮对账，返回关闭的过期订单数与账本异常。
 pub async fn reconcile(
     State(state): State<AppState>,
     headers: HeaderMap,
 ) -> Result<Json<ApiBody<tasks::ReconcileReport>>, ApiError> {
     require_admin(&state, &headers)?;
-    let report =
-        tasks::run_once(&state.db, &state.files, state.config.trash_retention_days).await?;
+    let retention_days = state.live().trash_retention_days;
+    let report = tasks::run_once(&state.db, &state.files, retention_days).await?;
     Ok(Json(ApiBody::ok(report)))
 }
 

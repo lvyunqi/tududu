@@ -36,6 +36,17 @@ pub async fn serve(config: Config, db: PgPool) -> anyhow::Result<()> {
     let files = crate::storage::local_store::LocalStore::new(data_dir.clone());
     let cors_origins = config.cors_origins.clone();
 
+    // 数据库里的值覆盖环境变量，然后整份放进状态里
+    let stored = crate::settings::load_stored(&db).await?;
+    let live = crate::settings::resolve(&config, &stored);
+
+    tracing::info!(
+        access_ttl = live.access_ttl_secs,
+        quota = live.user_quota_bytes,
+        trash_days = live.trash_retention_days,
+        "运行时配置已加载"
+    );
+
     let state = routes::AppState {
         db,
         config: Arc::new(config),
@@ -43,6 +54,7 @@ pub async fn serve(config: Config, db: PgPool) -> anyhow::Result<()> {
         http: reqwest::Client::new(),
         files,
         limiter: Arc::new(crate::ratelimit::RateLimiter::new()),
+        settings: Arc::new(std::sync::RwLock::new(live)),
     };
 
     let app = routes::router(state).layer(cors_layer(&cors_origins));

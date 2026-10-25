@@ -26,7 +26,11 @@ async fn main() -> anyhow::Result<()> {
                 tracing::warn!(count = recovered, "启动时回收了上次未完成的任务");
             }
 
-            tududu::tasks::spawn(pool.clone(), files, config.trash_retention_days);
+            let stored = tududu::settings::load_stored(&pool).await?;
+            let live = tududu::settings::resolve(&config, &stored);
+            let settings = std::sync::Arc::new(std::sync::RwLock::new(live));
+
+            tududu::tasks::spawn(pool.clone(), files, settings);
             http::serve(config, pool)
                 .await
                 .context("HTTP 服务异常退出")?;

@@ -154,6 +154,8 @@ curl http://127.0.0.1:8080/api/v1/health
 | GET/POST | `/api/v1/admin/pay-channels` | 易支付通道的查询与新增（商户密钥加密入库） |
 | GET | `/api/v1/admin/overview` | 看板数据：用户、充值、任务、作品数 |
 | GET | `/api/v1/admin/reconcile` | 手动跑一轮对账：关闭过期订单、核对账本 |
+| GET | `/api/v1/admin/settings` | 运行时配置列表，带当前值与是否来自数据库 |
+| PUT | `/api/v1/admin/settings/{key}` | 改一项运行时配置，保存后立刻生效 |
 | GET | `/api/v1/admin/users` | 用户列表，带余额 |
 | PATCH | `/api/v1/admin/users/{id}/status` | 改用户状态（正常 / 禁言 / 封禁） |
 | GET | `/api/v1/admin/pay-orders` | 充值订单列表 |
@@ -202,6 +204,21 @@ cp .env.example .env
 | `TUDUDU_PUBLIC_BASE_URL` | 空 | 对外访问地址，用于拼接支付回调地址 |
 | `TUDUDU_LOG` | `info` | 日志过滤规则，语法同 `RUST_LOG` |
 | `TUDUDU_ENV_FILE` | `./.env` | 环境变量文件路径 |
+
+### 在线可改的配置
+
+下面几项存在数据库里，后台「配置」页改完立即生效，不用重启：
+
+| 配置项 | 说明 |
+| --- | --- |
+| `access_ttl_secs` | 访问令牌有效期 |
+| `refresh_ttl_secs` | 刷新令牌有效期 |
+| `user_quota_bytes` | 单用户存储上限 |
+| `trash_retention_days` | 回收站保留天数 |
+| `public_base_url` | 对外访问地址 |
+
+数据库里的值优先于环境变量，所以在后台改过之后，机器上的 `.env` 就不再影响这几项。
+监听地址、数据库连接串、签名密钥、跨域名单属于启动期参数，只能通过环境变量配置。
 
 ## 构建
 

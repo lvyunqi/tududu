@@ -37,7 +37,7 @@ pub async fn create_order(
     let info = payment::create_order(
         &state.db,
         &state.provider_key,
-        state.config.public_base_url.as_deref(),
+        state.live().public_base_url.as_deref(),
         current.user_id,
         req.plan_id,
     )

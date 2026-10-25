@@ -12,6 +12,7 @@ use uuid::Uuid;
 
 use crate::config::Config;
 use crate::error::ApiError;
+use crate::settings::LiveSettings;
 
 /// 建会话时采集的设备与环境信息，用于设备列表和风控。
 #[derive(Debug, Clone, Default)]
@@ -77,6 +78,7 @@ pub struct AuthResponse {
 pub async fn register(
     db: &PgPool,
     config: &Config,
+    live: &LiveSettings,
     req: RegisterRequest,
     meta: RequestMeta,
 ) -> Result<AuthResponse, ApiError> {
@@ -138,12 +140,12 @@ pub async fn register(
 
     crate::billing::store::ensure_wallet(db, user.id).await?;
 
-    let (access_token, refresh_token) = issue_tokens(db, config, user.id, &meta).await?;
+    let (access_token, refresh_token) = issue_tokens(db, config, live, user.id, &meta).await?;
 
     Ok(AuthResponse {
         access_token,
         refresh_token,
-        expires_in: config.access_token_ttl_secs,
+        expires_in: live.access_ttl_secs,
         user: user.into(),
     })
 }
@@ -151,6 +153,7 @@ pub async fn register(
 pub async fn login(
     db: &PgPool,
     config: &Config,
+    live: &LiveSettings,
     req: LoginRequest,
     meta: RequestMeta,
 ) -> Result<AuthResponse, ApiError> {
@@ -182,12 +185,12 @@ pub async fn login(
 
     ensure_active(user.status)?;
 
-    let (access_token, refresh_token) = issue_tokens(db, config, user.id, &meta).await?;
+    let (access_token, refresh_token) = issue_tokens(db, config, live, user.id, &meta).await?;
 
     Ok(AuthResponse {
         access_token,
         refresh_token,
-        expires_in: config.access_token_ttl_secs,
+        expires_in: live.access_ttl_secs,
         user: user.into(),
     })
 }
@@ -196,6 +199,7 @@ pub async fn login(
 pub async fn refresh(
     db: &PgPool,
     config: &Config,
+    live: &LiveSettings,
     req: RefreshRequest,
 ) -> Result<AuthResponse, ApiError> {
     let current_hash = token::hash_refresh_token(&req.refresh_token);
@@ -215,14 +219,14 @@ pub async fn refresh(
 
     let next_refresh = token::new_refresh_token();
     let next_hash = token::hash_refresh_token(&next_refresh);
-    let expires_at = Utc::now() + Duration::seconds(config.refresh_token_ttl_secs);
+    let expires_at = Utc::now() + Duration::seconds(live.refresh_ttl_secs);
     store::rotate_session(db, session.id, &next_hash, expires_at).await?;
 
     let access_token = token::issue_access(
         &user.id.to_string(),
         &session.id.to_string(),
         &config.jwt_secret,
-        config.access_token_ttl_secs,
+        live.access_ttl_secs,
     )
     .map_err(|err| {
         tracing::error!(error = %err, "签发访问令牌失败");
@@ -232,7 +236,7 @@ pub async fn refresh(
     Ok(AuthResponse {
         access_token,
         refresh_token: next_refresh,
-        expires_in: config.access_token_ttl_secs,
+        expires_in: live.access_ttl_secs,
         user: user.into(),
     })
 }
@@ -253,12 +257,13 @@ pub async fn profile(db: &PgPool, user_id: Uuid) -> Result<UserInfo, ApiError> {
 async fn issue_tokens(
     db: &PgPool,
     config: &Config,
+    live: &LiveSettings,
     user_id: Uuid,
     meta: &RequestMeta,
 ) -> Result<(String, String), ApiError> {
     let refresh_token = token::new_refresh_token();
     let refresh_hash = token::hash_refresh_token(&refresh_token);
-    let expires_at = Utc::now() + Duration::seconds(config.refresh_token_ttl_secs);
+    let expires_at = Utc::now() + Duration::seconds(live.refresh_ttl_secs);
 
     let session_id = store::insert_session(db, user_id, &refresh_hash, expires_at, meta).await?;
 
@@ -266,7 +271,7 @@ async fn issue_tokens(
         &user_id.to_string(),
         &session_id.to_string(),
         &config.jwt_secret,
-        config.access_token_ttl_secs,
+        live.access_ttl_secs,
     )
     .map_err(|err| {
         tracing::error!(error = %err, "签发访问令牌失败");

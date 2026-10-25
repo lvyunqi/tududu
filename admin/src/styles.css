@@ -251,3 +251,32 @@ input {
   font-size: 13px;
   color: var(--ink-2);
 }
+
+.setting-row {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) minmax(260px, 1.2fr) auto;
+  gap: 12px;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.setting-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.setting-edit {
+  display: flex;
+  gap: 8px;
+}
+
+.setting-edit input {
+  flex: 1;
+  min-width: 0;
+}
+
+.tag.db {
+  color: var(--ok);
+}
