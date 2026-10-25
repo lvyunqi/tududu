@@ -30,8 +30,8 @@ pub async fn render(
         return Err(ApiError::bad_request("二维码内容长度不合法"));
     }
 
-    let code = QrCode::new(text.as_bytes())
-        .map_err(|_| ApiError::bad_request("内容无法生成二维码"))?;
+    let code =
+        QrCode::new(text.as_bytes()).map_err(|_| ApiError::bad_request("内容无法生成二维码"))?;
 
     let image = code
         .render::<svg::Color>()
