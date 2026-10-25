@@ -1,16 +1,15 @@
 import { useEffect, useState } from "react";
 
 import { useAuth } from "./lib/store";
-import CreatePage from "./pages/Create";
+import ChatPage from "./pages/Chat";
 import GalleryPage from "./pages/Gallery";
 import LoginPage from "./pages/Login";
 import MePage from "./pages/Me";
 import PlazaPage from "./pages/Plaza";
 import RechargePage from "./pages/Recharge";
-import SessionDetailPage from "./pages/SessionDetail";
 
 const TABS = [
-  { key: "create", label: "创作" },
+  { key: "create", label: "对话" },
   { key: "plaza", label: "广场" },
   { key: "gallery", label: "相册" },
   { key: "me", label: "我的" }
@@ -54,7 +53,7 @@ export default function App() {
   }
 
   const activeTab: TabKey =
-    route.kind === "tab" ? route.tab : route.kind === "recharge" ? "me" : "me";
+    route.kind === "tab" ? route.tab : route.kind === "recharge" ? "me" : "create";
 
   return (
     <div className="shell">
@@ -66,13 +65,13 @@ export default function App() {
       </header>
 
       <main className="content">
-        {route.kind === "tab" && route.tab === "create" && <CreatePage auth={auth} />}
+        {route.kind === "tab" && route.tab === "create" && <ChatPage auth={auth} />}
         {route.kind === "tab" && route.tab === "plaza" && <PlazaPage />}
         {route.kind === "tab" && route.tab === "gallery" && <GalleryPage />}
         {route.kind === "tab" && route.tab === "me" && <MePage auth={auth} />}
         {route.kind === "recharge" && <RechargePage auth={auth} />}
         {route.kind === "session" && (
-          <SessionDetailPage auth={auth} sessionId={route.id} />
+          <ChatPage key={route.id} auth={auth} sessionId={route.id} />
         )}
       </main>
 
