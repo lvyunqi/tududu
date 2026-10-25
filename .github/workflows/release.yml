@@ -19,7 +19,7 @@ permissions:
 env:
   CARGO_TERM_COLOR: always
   CARGO_INCREMENTAL: 0
-  RELEASE_VERSION: ${ inputs.version || github.ref_name }
+  RELEASE_VERSION: ${{ inputs.version || github.ref_name }}
 
 jobs:
   linux:
