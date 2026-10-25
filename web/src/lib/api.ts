@@ -1,4 +1,5 @@
-const BASE: string = import.meta.env.VITE_API_BASE ?? "";
+/// 打包成 App 时前端不在服务端同源，需要通过 VITE_API_BASE 指定后端地址。
+export const BASE: string = import.meta.env.VITE_API_BASE ?? "";
 
 const TOKEN_KEY = "tududu.access";
 const REFRESH_KEY = "tududu.refresh";

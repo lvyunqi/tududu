@@ -21,7 +21,9 @@ jobs:
         with:
           components: rustfmt
       - name: 检查代码格式
-        run: cargo fmt --all -- --check
+        run: |
+          cargo fmt --all -- --check
+          cargo fmt --manifest-path src-tauri/Cargo.toml -- --check
 
   clippy:
     name: 静态检查
@@ -127,6 +129,116 @@ jobs:
         env:
           TEST_DATABASE_URL: postgres://postgres@127.0.0.1:5432/tududu_test
         run: cargo test --tests -- --test-threads=1
+  android:
+    name: 安卓打包
+    runs-on: ubuntu-latest
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 安装 JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: 安装 Rust 1.98
+        uses: dtolnay/rust-toolchain@1.98.0
+        with:
+          targets: aarch64-linux-android,armv7-linux-androideabi,i686-linux-android,x86_64-linux-android
+
+      - name: 恢复编译缓存
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: 安装 pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: 安装 Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: 安装系统依赖
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libwebkit2gtk-4.1-dev build-essential curl wget file \
+            libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev
+
+      # runner 镜像本身就带 Android SDK，不再用 setup-android 动作：
+      # 那个动作会去装已经下架的 tools 包，必然失败。
+      - name: 安装 NDK
+        run: |
+          SDKMANAGER=$(find "$ANDROID_HOME/cmdline-tools" -name sdkmanager -type f | head -1)
+          echo "sdkmanager: $SDKMANAGER"
+          yes | "$SDKMANAGER" --licenses > /dev/null 2>&1 || true
+          "$SDKMANAGER" --install "ndk;26.1.10909125"
+          echo "NDK_HOME=$ANDROID_HOME/ndk/26.1.10909125" >> "$GITHUB_ENV"
+
+      - name: 安装 cargo-ndk
+        run: cargo install cargo-ndk --locked
+
+      - name: 构建前端
+        working-directory: web
+        env:
+          VITE_API_BASE: ${{ vars.ANDROID_API_BASE }}
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm build
+
+      - name: 安装 Tauri CLI
+        run: pnpm install --no-frozen-lockfile
+
+      - name: 初始化安卓工程
+        run: pnpm tauri android init --ci
+
+      - name: 打包 APK
+        run: pnpm tauri android build --apk --target aarch64
+
+      - name: 签名并整理产物
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          STORE_PASS: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_PASS: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+        run: |
+          set -euo pipefail
+
+          printf '%s' "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/release.jks"
+
+          UNSIGNED=$(find src-tauri/gen/android -name '*-release-unsigned.apk' | head -1)
+          if [ -z "$UNSIGNED" ]; then
+            echo "没有找到未签名的 APK"
+            find src-tauri/gen/android -name '*.apk'
+            exit 1
+          fi
+
+          BUILD_TOOLS=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
+          "$BUILD_TOOLS/zipalign" -f -p 4 "$UNSIGNED" "$RUNNER_TEMP/aligned.apk"
+
+          mkdir -p dist
+          "$BUILD_TOOLS/apksigner" sign \
+            --ks "$RUNNER_TEMP/release.jks" \
+            --ks-key-alias "$KEY_ALIAS" \
+            --ks-pass "pass:$STORE_PASS" \
+            --key-pass "pass:$KEY_PASS" \
+            --out dist/tududu.apk \
+            "$RUNNER_TEMP/aligned.apk"
+
+          "$BUILD_TOOLS/apksigner" verify --print-certs dist/tududu.apk | head -5
+          ls -lh dist/tududu.apk
+
+      - name: 上传 APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: tududu-android
+          path: dist/tududu.apk
+          if-no-files-found: error
+
   web:
     name: 前端构建
     runs-on: ubuntu-latest
@@ -190,7 +302,7 @@ jobs:
   summary:
     name: 汇总
     runs-on: ubuntu-latest
-    needs: [fmt, clippy, test, integration, build, web, admin]
+    needs: [fmt, clippy, test, integration, build, web, admin, android]
     if: always()
     steps:
       - name: 写运行摘要
@@ -202,6 +314,7 @@ jobs:
           R_INT: ${{ needs.integration.result }}
           R_WEB: ${{ needs.web.result }}
           R_ADMIN: ${{ needs.admin.result }}
+          R_ANDROID: ${{ needs.android.result }}
         run: |
           {
             echo "## 流水线结果"
@@ -215,4 +328,5 @@ jobs:
             echo "| 构建静态二进制 | ${R_BUILD} |"
             echo "| 前端构建 | ${R_WEB} |"
             echo "| 管理后台构建 | ${R_ADMIN} |"
+            echo "| 安卓打包 | ${R_ANDROID} |"
           } >> "$GITHUB_STEP_SUMMARY"
