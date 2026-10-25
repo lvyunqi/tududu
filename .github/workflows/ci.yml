@@ -83,8 +83,18 @@ jobs:
       - name: 构建管理后台
         working-directory: admin
         run: |
+          set -euo pipefail
           pnpm install --frozen-lockfile
           pnpm build
+
+          # 后台挂在 /admin 下，产物里的资源路径必须带这个前缀，
+          # 否则打开就是白屏，这类问题在页面上很难看出来
+          if ! grep -q '/admin/assets/' dist/index.html; then
+            echo "管理后台的产物没有带 /admin 前缀，打开会是白屏"
+            cat dist/index.html
+            exit 1
+          fi
+          echo "资源路径正确"
       - name: 安装 musl 工具链
         run: sudo apt-get update && sudo apt-get install -y musl-tools
       - name: 编译静态二进制
@@ -305,7 +315,15 @@ jobs:
         run: pnpm typecheck
       - name: 构建静态站点
         working-directory: admin
-        run: pnpm build
+        run: |
+          set -euo pipefail
+          pnpm build
+
+          if ! grep -q '/admin/assets/' dist/index.html; then
+            echo "管理后台的产物没有带 /admin 前缀，打开会是白屏"
+            cat dist/index.html
+            exit 1
+          fi
       - name: 上传锁文件
         uses: actions/upload-artifact@v4
         with:
