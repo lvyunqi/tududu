@@ -147,3 +147,13 @@ export interface SettingItem {
   description: string;
   from_db: boolean;
 }
+
+export interface PayChannel {
+  id: string;
+  name: string;
+  gateway_url: string;
+  pid: string;
+  pay_type: string;
+  enabled: boolean;
+  created_at: string;
+}

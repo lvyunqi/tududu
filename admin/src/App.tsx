@@ -5,6 +5,7 @@ import BillingPage from "./pages/Billing";
 import JobsPage from "./pages/Jobs";
 import OrdersPage from "./pages/Orders";
 import OverviewPage from "./pages/Overview";
+import PayChannelsPage from "./pages/PayChannels";
 import PromptsPage from "./pages/Prompts";
 import ProvidersPage from "./pages/Providers";
 import SettingsPage from "./pages/Settings";
@@ -18,6 +19,7 @@ const SECTIONS = [
   { key: "prompts", label: "广场" },
   { key: "providers", label: "渠道" },
   { key: "billing", label: "计费" },
+  { key: "pay", label: "支付" },
   { key: "settings", label: "配置" }
 ] as const;
 
@@ -63,6 +65,7 @@ export default function App() {
         {section === "prompts" && <PromptsPage />}
         {section === "providers" && <ProvidersPage />}
         {section === "billing" && <BillingPage />}
+        {section === "pay" && <PayChannelsPage />}
         {section === "settings" && <SettingsPage />}
       </main>
     </div>
