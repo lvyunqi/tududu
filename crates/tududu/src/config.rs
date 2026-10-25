@@ -33,6 +33,8 @@ pub struct Config {
     pub trash_retention_days: i32,
     /// 单个用户的存储上限，字节，来自 `TUDUDU_QUOTA_BYTES`，默认 2GB。
     pub user_quota_bytes: i64,
+    /// 允许跨域访问的来源，逗号分隔，来自 `TUDUDU_CORS_ORIGINS`。
+    pub cors_origins: Vec<String>,
 }
 
 /// 签名密钥的最短长度，太短等于没签名。
@@ -115,6 +117,22 @@ impl Config {
             None => 2 * 1024 * 1024 * 1024,
         };
 
+        // App 内页面从 tauri://localhost 加载，请求打到后端属于跨域，必须放行
+        let cors_origins = read_env("TUDUDU_CORS_ORIGINS")
+            .map(|raw| {
+                raw.split(',')
+                    .map(|item| item.trim().to_owned())
+                    .filter(|item| !item.is_empty())
+                    .collect()
+            })
+            .unwrap_or_else(|| {
+                vec![
+                    "https://tauri.localhost".to_owned(),
+                    "http://tauri.localhost".to_owned(),
+                    "tauri://localhost".to_owned(),
+                ]
+            });
+
         let admin_username = read_env("TUDUDU_ADMIN_USERNAME");
         let admin_password = read_env("TUDUDU_ADMIN_PASSWORD");
         let public_base_url =
@@ -134,6 +152,7 @@ impl Config {
             admin_password,
             trash_retention_days,
             user_quota_bytes,
+            cors_origins,
         })
     }
 }

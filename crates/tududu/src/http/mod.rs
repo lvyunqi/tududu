@@ -34,6 +34,7 @@ pub async fn serve(config: Config, db: PgPool) -> anyhow::Result<()> {
 
     let provider_key = crate::provider::crypto::derive_key(&config.jwt_secret);
     let files = crate::storage::local_store::LocalStore::new(data_dir.clone());
+    let cors_origins = config.cors_origins.clone();
 
     let state = routes::AppState {
         db,
@@ -44,12 +45,41 @@ pub async fn serve(config: Config, db: PgPool) -> anyhow::Result<()> {
         limiter: Arc::new(crate::ratelimit::RateLimiter::new()),
     };
 
-    axum::serve(listener, routes::router(state))
+    let app = routes::router(state).layer(cors_layer(&cors_origins));
+
+    axum::serve(listener, app)
         .with_graceful_shutdown(shutdown_signal())
         .await
         .context("axum serve 失败")?;
 
     Ok(())
+}
+
+/// 跨域策略。列表为空时不加这一层，等价于只允许同源。
+fn cors_layer(origins: &[String]) -> tower_http::cors::CorsLayer {
+    use axum::http::{HeaderValue, Method, header};
+    use tower_http::cors::CorsLayer;
+
+    let allowed: Vec<HeaderValue> = origins
+        .iter()
+        .filter_map(|origin| HeaderValue::from_str(origin).ok())
+        .collect();
+
+    if allowed.is_empty() {
+        return CorsLayer::new();
+    }
+
+    CorsLayer::new()
+        .allow_origin(allowed)
+        .allow_methods([
+            Method::GET,
+            Method::POST,
+            Method::PATCH,
+            Method::DELETE,
+            Method::OPTIONS,
+        ])
+        .allow_headers([header::AUTHORIZATION, header::CONTENT_TYPE])
+        .max_age(std::time::Duration::from_secs(600))
 }
 
 async fn shutdown_signal() {
