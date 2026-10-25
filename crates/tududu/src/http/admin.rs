@@ -186,9 +186,9 @@ pub async fn create_model(
     let row = provider::store::insert_model(&state.db, req.provider_id, code, display).await;
     match row {
         Ok(row) => Ok(Json(ApiBody::ok(row))),
-        Err(err) if provider::store::is_unique_violation(&err) => Err(ApiError::bad_request(
-            "这个渠道商下已经有同名模型了",
-        )),
+        Err(err) if provider::store::is_unique_violation(&err) => {
+            Err(ApiError::bad_request("这个渠道商下已经有同名模型了"))
+        }
         Err(err) => Err(err.into()),
     }
 }
