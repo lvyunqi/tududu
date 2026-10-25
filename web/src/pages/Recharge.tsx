@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-import { request } from "../lib/api";
+import { BASE, getToken, request } from "../lib/api";
 import type { useAuth } from "../lib/store";
 import type { CheckoutInfo, PayOrder, RechargePlan } from "../lib/types";
 
@@ -13,6 +13,7 @@ export default function RechargePage({ auth }: { auth: Auth }) {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<string | null>(null);
+  const [qr, setQr] = useState<string | null>(null);
 
   useEffect(() => {
     void request<RechargePlan[]>("/api/v1/billing/plans", { auth: false })
@@ -33,13 +34,36 @@ export default function RechargePage({ auth }: { auth: Auth }) {
       });
 
       setPending(info);
-      setStatus("订单已创建，点下面的按钮去付款");
+      setStatus("订单已创建，扫码或在浏览器里打开都能付");
+      setQr(null);
       void watch(info.order_no);
+      void loadQr(info.pay_url);
     } catch (err) {
       setError(err instanceof Error ? err.message : "下单失败");
       setStatus(null);
     } finally {
       setBusy(false);
+    }
+  }
+
+  /// 二维码由服务端渲染成 SVG，前端不引第三方库。
+  async function loadQr(payUrl: string) {
+    try {
+      const response = await fetch(BASE + "/api/v1/qrcode", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: "Bearer " + (getToken() ?? "")
+        },
+        body: JSON.stringify({ text: payUrl })
+      });
+
+      if (!response.ok) return;
+
+      const blob = await response.blob();
+      setQr(URL.createObjectURL(blob));
+    } catch {
+      // 生成失败就不显示二维码，主按钮仍然可用
     }
   }
 
@@ -56,7 +80,7 @@ export default function RechargePage({ auth }: { auth: Auth }) {
       await navigator.clipboard.writeText(pending.pay_url);
       setNote("链接已复制，可以粘贴到浏览器打开");
     } catch {
-      setNote("复制失败，长按下面的链接手动复制");
+      setNote("复制失败，试试扫码");
     }
   }
 
@@ -140,6 +164,13 @@ export default function RechargePage({ auth }: { auth: Auth }) {
 
           <p className="hint mono">订单号 {pending.order_no}</p>
 
+          {qr && (
+            <div className="qr-box">
+              <img src={qr} alt="支付二维码" />
+              <p className="hint">截图后用支付宝扫一扫，或在浏览器里打开</p>
+            </div>
+          )}
+
           <div className="pay-actions">
             <button onClick={openPay}>打开支付页面</button>
             <button className="ghost" onClick={() => void copyLink()}>
@@ -157,7 +188,6 @@ export default function RechargePage({ auth }: { auth: Auth }) {
           </div>
 
           {note && <p className="hint">{note}</p>}
-          {pending.pay_url && <p className="hint mono break">{pending.pay_url}</p>}
         </div>
       )}
     </div>

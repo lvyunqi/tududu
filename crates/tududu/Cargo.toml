@@ -29,6 +29,7 @@ image.workspace = true
 jsonwebtoken.workspace = true
 md-5.workspace = true
 percent-encoding.workspace = true
+qrcode.workspace = true
 reqwest.workspace = true
 rust-embed.workspace = true
 serde.workspace = true

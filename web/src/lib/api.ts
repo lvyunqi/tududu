@@ -93,6 +93,35 @@ async function rotateTokens(): Promise<boolean> {
   }
 }
 
+/**
+ * 取二进制内容（图片、二维码）。
+ *
+ * 不能直接丢给 img 标签，因为要带令牌；也不能用裸 fetch，
+ * 否则访问令牌一过期就 401，表现为「图片加载不出来」。
+ */
+export async function requestBlob(path: string): Promise<Blob> {
+  const build = (): RequestInit => {
+    const token = getToken();
+    return token ? { headers: { Authorization: "Bearer " + token } } : {};
+  };
+
+  let response = await fetch(BASE + path, build());
+
+  if (response.status === 401) {
+    if (await rotateTokens()) {
+      response = await fetch(BASE + path, build());
+    } else {
+      clearTokens();
+    }
+  }
+
+  if (!response.ok) {
+    throw new ApiError(response.status, "资源加载失败");
+  }
+
+  return response.blob();
+}
+
 export async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const headers: Record<string, string> = {};
   const token = getToken();

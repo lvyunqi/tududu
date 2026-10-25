@@ -8,6 +8,7 @@ pub mod jobs;
 pub mod models;
 pub mod payment;
 pub mod plaza;
+pub mod qrcode;
 pub mod routes;
 pub mod sessions;
 pub mod static_files;

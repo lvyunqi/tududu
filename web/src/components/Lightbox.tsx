@@ -1,12 +1,11 @@
 import { useEffect, useState } from "react";
 
-import { BASE, getToken } from "../lib/api";
+import { requestBlob } from "../lib/api";
 
 /**
- * 图片灯箱：加载原图、可下载、可以继续改或发布。
+ * 图片灯箱：取原图、可下载、可以继续改或发布。
  *
- * 列表里用的是缩略图，这里带 scale=full 取原图，
- * 免得点开看到的还是糊的那张。
+ * 列表里用的是缩略图，这里取原图，免得点开看到的还是糊的那张。
  */
 export default function Lightbox({
   assetId,
@@ -22,6 +21,7 @@ export default function Lightbox({
   const [url, setUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [tip, setTip] = useState<string | null>(null);
 
   useEffect(() => {
     let revoked = false;
@@ -29,21 +29,11 @@ export default function Lightbox({
 
     async function load() {
       try {
-        const token = getToken();
-        const response = await fetch(BASE + "/api/v1/assets/" + assetId + "/file", {
-          headers: token ? { Authorization: "Bearer " + token } : {}
-        });
-
-        if (!response.ok) {
-          setError("图片加载失败");
-          return;
-        }
-
-        const blob = await response.blob();
+        const blob = await requestBlob("/api/v1/assets/" + assetId + "/file");
         objectUrl = URL.createObjectURL(blob);
         if (!revoked) setUrl(objectUrl);
       } catch {
-        setError("图片加载失败");
+        if (!revoked) setError("图片加载失败，重新打开试试");
       } finally {
         if (!revoked) setLoading(false);
       }
@@ -57,15 +47,39 @@ export default function Lightbox({
     };
   }, [assetId]);
 
-  function download() {
+  async function download() {
     if (!url) return;
+    setTip(null);
+
+    const filename = "tududu-" + assetId.slice(0, 8) + ".png";
+
+    // 部分 WebView 会忽略 download 属性，先试系统分享，能直接存相册
+    const nav = navigator as Navigator & {
+      share?: (data: ShareData) => Promise<void>;
+      canShare?: (data: ShareData) => boolean;
+    };
+
+    try {
+      const blob = await fetch(url).then((response) => response.blob());
+      const file = new File([blob], filename, { type: blob.type || "image/png" });
+
+      if (nav.share && nav.canShare?.({ files: [file] })) {
+        await nav.share({ files: [file] });
+        return;
+      }
+    } catch {
+      // 用户取消分享，不算失败
+    }
 
     const link = document.createElement("a");
     link.href = url;
-    link.download = "tududu-" + assetId.slice(0, 8) + ".png";
+    link.download = filename;
+    link.rel = "noopener";
     document.body.appendChild(link);
     link.click();
     link.remove();
+
+    setTip("没开始下载的话，长按图片可以保存到相册");
   }
 
   return (
@@ -77,18 +91,35 @@ export default function Lightbox({
           {error && <p className="hint">{error}</p>}
         </div>
 
+        {tip && <p className="lightbox-tip">{tip}</p>}
+
         <div className="lightbox-actions">
-          <button className="ghost" onClick={onClose}>
+          <button className="lamp" onClick={onClose} aria-label="关闭">
+            <span aria-hidden="true">✕</span>
             关闭
           </button>
-          <span className="spacer" />
+
           {onEdit && (
-            <button className="ghost" onClick={onEdit}>
-              以这张继续改
+            <button className="lamp" onClick={onEdit} aria-label="以这张继续改">
+              <span aria-hidden="true">✎</span>
+              接着改
             </button>
           )}
-          {onPublish && <button onClick={onPublish}>发布到广场</button>}
-          <button className="ghost" onClick={download} disabled={!url}>
+
+          {onPublish && (
+            <button className="lamp strong" onClick={onPublish} aria-label="发布到广场">
+              <span aria-hidden="true">↗</span>
+              发布
+            </button>
+          )}
+
+          <button
+            className="lamp"
+            onClick={() => void download()}
+            disabled={!url}
+            aria-label="下载"
+          >
+            <span aria-hidden="true">⤓</span>
             下载
           </button>
         </div>

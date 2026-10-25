@@ -1115,17 +1115,50 @@ button.danger {
 .lightbox-actions {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
+  flex-wrap: wrap;
 }
 
-.lightbox-actions .ghost {
+/* 小圆角胶囊，图标在上文字在下，比一排大按钮协调 */
+.lamp {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  min-width: 62px;
+  padding: 8px 10px;
+  border-radius: 14px;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.2;
+  color: #f4ece4;
   background: rgba(255, 255, 255, 0.12);
-  color: #fff;
-  border-color: rgba(255, 255, 255, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  backdrop-filter: blur(8px);
 }
 
-.lightbox-actions .spacer {
-  flex: 1;
+.lamp span {
+  font-size: 15px;
+  line-height: 1;
+}
+
+.lamp:active:not(:disabled) {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.lamp.strong {
+  color: #1a0f08;
+  background: linear-gradient(120deg, #ff9a3d, #ff4d8d);
+  border-color: transparent;
+}
+
+.lightbox-tip {
+  margin: 0;
+  text-align: center;
+  font-size: 12px;
+  color: rgba(244, 236, 228, 0.8);
+  animation: fade-in 0.2s ease both;
 }
 
 .image-tap {
@@ -1197,4 +1230,27 @@ button.danger {
 
 .break {
   word-break: break-all;
+}
+
+.qr-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 10px;
+  border-radius: 16px;
+  background: #fffdf9;
+  border: 1px solid var(--line);
+  animation: rise 0.25s ease both;
+}
+
+.qr-box img {
+  width: 180px;
+  height: 180px;
+  display: block;
+}
+
+.qr-box .hint {
+  text-align: center;
+  font-size: 12px;
 }
