@@ -193,3 +193,15 @@ pub async fn finish_message(
 
     Ok(())
 }
+
+/// 失败时间把原因写进正文，用户能看到到底卡在哪一步，而不是一句「失败了」。
+pub async fn fail_message(db: &PgPool, message_id: Uuid, reason: &str) -> sqlx::Result<()> {
+    sqlx::query("UPDATE session_messages SET status = $2, content = $3 WHERE id = $1")
+        .bind(message_id)
+        .bind(MSG_FAILED)
+        .bind(reason)
+        .execute(db)
+        .await?;
+
+    Ok(())
+}

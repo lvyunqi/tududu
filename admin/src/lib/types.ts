@@ -157,3 +157,13 @@ export interface PayChannel {
   enabled: boolean;
   created_at: string;
 }
+
+export interface RechargePlan {
+  id: string;
+  name: string;
+  amount_fen: number;
+  credit: number;
+  bonus: number;
+  sort: number;
+  enabled: boolean;
+}

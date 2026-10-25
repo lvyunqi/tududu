@@ -123,3 +123,8 @@ export interface PayOrder {
   paid_at: string | null;
   created_at: string;
 }
+
+export interface PublicModel {
+  code: string;
+  display_name: string;
+}

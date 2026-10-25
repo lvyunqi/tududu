@@ -11,7 +11,7 @@ use sqlx::PgPool;
 use crate::config::Config;
 use crate::error::ApiBody;
 use crate::http::{
-    admin, admin_auth, admin_ops, assets, auth, billing, jobs, payment, plaza, sessions,
+    admin, admin_auth, admin_ops, assets, auth, billing, jobs, models, payment, plaza, sessions,
     static_files,
 };
 
@@ -104,6 +104,7 @@ pub fn router(state: AppState) -> Router {
             "/api/v1/sessions/{id}/messages",
             post(sessions::send_message),
         )
+        .route("/api/v1/models", get(models::list))
         .route("/api/v1/prompt-categories", get(plaza::categories))
         .route("/api/v1/prompts", get(plaza::list).post(plaza::publish))
         .route("/api/v1/my/prompts", get(plaza::mine))
