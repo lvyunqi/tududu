@@ -169,11 +169,12 @@ jobs:
             libwebkit2gtk-4.1-dev build-essential curl wget file \
             libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev
 
-      - name: 安装 Android SDK
-        uses: android-actions/setup-android@v3
-
+      # runner 镜像本身就带 Android SDK，不再用 setup-android 动作：
+      # 那个动作会去装已经下架的 tools 包，必然失败。
       - name: 安装 NDK
         run: |
+          echo "ANDROID_HOME=$ANDROID_HOME"
+          yes | sdkmanager --licenses > /dev/null 2>&1 || true
           sdkmanager --install "ndk;26.1.10909125"
           echo "NDK_HOME=$ANDROID_HOME/ndk/26.1.10909125" >> "$GITHUB_ENV"
 
