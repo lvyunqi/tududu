@@ -19,6 +19,7 @@ pub mod provider;
 pub mod ratelimit;
 pub mod session;
 pub mod settings;
+pub mod sign;
 pub mod storage;
 pub mod tasks;
 pub mod telemetry;

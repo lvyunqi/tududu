@@ -123,11 +123,18 @@ pub async fn detail(
     Ok(Json(ApiBody::ok(asset)))
 }
 
-/// 返回图片原始字节。只允许本人访问。
+/// 返回图片原始字节。
+///
+/// 默认只允许本人访问；带 `e` 与 `t` 时改用签名校验，
+/// 这样系统浏览器不带请求头也能取图。
 #[derive(Debug, Deserialize)]
 pub struct FileQuery {
     /// 传 thumb 时优先返回缩略图，没有缩略图就退回原图。
     pub size: Option<String>,
+    /// 过期时间戳（秒）
+    pub e: Option<i64>,
+    /// 签名
+    pub t: Option<String>,
 }
 
 pub async fn file(
@@ -136,11 +143,21 @@ pub async fn file(
     Path(id): Path<Uuid>,
     Query(query): Query<FileQuery>,
 ) -> Result<Response, ApiError> {
-    let current = require_user(&state, &headers).await?;
+    let signed = match (query.e, query.t.as_deref()) {
+        (Some(expires), Some(sig)) => {
+            expires > chrono::Utc::now().timestamp()
+                && crate::sign::verify(&state.config.jwt_secret, &id.to_string(), expires, sig)
+        }
+        _ => false,
+    };
 
-    let asset = asset_store::find_owned(&state.db, id, current.user_id)
-        .await?
-        .ok_or_else(|| ApiError::not_found("图片不存在"))?;
+    let asset = if signed {
+        asset_store::find_any(&state.db, id).await?
+    } else {
+        let current = require_user(&state, &headers).await?;
+        asset_store::find_owned(&state.db, id, current.user_id).await?
+    }
+    .ok_or_else(|| ApiError::not_found("图片不存在"))?;
 
     let want_thumb = query.size.as_deref() == Some("thumb");
     let (key, mime) = match (want_thumb, asset.thumb_key.as_deref()) {
@@ -154,6 +171,33 @@ pub async fn file(
     })?;
 
     Ok(([(header::CONTENT_TYPE, mime)], bytes).into_response())
+}
+
+/// 生成一个短时有效的下载直链，交给系统浏览器打开。
+pub async fn download_link(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(id): Path<Uuid>,
+) -> Result<Json<ApiBody<DownloadLink>>, ApiError> {
+    let current = require_user(&state, &headers).await?;
+
+    asset_store::find_owned(&state.db, id, current.user_id)
+        .await?
+        .ok_or_else(|| ApiError::not_found("图片不存在"))?;
+
+    let expires_at = chrono::Utc::now().timestamp() + crate::sign::LINK_TTL_SECS;
+    let signature = crate::sign::sign(&state.config.jwt_secret, &id.to_string(), expires_at);
+
+    let url = format!("/api/v1/assets/{id}/file?e={expires_at}&t={signature}");
+
+    Ok(Json(ApiBody::ok(DownloadLink { url, expires_at })))
+}
+
+#[derive(Debug, serde::Serialize)]
+pub struct DownloadLink {
+    /// 相对路径，前端自己拼上接口域名
+    pub url: String,
+    pub expires_at: i64,
 }
 
 pub async fn delete(

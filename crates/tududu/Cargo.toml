@@ -25,6 +25,7 @@ chrono.workspace = true
 clap.workspace = true
 dotenvy.workspace = true
 hex.workspace = true
+hmac.workspace = true
 image.workspace = true
 jsonwebtoken.workspace = true
 md-5.workspace = true

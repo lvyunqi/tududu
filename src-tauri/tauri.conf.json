@@ -8,6 +8,7 @@
     "frontendDist": "../web/dist"
   },
   "app": {
+    "withGlobalTauri": true,
     "windows": [
       {
         "title": "图嘟嘟",

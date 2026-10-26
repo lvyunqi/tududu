@@ -85,7 +85,8 @@ curl http://127.0.0.1:8080/api/v1/health
 | POST | `/api/v1/uploads` | 上传图片，multipart 字段名 `file`，仅 PNG/JPEG/WebP，单张不超过 20MB |
 | GET | `/api/v1/assets` | 我的图片列表，游标分页（`before`、`limit`） |
 | GET | `/api/v1/assets/{id}` | 图片详情 |
-| GET | `/api/v1/assets/{id}/file` | 取图片原始字节，加 `?size=thumb` 取缩略图 |
+| GET | `/api/v1/assets/{id}/file` | 取图片原始字节，加 `?size=thumb` 取缩略图；带 `e`/`t` 走签名校验 |
+| GET | `/api/v1/assets/{id}/download-link` | 生成十分钟有效的下载直链，给系统浏览器用 |
 | DELETE | `/api/v1/assets/{id}` | 移入回收站，默认保留 30 天后清理 |
 | GET | `/api/v1/storage/quota` | 当前占用与上限 |
 | POST | `/api/v1/jobs` | 提交修图任务，立即返回任务号，上游调用在后台执行 |
