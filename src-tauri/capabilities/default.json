@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "默认权限，壳子不额外开能力",
+  "description": "默认权限：只放开自定义的打开链接命令与基本的窗口能力",
   "windows": [
     "main"
   ],

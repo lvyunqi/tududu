@@ -68,6 +68,10 @@ pub fn router(state: AppState) -> Router {
             )),
         )
         .route("/api/v1/storage/quota", get(assets::quota))
+        .route(
+            "/api/v1/assets/{id}/download-link",
+            get(assets::download_link),
+        )
         .route("/api/v1/assets", get(assets::list))
         .route(
             "/api/v1/assets/{id}",

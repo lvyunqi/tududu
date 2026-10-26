@@ -1,6 +1,16 @@
 import { useEffect, useState } from "react";
 
-import { requestBlob } from "../lib/api";
+import { BASE, request, requestBlob } from "../lib/api";
+
+interface DownloadLink {
+  url: string;
+  expires_at: number;
+}
+
+/** Tauri 打开 withGlobalTauri 后，WebView 里能直接拿到注入的接口。 */
+type TauriGlobal = {
+  core?: { invoke: (cmd: string, args?: Record<string, unknown>) => Promise<unknown> };
+};
 
 /**
  * 图片灯箱：取原图、可下载、可以继续改或发布。
@@ -48,38 +58,39 @@ export default function Lightbox({
   }, [assetId]);
 
   async function download() {
-    if (!url) return;
     setTip(null);
 
-    const filename = "tududu-" + assetId.slice(0, 8) + ".png";
-
-    // 部分 WebView 会忽略 download 属性，先试系统分享，能直接存相册
-    const nav = navigator as Navigator & {
-      share?: (data: ShareData) => Promise<void>;
-      canShare?: (data: ShareData) => boolean;
-    };
-
+    // 后端给一个十分钟内有效的直链，浏览器不需要带请求头
+    let target: string;
     try {
-      const blob = await fetch(url).then((response) => response.blob());
-      const file = new File([blob], filename, { type: blob.type || "image/png" });
-
-      if (nav.share && nav.canShare?.({ files: [file] })) {
-        await nav.share({ files: [file] });
-        return;
-      }
+      const link = await request<DownloadLink>("/api/v1/assets/" + assetId + "/download-link");
+      target = link.url.startsWith("http") ? link.url : BASE + link.url;
     } catch {
-      // 用户取消分享，不算失败
+      setTip("生成下载链接失败，稍后再试");
+      return;
     }
 
+    const tauri = (window as Window & { __TAURI__?: TauriGlobal }).__TAURI__;
+
+    // App 内：交给系统浏览器，浏览器能正常保存图片
+    if (tauri?.core?.invoke) {
+      try {
+        await tauri.core.invoke("open_external", { url: target });
+        setTip("已在浏览器打开，长按图片即可保存");
+      } catch {
+        setTip("打开浏览器失败，复制链接到浏览器试试");
+      }
+      return;
+    }
+
+    // 网页版：直接下载
     const link = document.createElement("a");
-    link.href = url;
-    link.download = filename;
+    link.href = target;
+    link.download = "tududu-" + assetId.slice(0, 8) + ".png";
     link.rel = "noopener";
     document.body.appendChild(link);
     link.click();
     link.remove();
-
-    setTip("没开始下载的话，长按图片可以保存到相册");
   }
 
   return (
@@ -116,7 +127,6 @@ export default function Lightbox({
           <button
             className="lamp"
             onClick={() => void download()}
-            disabled={!url}
             aria-label="下载"
           >
             <span aria-hidden="true">⤓</span>

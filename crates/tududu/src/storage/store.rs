@@ -34,6 +34,14 @@ pub async fn find_by_sha(db: &PgPool, owner: Uuid, sha256: &str) -> sqlx::Result
         .await
 }
 
+/// 只按 id 查，供签名直链使用；归属校验由调用方根据签名完成。
+pub async fn find_any(db: &PgPool, id: Uuid) -> sqlx::Result<Option<AssetRow>> {
+    sqlx::query_as::<_, AssetRow>(&format!("SELECT {ASSET_COLUMNS} FROM assets WHERE id = $1"))
+        .bind(id)
+        .fetch_optional(db)
+        .await
+}
+
 pub async fn find_owned(db: &PgPool, id: Uuid, owner: Uuid) -> sqlx::Result<Option<AssetRow>> {
     let sql = format!(
         "SELECT {ASSET_COLUMNS} FROM assets WHERE id = $1 AND owner_user_id = $2 AND status = 1"
