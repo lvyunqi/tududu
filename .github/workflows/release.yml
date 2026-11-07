@@ -269,6 +269,9 @@ jobs:
               dist/*
           fi
 
+          # 删过 tag 的话 GitHub 会把老 Release 转成草稿，重建后这里兜一下
+          gh release edit "$VERSION" --draft=false --latest
+
           echo "=== 最终附件 ==="
           gh release view "$VERSION" --json assets --jq '.assets[] | "\(.name)  \(.size)"'
 
