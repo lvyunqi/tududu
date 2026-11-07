@@ -483,6 +483,7 @@ export default function ChatPage({ auth, sessionId }: { auth: Auth; sessionId?: 
             <div className="drawer-list">
               {sessions.length === 0 && <p className="hint">还没有对话</p>}
 
+
               {sessions.map((item) => (
                 <SwipeRow
                   key={item.id}
