@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
 
 import AuthImage from "../components/AuthImage";
 import Lightbox from "../components/Lightbox";
@@ -544,7 +543,6 @@ function SwipeRow({
   onDelete: () => void;
 }) {
   const [offset, setOffset] = useState(0);
-  const [anchor, setAnchor] = useState<{ top: number; left: number } | null>(null);
   const [dragging, setDragging] = useState(false);
 
   const startX = useRef<number | null>(null);
@@ -559,19 +557,17 @@ function SwipeRow({
   }
 
   function onDown(event: React.PointerEvent<HTMLAnchorElement>) {
-    const element = event.currentTarget;
-
     startX.current = event.clientX;
     moved.current = false;
     setDragging(true);
 
+    // 长按不是弹气泡，是直接把这一行推开，删除按钮就在同一行里
     longPress.current = window.setTimeout(() => {
       longPress.current = null;
       if (moved.current) return;
 
-      const rect = element.getBoundingClientRect();
-      setAnchor({ top: rect.top, left: rect.left + rect.width / 2 });
-    }, 420);
+      setOffset(-88);
+    }, 380);
   }
 
   function onMove(event: React.PointerEvent<HTMLAnchorElement>) {
@@ -604,41 +600,13 @@ function SwipeRow({
 
   function closeAll() {
     setOffset(0);
-    setAnchor(null);
   }
-
-  // 气泡挂在 body 上，这样不会被抽屉的滚动容器裁掉
-  const bubble = anchor
-    ? createPortal(
-        <>
-          <div className="bubble-backdrop" onClick={closeAll} />
-          <div
-            className="delete-bubble"
-            role="menu"
-            style={{ top: anchor.top - 6, left: anchor.left }}
-          >
-            <button
-              onClick={() => {
-                closeAll();
-                onDelete();
-              }}
-            >
-              删除对话
-            </button>
-            <button className="cancel" onClick={closeAll}>
-              取消
-            </button>
-          </div>
-        </>,
-        document.body
-      )
-    : null;
 
   const pulled = offset !== 0;
 
   return (
     <div
-      className={[pulled ? "open" : "", anchor ? "lifted" : ""].filter(Boolean).join(" ") + " drawer-row"}
+      className={pulled ? "drawer-row open" : "drawer-row"}
     >
       <button
         className="swipe-delete"
@@ -651,8 +619,6 @@ function SwipeRow({
       >
         删除
       </button>
-
-      {bubble}
 
       <a
         className={active ? "drawer-item active" : "drawer-item"}
@@ -670,9 +636,9 @@ function SwipeRow({
         onPointerCancel={onUp}
         onClick={(event) => {
           // 长按、滑动都不该顺带跳转
-          if (anchor || moved.current || offset !== 0) {
+          if (moved.current || offset !== 0) {
             event.preventDefault();
-            if (offset !== 0 && !anchor) closeAll();
+            if (offset !== 0) closeAll();
             return;
           }
 
