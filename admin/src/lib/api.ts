@@ -33,7 +33,35 @@ interface Options {
   body?: unknown;
 }
 
+/// 进行中的请求数，App 用它显示顶部进度条。
+let pending = 0;
+const listeners = new Set<(count: number) => void>();
+
+function notify() {
+  for (const listener of listeners) listener(pending);
+}
+
+export function subscribePending(listener: (count: number) => void): () => void {
+  listeners.add(listener);
+  listener(pending);
+  return () => {
+    listeners.delete(listener);
+  };
+}
+
 export async function adminRequest<T>(path: string, options: Options = {}): Promise<T> {
+  pending += 1;
+  notify();
+
+  try {
+    return await send<T>(path, options);
+  } finally {
+    pending -= 1;
+    notify();
+  }
+}
+
+async function send<T>(path: string, options: Options = {}): Promise<T> {
   const token = getAdminToken();
   const headers: Record<string, string> = token.startsWith("ey") 
     ? { Authorization: `Bearer ${token}` }

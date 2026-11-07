@@ -99,6 +99,19 @@ pub async fn save_generated(
     store_asset(db, files, owner, &prefix, bytes, "job", None).await
 }
 
+/// 派生图写盘。生成失败只记日志，不中断入库。
+async fn save_derived(files: &LocalStore, key: &str, produced: Option<Vec<u8>>) -> Option<String> {
+    let data = produced?;
+
+    match files.save(key, &data).await {
+        Ok(()) => Some(key.to_owned()),
+        Err(err) => {
+            tracing::warn!(error = %err, key = %key, "写入派生图失败");
+            None
+        }
+    }
+}
+
 async fn store_asset(
     db: &PgPool,
     files: &LocalStore,
@@ -130,25 +143,25 @@ async fn store_asset(
         ApiError::internal("保存图片失败")
     })?;
 
-    // 缩略图尽力而为：生成失败不影响原图入库，列表回退到原图而已
-    let thumb_key = match thumb::make(bytes) {
-        Some(small) => {
-            let key = format!("{prefix}/{file_id}_thumb.jpg");
-            match files.save(&key, &small).await {
-                Ok(()) => Some(key),
-                Err(err) => {
-                    tracing::warn!(error = %err, key = %key, "写入缩略图失败");
-                    None
-                }
-            }
-        }
-        None => None,
-    };
+    // 派生图尽力而为：生成失败不影响原图入库，页面上回退到原图而已
+    let thumb_key = save_derived(
+        files,
+        &format!("{prefix}/{file_id}_thumb.jpg"),
+        thumb::make(bytes),
+    )
+    .await;
+    let preview_key = save_derived(
+        files,
+        &format!("{prefix}/{file_id}_preview.jpg"),
+        thumb::make_preview(bytes),
+    )
+    .await;
 
     let new_asset = store::NewAsset {
         owner_user_id: owner,
         object_key: &object_key,
         thumb_key: thumb_key.as_deref(),
+        preview_key: preview_key.as_deref(),
         mime,
         byte_size: bytes.len() as i64,
         sha256: &sha256,
@@ -161,6 +174,9 @@ async fn store_asset(
             // 入库失败就把刚写的文件删掉，别留孤儿文件
             let _ = files.remove(&object_key).await;
             if let Some(key) = thumb_key {
+                let _ = files.remove(&key).await;
+            }
+            if let Some(key) = preview_key {
                 let _ = files.remove(&key).await;
             }
             Err(err.into())

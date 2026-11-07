@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
-import { adminRequest, getAdminToken, setAdminToken } from "./lib/api";
+import { adminRequest, getAdminToken, setAdminToken, subscribePending } from "./lib/api";
 import BillingPage from "./pages/Billing";
 import JobsPage from "./pages/Jobs";
 import ModelsPage from "./pages/Models";
@@ -30,6 +30,9 @@ type SectionKey = (typeof SECTIONS)[number]["key"];
 export default function App() {
   const [token, setToken] = useState(getAdminToken());
   const [section, setSection] = useState<SectionKey>("overview");
+  const [busy, setBusy] = useState(0);
+
+  useEffect(() => subscribePending(setBusy), []);
 
   if (!token) {
     return <LoginPage onDone={setToken} />;
@@ -37,6 +40,8 @@ export default function App() {
 
   return (
     <div className="layout">
+      <div className={busy > 0 ? "top-progress on" : "top-progress"} aria-hidden="true" />
+
       <aside className="sidebar">
         <div className="brand">图嘟嘟</div>
         {SECTIONS.map((item) => (

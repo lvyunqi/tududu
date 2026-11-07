@@ -79,10 +79,18 @@ export default function ChatPage({ auth, sessionId }: { auth: Auth; sessionId?: 
   // 从相册点「以这张继续改」过来时，把那张图接进输入框
   useEffect(() => {
     const pending = localStorage.getItem("tududu.pendingInput");
-    if (!pending) return;
+    if (pending) {
+      localStorage.removeItem("tududu.pendingInput");
+      setAsset({ id: pending } as Asset);
+    }
 
-    localStorage.removeItem("tududu.pendingInput");
-    setAsset({ id: pending } as Asset);
+    // 从广场点「做同款」过来时，把提示词填进输入框
+    const prompt = localStorage.getItem("tududu.pendingPrompt");
+    if (prompt) {
+      localStorage.removeItem("tududu.pendingPrompt");
+      setText(prompt);
+      requestAnimationFrame(() => textRef.current?.focus());
+    }
   }, []);
 
   // 可选的模型由后台配置决定，一个都没配时退回默认值，让请求照样发出去
@@ -146,6 +154,25 @@ export default function ChatPage({ auth, sessionId }: { auth: Auth; sessionId?: 
     setAsset({ id: assetId } as Asset);
     setError(null);
     textRef.current?.focus();
+  }
+
+  /// 删掉一个会话；删的是当前这个就回到新对话。
+  async function removeSession(id: string) {
+    if (!window.confirm("删掉这个对话？里面的图片还在相册里。")) return;
+
+    try {
+      await request("/api/v1/sessions/" + id, { method: "DELETE" });
+      setSessions((prev) => prev.filter((item) => item.id !== id));
+
+      if (id === sid) {
+        setDetail(null);
+        setSid(null);
+        setDrawerOpen(false);
+        window.location.hash = "#/";
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "删除失败");
+    }
   }
 
   async function pickFile(file: File) {
@@ -413,6 +440,7 @@ export default function ChatPage({ auth, sessionId }: { auth: Auth; sessionId?: 
           message={publishTarget}
           sessionId={sid}
           model={detail?.session.model ?? model}
+          defaultPrompt={promptBefore(messages, publishTarget)}
           onClose={() => setPublishTarget(null)}
         />
       )}
@@ -431,15 +459,24 @@ export default function ChatPage({ auth, sessionId }: { auth: Auth; sessionId?: 
               {sessions.length === 0 && <p className="hint">还没有对话</p>}
 
               {sessions.map((item) => (
-                <a
-                  key={item.id}
-                  className={item.id === sid ? "drawer-item active" : "drawer-item"}
-                  href={"#/session/" + item.id}
-                  onClick={() => setDrawerOpen(false)}
-                >
-                  <span className="drawer-title">{item.title || "未命名对话"}</span>
-                  <span className="drawer-time">{shortTime(item.last_active_at)}</span>
-                </a>
+                <div key={item.id} className="drawer-row">
+                  <a
+                    className={item.id === sid ? "drawer-item active" : "drawer-item"}
+                    href={"#/session/" + item.id}
+                    onClick={() => setDrawerOpen(false)}
+                  >
+                    <span className="drawer-title">{item.title || "未命名对话"}</span>
+                    <span className="drawer-time">{shortTime(item.last_active_at)}</span>
+                  </a>
+
+                  <button
+                    className="drawer-del"
+                    aria-label="删除对话"
+                    onClick={() => void removeSession(item.id)}
+                  >
+                    ✕
+                  </button>
+                </div>
               ))}
             </div>
           </aside>
@@ -549,20 +586,34 @@ function MessageRow({
   );
 }
 
+/// 找出这张图对应的那句指令：往前找最近的一条用户消息。
+function promptBefore(messages: Message[], target: Message): string {
+  const index = messages.findIndex((item) => item.id === target.id);
+
+  for (let i = index - 1; i >= 0; i -= 1) {
+    const item = messages[i];
+    if (item.role === "user" && item.content.trim()) return item.content.trim();
+  }
+
+  return target.content.trim();
+}
+
 function PublishSheet({
   message,
   sessionId,
   model,
+  defaultPrompt,
   onClose
 }: {
   message: Message;
   sessionId: string | null;
   model: string;
+  defaultPrompt: string;
   onClose: () => void;
 }) {
-  const [title, setTitle] = useState(message.content.slice(0, 24) || "我的作品");
-  // 提示词默认带出这一段说的话，可以改
-  const [promptText, setPromptText] = useState(message.content);
+  const [title, setTitle] = useState((defaultPrompt || "我的作品").slice(0, 24));
+  // 提示词自动读对话里的那句指令，可以改
+  const [promptText, setPromptText] = useState(defaultPrompt);
   const [categoryId, setCategoryId] = useState<number | null>(null);
   const [categoryName, setCategoryName] = useState("");
   const [categories, setCategories] = useState<PromptCategory[]>([]);
