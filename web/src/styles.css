@@ -1856,3 +1856,229 @@ button:not(.ghost):not(.link):not(.danger):not(.mini):not(.chip):not(.lamp):acti
 .lightbox-tip {
   display: none;
 }
+
+/* =========================================================
+   相册与广场：全面升级
+   ========================================================= */
+
+/* 相册：逐个浮入 */
+.grid .tile {
+  opacity: 0;
+  animation: pop-in 0.42s var(--spring-soft) both;
+}
+
+.grid.picking .tile {
+  animation: none;
+  opacity: 1;
+}
+
+.tile.picked::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius-sm);
+  background: rgba(0, 113, 227, 0.16);
+  pointer-events: none;
+}
+
+.tile.picked .thumb {
+  transform: scale(0.94);
+}
+
+.tick {
+  animation: pop-in 0.28s var(--spring) both;
+  box-shadow: 0 2px 8px -2px rgba(0, 0, 0, 0.4);
+}
+
+.tick.on {
+  animation: pop-in 0.32s var(--spring) both;
+}
+
+/* 底部操作条：滑上来 */
+.action-bar {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(76px + var(--safe-bottom));
+  z-index: 8;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.94);
+  border: 0.5px solid var(--line);
+  box-shadow: var(--shadow-lift);
+  backdrop-filter: saturate(180%) blur(18px);
+  animation: pop-in 0.32s var(--spring) both;
+}
+
+.action-count {
+  font-size: 13px;
+  color: var(--ink-2);
+  font-variant-numeric: tabular-nums;
+}
+
+/* 空状态 */
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 56px 0;
+  animation: fade-in 0.4s ease both;
+}
+
+.empty-mark {
+  width: 64px;
+  height: 64px;
+  border-radius: 20px;
+  background: linear-gradient(140deg, rgba(0, 113, 227, 0.14), rgba(0, 113, 227, 0.04));
+  border: 1px dashed rgba(0, 113, 227, 0.3);
+  animation: pulse-soft 2.8s ease-in-out infinite;
+}
+
+@keyframes pulse-soft {
+  0%, 100% { transform: scale(1); opacity: 0.9; }
+  50% { transform: scale(1.04); opacity: 1; }
+}
+
+/* 灯箱：位置提示 */
+.lightbox-counter {
+  margin: 0;
+  text-align: center;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.66);
+  font-variant-numeric: tabular-nums;
+}
+
+.lightbox-stage {
+  touch-action: pan-y;
+}
+
+/* ---------- 广场卡片 ---------- */
+
+.plaza-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.plaza-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border: 0.5px solid var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
+  box-shadow: var(--shadow);
+  opacity: 0;
+  animation: pop-in 0.44s var(--spring-soft) both;
+}
+
+.plaza-cover {
+  position: relative;
+  padding: 0;
+  border: none;
+  background: var(--surface-2);
+  border-radius: 0;
+  line-height: 0;
+  overflow: hidden;
+  cursor: zoom-in;
+}
+
+.plaza-cover .thumb {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  border-radius: 0;
+  object-fit: cover;
+  transition: transform 0.5s var(--smooth);
+}
+
+.plaza-cover:active .thumb {
+  transform: scale(1.04);
+}
+
+.plaza-badge {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  line-height: 1.5;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.42);
+  backdrop-filter: blur(6px);
+}
+
+.plaza-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 16px 16px;
+}
+
+.plaza-body h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.plaza-body .prompt {
+  color: var(--ink-2);
+  font-size: 13px;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.plaza-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-top: 4px;
+}
+
+.plaza-actions .spacer {
+  flex: 1;
+}
+
+.like {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: transparent;
+  border: 0.5px solid var(--line);
+  color: var(--ink-2);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.like.on {
+  color: var(--danger);
+  border-color: rgba(215, 0, 21, 0.24);
+  background: rgba(215, 0, 21, 0.06);
+}
+
+.heart {
+  font-size: 13px;
+  line-height: 1;
+  display: inline-block;
+}
+
+.heart.pop {
+  animation: heart-pop 0.42s var(--spring) both;
+}
+
+@keyframes heart-pop {
+  0% { transform: scale(1); }
+  35% { transform: scale(1.5); }
+  60% { transform: scale(0.92); }
+  100% { transform: scale(1); }
+}

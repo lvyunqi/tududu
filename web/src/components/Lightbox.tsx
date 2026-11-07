@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import Toast from "./Toast";
 import { BASE, request, requestBlob } from "../lib/api";
@@ -22,13 +22,43 @@ export default function Lightbox({
   assetId,
   onClose,
   onEdit,
-  onPublish
+  onPublish,
+  onPrev,
+  onNext,
+  position
 }: {
   assetId: string;
   onClose: () => void;
   onEdit?: () => void;
   onPublish?: () => void;
+  /// 传了这两个回调就支持左右滑动切换
+  onPrev?: () => void;
+  onNext?: () => void;
+  position?: { index: number; total: number };
 }) {
+  const startX = useRef<number | null>(null);
+  const [dragX, setDragX] = useState(0);
+
+  function onDown(event: React.PointerEvent) {
+    if (!onPrev && !onNext) return;
+    startX.current = event.clientX;
+  }
+
+  function onMove(event: React.PointerEvent) {
+    if (startX.current === null) return;
+    setDragX(event.clientX - startX.current);
+  }
+
+  function onUp() {
+    if (startX.current === null) return;
+
+    const moved = dragX;
+    startX.current = null;
+    setDragX(0);
+
+    if (moved < -60 && onNext) onNext();
+    if (moved > 60 && onPrev) onPrev();
+  }
   const [thumb, setThumb] = useState<string | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -106,7 +136,17 @@ export default function Lightbox({
   return (
     <div className="lightbox" onClick={onClose}>
       <div className="lightbox-body" onClick={(event) => event.stopPropagation()}>
-        <div className="lightbox-stage">
+        <div
+          className="lightbox-stage"
+          style={{
+            transform: dragX ? "translateX(" + dragX * 0.35 + "px)" : undefined,
+            transition: dragX ? "none" : undefined
+          }}
+          onPointerDown={onDown}
+          onPointerMove={onMove}
+          onPointerUp={onUp}
+          onPointerCancel={onUp}
+        >
           {thumb && !preview && <img className="blur-up" src={thumb} alt="加载中" />}
 
           {preview && <img src={preview} alt="作品预览" />}
@@ -115,6 +155,12 @@ export default function Lightbox({
           {loading && thumb && <div className="lightbox-loading">正在加载清晰大图…</div>}
           {error && <p className="hint">{error}</p>}
         </div>
+
+        {position && position.total > 1 && (
+          <p className="lightbox-counter">
+            {position.index + 1} / {position.total} · 左右滑动切换
+          </p>
+        )}
 
         {tip && <Toast text={tip} onDone={() => setTip(null)} />}
 
