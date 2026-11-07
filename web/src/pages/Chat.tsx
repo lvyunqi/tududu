@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 
 import AuthImage from "../components/AuthImage";
 import Lightbox from "../components/Lightbox";
@@ -40,6 +41,7 @@ export default function ChatPage({ auth, sessionId }: { auth: Auth; sessionId?: 
   const [publishTarget, setPublishTarget] = useState<Message | null>(null);
   const [atBottom, setAtBottom] = useState(true);
   const [models, setModels] = useState<PublicModel[]>([]);
+  const [modelsReady, setModelsReady] = useState(false);
   // 记住上次选的模型，别每次进来都被重置成第一个
   const [model, setModel] = useState(
     () => localStorage.getItem("tududu.model") || FALLBACK_MODEL
@@ -104,7 +106,8 @@ export default function ChatPage({ auth, sessionId }: { auth: Auth; sessionId?: 
           setModel(list[0].code);
         }
       })
-      .catch(() => setModels([]));
+      .catch(() => setModels([]))
+      .finally(() => setModelsReady(true));
   }, []);
 
   useEffect(() => {
@@ -271,6 +274,23 @@ export default function ChatPage({ auth, sessionId }: { auth: Auth; sessionId?: 
 
   return (
     <div className="chat">
+      {/* 下半部分隐约浮着的小方块，让空白背景不那么干 */}
+      <div className="chat-particles" aria-hidden="true">
+        {PARTICLES.map((item, index) => (
+          <span
+            key={index}
+            style={{
+              left: item.left + "%",
+              top: item.top + "%",
+              width: item.size + "px",
+              height: item.size + "px",
+              animationDelay: item.delay + "s",
+              animationDuration: item.duration + "s"
+            }}
+          />
+        ))}
+      </div>
+
       <div className="chat-tools">
         <button className="tool-btn" onClick={() => setDrawerOpen(true)} aria-label="历史对话">
           ☰
@@ -348,7 +368,16 @@ export default function ChatPage({ auth, sessionId }: { auth: Auth; sessionId?: 
             </div>
           )}
 
-          {models.length > 0 && (
+          {/* 模型没拉回来之前先摆骨架，别让人看见空荡荡一行 */}
+          {!modelsReady && (
+            <div className="model-row" aria-hidden="true">
+              <span className="model-skeleton" />
+              <span className="model-skeleton wide" />
+              <span className="model-skeleton" />
+            </div>
+          )}
+
+          {modelsReady && models.length > 0 && (
             <div className="model-row">
               <span className="model-label">模型</span>
               {models.map((item) => (
@@ -365,10 +394,6 @@ export default function ChatPage({ auth, sessionId }: { auth: Auth; sessionId?: 
                 </button>
               ))}
             </div>
-          )}
-
-          {models.length === 0 && (
-            <p className="model-warn">后台还没有配置可用模型，发出去可能失败</p>
           )}
 
           <textarea
@@ -459,16 +484,15 @@ export default function ChatPage({ auth, sessionId }: { auth: Auth; sessionId?: 
               {sessions.length === 0 && <p className="hint">还没有对话</p>}
 
               {sessions.map((item) => (
-                <SwipeRow key={item.id} onDelete={() => void removeSession(item.id)}>
-                  <a
-                    className={item.id === sid ? "drawer-item active" : "drawer-item"}
-                    href={"#/session/" + item.id}
-                    onClick={() => setDrawerOpen(false)}
-                  >
-                    <span className="drawer-title">{item.title || "未命名对话"}</span>
-                    <span className="drawer-time">{shortTime(item.last_active_at)}</span>
-                  </a>
-                </SwipeRow>
+                <SwipeRow
+                  key={item.id}
+                  active={item.id === sid}
+                  title={item.title || "未命名对话"}
+                  time={shortTime(item.last_active_at)}
+                  href={"#/session/" + item.id}
+                  onOpen={() => setDrawerOpen(false)}
+                  onDelete={() => void removeSession(item.id)}
+                />
               ))}
             </div>
           </aside>
@@ -478,52 +502,180 @@ export default function ChatPage({ auth, sessionId }: { auth: Auth; sessionId?: 
   );
 }
 
-/** 左滑露出一条删除，滑过一半直接删。参考 ReactBits 的 Swipe Row。 */
-function SwipeRow({ children, onDelete }: { children: React.ReactNode; onDelete: () => void }) {
-  const [offset, setOffset] = useState(0);
-  const startX = useRef<number | null>(null);
+/// 粒子方块的位置和节奏定死，避免每次渲染都跳一下
+const PARTICLES = [
+  { left: 6, top: 58, size: 10, delay: 0, duration: 11 },
+  { left: 18, top: 74, size: 6, delay: 1.6, duration: 13 },
+  { left: 27, top: 63, size: 14, delay: 3.1, duration: 15 },
+  { left: 38, top: 84, size: 8, delay: 0.7, duration: 12 },
+  { left: 47, top: 69, size: 5, delay: 2.4, duration: 14 },
+  { left: 56, top: 88, size: 12, delay: 4.2, duration: 16 },
+  { left: 66, top: 61, size: 7, delay: 1.1, duration: 12.5 },
+  { left: 74, top: 79, size: 16, delay: 2.9, duration: 17 },
+  { left: 83, top: 66, size: 6, delay: 0.4, duration: 13.5 },
+  { left: 91, top: 86, size: 9, delay: 3.6, duration: 15.5 },
+  { left: 12, top: 92, size: 5, delay: 4.8, duration: 14.5 },
+  { left: 42, top: 55, size: 4, delay: 5.4, duration: 11.5 },
+  { left: 62, top: 95, size: 7, delay: 2.1, duration: 13 },
+  { left: 87, top: 57, size: 5, delay: 5.9, duration: 16.5 }
+];
 
-  function onDown(event: React.PointerEvent) {
-    startX.current = event.clientX;
+/**
+ * 一条历史对话。
+ *
+ * 删除有两个入口，都不摆常驻按钮：
+ * - 长按：在条目上方浮出一个小气泡，点「删除」
+ * - 左右滑：像推拉门一样把条目推开，露出后面的删除
+ */
+function SwipeRow({
+  active,
+  title,
+  time,
+  href,
+  onOpen,
+  onDelete
+}: {
+  active: boolean;
+  title: string;
+  time: string;
+  href: string;
+  onOpen: () => void;
+  onDelete: () => void;
+}) {
+  const [offset, setOffset] = useState(0);
+  const [anchor, setAnchor] = useState<{ top: number; left: number } | null>(null);
+  const [dragging, setDragging] = useState(false);
+
+  const startX = useRef<number | null>(null);
+  const longPress = useRef<number | null>(null);
+  const moved = useRef(false);
+
+  function clearLongPress() {
+    if (longPress.current) {
+      window.clearTimeout(longPress.current);
+      longPress.current = null;
+    }
   }
 
-  function onMove(event: React.PointerEvent) {
+  function onDown(event: React.PointerEvent<HTMLAnchorElement>) {
+    const element = event.currentTarget;
+
+    startX.current = event.clientX;
+    moved.current = false;
+    setDragging(true);
+
+    longPress.current = window.setTimeout(() => {
+      longPress.current = null;
+      if (moved.current) return;
+
+      const rect = element.getBoundingClientRect();
+      setAnchor({ top: rect.top, left: rect.left + rect.width / 2 });
+    }, 420);
+  }
+
+  function onMove(event: React.PointerEvent<HTMLAnchorElement>) {
     if (startX.current === null) return;
 
-    const delta = Math.min(0, event.clientX - startX.current);
-    if (delta < 0) setOffset(Math.max(delta, -96));
+    const delta = event.clientX - startX.current;
+    if (Math.abs(delta) > 8) {
+      moved.current = true;
+      clearLongPress();
+    }
+
+    setOffset(Math.max(-88, Math.min(88, delta)));
   }
 
   function onUp() {
+    clearLongPress();
+    setDragging(false);
+
     if (startX.current === null) return;
     startX.current = null;
 
-    if (offset < -56) {
-      setOffset(-96);
+    // 推开得够远才停住，否则弹回去
+    if (Math.abs(offset) > 52) {
+      setOffset(offset < 0 ? -88 : 88);
       return;
     }
 
     setOffset(0);
   }
 
+  function closeAll() {
+    setOffset(0);
+    setAnchor(null);
+  }
+
+  // 气泡挂在 body 上，这样不会被抽屉的滚动容器裁掉
+  const bubble = anchor
+    ? createPortal(
+        <>
+          <div className="bubble-backdrop" onClick={closeAll} />
+          <div
+            className="delete-bubble"
+            role="menu"
+            style={{ top: anchor.top - 6, left: anchor.left }}
+          >
+            <button
+              onClick={() => {
+                closeAll();
+                onDelete();
+              }}
+            >
+              删除对话
+            </button>
+            <button className="cancel" onClick={closeAll}>
+              取消
+            </button>
+          </div>
+        </>,
+        document.body
+      )
+    : null;
+
   return (
-    <div className="drawer-row">
-      <button className="swipe-delete" onClick={onDelete} aria-label="删除对话">
+    <div className={anchor ? "drawer-row lifted" : "drawer-row"}>
+      <button
+        className="swipe-delete"
+        onClick={() => {
+          closeAll();
+          onDelete();
+        }}
+      >
         删除
       </button>
 
-      <div
+      {bubble}
+
+      <a
+        className={active ? "drawer-item active" : "drawer-item"}
+        href={href}
+        draggable={false}
         style={{
           transform: "translateX(" + offset + "px)",
-          transition: startX.current === null ? "transform 0.22s cubic-bezier(0.34,1.56,0.64,1)" : "none"
+          transition: dragging
+            ? "none"
+            : "transform 0.34s cubic-bezier(0.34,1.56,0.64,1)"
         }}
         onPointerDown={onDown}
         onPointerMove={onMove}
         onPointerUp={onUp}
         onPointerCancel={onUp}
+        onClick={(event) => {
+          // 长按、滑动都不该顺带跳转
+          if (anchor || moved.current || offset !== 0) {
+            event.preventDefault();
+            if (offset !== 0 && !anchor) closeAll();
+            return;
+          }
+
+          onOpen();
+        }}
+        onContextMenu={(event) => event.preventDefault()}
       >
-        {children}
-      </div>
+        <span className="drawer-title">{title}</span>
+        <span className="drawer-time">{time}</span>
+      </a>
     </div>
   );
 }
