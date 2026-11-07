@@ -73,10 +73,7 @@ pub fn router(state: AppState) -> Router {
             get(assets::download_link),
         )
         .route("/api/v1/assets", get(assets::list))
-        .route(
-            "/api/v1/storage/batch-delete",
-            post(assets::batch_delete),
-        )
+        .route("/api/v1/storage/batch-delete", post(assets::batch_delete))
         .route(
             "/api/v1/assets/{id}",
             get(assets::detail).delete(assets::delete),
