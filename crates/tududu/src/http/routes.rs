@@ -73,6 +73,7 @@ pub fn router(state: AppState) -> Router {
             get(assets::download_link),
         )
         .route("/api/v1/assets", get(assets::list))
+        .route("/api/v1/storage/batch-delete", post(assets::batch_delete))
         .route(
             "/api/v1/assets/{id}",
             get(assets::detail).delete(assets::delete),
@@ -118,6 +119,10 @@ pub fn router(state: AppState) -> Router {
             get(plaza::detail).delete(plaza::unpublish),
         )
         .route("/api/v1/prompts/{code}/like", post(plaza::like))
+        .route(
+            "/api/v1/prompts/{code}/permanent",
+            axum::routing::delete(plaza::purge),
+        )
         .route(
             "/api/v1/admin/providers",
             get(admin::list_providers).post(admin::create_provider),

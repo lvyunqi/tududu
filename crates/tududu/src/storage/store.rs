@@ -109,6 +109,24 @@ pub async fn used_bytes(db: &PgPool, owner: Uuid) -> sqlx::Result<i64> {
     .await
 }
 
+/// 批量移入回收站，返回实际改动条数。
+pub async fn soft_delete_many(db: &PgPool, ids: &[Uuid], owner: Uuid) -> sqlx::Result<u64> {
+    if ids.is_empty() {
+        return Ok(0);
+    }
+
+    let result = sqlx::query(
+        "UPDATE assets SET status = 2, trashed_at = now() \
+          WHERE id = ANY($1) AND owner_user_id = $2 AND status = 1",
+    )
+    .bind(ids.to_vec())
+    .bind(owner)
+    .execute(db)
+    .await?;
+
+    Ok(result.rows_affected())
+}
+
 pub async fn soft_delete(db: &PgPool, id: Uuid, owner: Uuid) -> sqlx::Result<bool> {
     let result = sqlx::query(
         "UPDATE assets SET status = 2, trashed_at = now() WHERE id = $1 AND owner_user_id = $2 AND status = 1",

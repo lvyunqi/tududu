@@ -55,6 +55,11 @@ export default function App() {
   const activeTab: TabKey =
     route.kind === "tab" ? route.tab : route.kind === "recharge" ? "me" : "create";
 
+  // 对话页在「新建」和「某个会话」之间切换时必须占同一个节点，
+  // 否则 React 会把它卸载重建，刚发出的消息和生成动画会丢。
+  const inChat = (route.kind === "tab" && route.tab === "create") || route.kind === "session";
+  const chatSessionId = route.kind === "session" ? route.id : undefined;
+
   return (
     <div className="shell">
       <header className="topbar">
@@ -65,14 +70,11 @@ export default function App() {
       </header>
 
       <main className="content">
-        {route.kind === "tab" && route.tab === "create" && <ChatPage auth={auth} />}
+        {inChat && <ChatPage auth={auth} sessionId={chatSessionId} />}
         {route.kind === "tab" && route.tab === "plaza" && <PlazaPage />}
         {route.kind === "tab" && route.tab === "gallery" && <GalleryPage />}
         {route.kind === "tab" && route.tab === "me" && <MePage auth={auth} />}
         {route.kind === "recharge" && <RechargePage auth={auth} />}
-        {route.kind === "session" && (
-          <ChatPage key={route.id} auth={auth} sessionId={route.id} />
-        )}
       </main>
 
       <nav className="tabbar">

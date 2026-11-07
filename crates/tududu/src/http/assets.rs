@@ -200,6 +200,37 @@ pub struct DownloadLink {
     pub expires_at: i64,
 }
 
+#[derive(Debug, Deserialize)]
+pub struct BatchDeleteRequest {
+    pub ids: Vec<Uuid>,
+}
+
+/// 批量移入回收站。相册多选删除用。
+pub async fn batch_delete(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Json(req): Json<BatchDeleteRequest>,
+) -> Result<Json<ApiBody<BatchDeleteResult>>, ApiError> {
+    let current = require_user(&state, &headers).await?;
+
+    if req.ids.is_empty() {
+        return Err(ApiError::bad_request("没有选中图片"));
+    }
+
+    if req.ids.len() > 200 {
+        return Err(ApiError::bad_request("一次最多删 200 张"));
+    }
+
+    let removed = asset_store::soft_delete_many(&state.db, &req.ids, current.user_id).await?;
+
+    Ok(Json(ApiBody::ok(BatchDeleteResult { removed })))
+}
+
+#[derive(Debug, serde::Serialize)]
+pub struct BatchDeleteResult {
+    pub removed: u64,
+}
+
 pub async fn delete(
     State(state): State<AppState>,
     headers: HeaderMap,

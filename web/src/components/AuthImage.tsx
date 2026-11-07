@@ -45,5 +45,5 @@ export default function AuthImage({
   }, [assetId, variant]);
 
   if (!url) return <div className="thumb placeholder" />;
-  return <img className="thumb" alt={alt} src={url} />;
+  return <img className="thumb" alt={alt} src={url} loading="lazy" decoding="async" />;
 }

@@ -88,6 +88,9 @@ curl http://127.0.0.1:8080/api/v1/health
 | GET | `/api/v1/assets/{id}/file` | 取图片原始字节，加 `?size=thumb` 取缩略图；带 `e`/`t` 走签名校验 |
 | GET | `/api/v1/assets/{id}/download-link` | 生成十分钟有效的下载直链，给系统浏览器用 |
 | DELETE | `/api/v1/assets/{id}` | 移入回收站，默认保留 30 天后清理 |
+| POST | `/api/v1/storage/batch-delete` | 批量移入回收站，一次最多 200 张 |
+| DELETE | `/api/v1/prompts/{code}` | 作者下架自己的作品（从广场隐藏） |
+| DELETE | `/api/v1/prompts/{code}/permanent` | 作者彻底删除自己的作品 |
 | GET | `/api/v1/storage/quota` | 当前占用与上限 |
 | POST | `/api/v1/jobs` | 提交修图任务，立即返回任务号，上游调用在后台执行 |
 | GET | `/api/v1/jobs/{id}` | 查询任务状态与结果图 |
