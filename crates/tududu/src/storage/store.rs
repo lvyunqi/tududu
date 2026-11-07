@@ -11,6 +11,8 @@ pub struct AssetRow {
     pub object_key: String,
     #[serde(skip)]
     pub thumb_key: Option<String>,
+    #[serde(skip)]
+    pub preview_key: Option<String>,
     pub mime: String,
     pub byte_size: i64,
     pub sha256: String,
@@ -19,8 +21,8 @@ pub struct AssetRow {
     pub created_at: DateTime<Utc>,
 }
 
-const ASSET_COLUMNS: &str =
-    "id, owner_user_id, object_key, thumb_key, mime, byte_size, sha256, source, status, created_at";
+const ASSET_COLUMNS: &str = "id, owner_user_id, object_key, thumb_key, preview_key, mime, \
+     byte_size, sha256, source, status, created_at";
 
 pub async fn find_by_sha(db: &PgPool, owner: Uuid, sha256: &str) -> sqlx::Result<Option<AssetRow>> {
     let sql = format!(
@@ -58,6 +60,7 @@ pub struct NewAsset<'a> {
     pub owner_user_id: Uuid,
     pub object_key: &'a str,
     pub thumb_key: Option<&'a str>,
+    pub preview_key: Option<&'a str>,
     pub mime: &'a str,
     pub byte_size: i64,
     pub sha256: &'a str,
@@ -66,13 +69,14 @@ pub struct NewAsset<'a> {
 
 pub async fn insert(db: &PgPool, item: &NewAsset<'_>) -> sqlx::Result<AssetRow> {
     let sql = format!(
-        "INSERT INTO assets (owner_user_id, object_key, thumb_key, mime, byte_size, sha256, source) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING {ASSET_COLUMNS}"
+        "INSERT INTO assets (owner_user_id, object_key, thumb_key, preview_key, mime, byte_size, sha256, source) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING {ASSET_COLUMNS}"
     );
 
     sqlx::query_as::<_, AssetRow>(&sql)
         .bind(item.owner_user_id)
         .bind(item.object_key)
         .bind(item.thumb_key)
+        .bind(item.preview_key)
         .bind(item.mime)
         .bind(item.byte_size)
         .bind(item.sha256)
@@ -107,6 +111,17 @@ pub async fn used_bytes(db: &PgPool, owner: Uuid) -> sqlx::Result<i64> {
     .bind(owner)
     .fetch_one(db)
     .await
+}
+
+/// 预览图是懒生成的：第一次请求时生成并回写，之后直接读缓存文件。
+pub async fn set_preview_key(db: &PgPool, id: Uuid, key: &str) -> sqlx::Result<()> {
+    sqlx::query("UPDATE assets SET preview_key = $2 WHERE id = $1")
+        .bind(id)
+        .bind(key)
+        .execute(db)
+        .await?;
+
+    Ok(())
 }
 
 /// 批量移入回收站，返回实际改动条数。

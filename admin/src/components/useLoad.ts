@@ -25,5 +25,6 @@ export function useLoad<T>(loader: () => Promise<T>, deps: unknown[] = []) {
     void reload();
   }, [reload]);
 
-  return { data, error, loading, reload };
+  // 已经有数据时不再把页面切成「加载中」，刷新时保持旧内容，视觉上更稳
+  return { data, error, loading: loading && data === null, reload };
 }

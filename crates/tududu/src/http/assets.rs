@@ -159,18 +159,72 @@ pub async fn file(
     }
     .ok_or_else(|| ApiError::not_found("图片不存在"))?;
 
-    let want_thumb = query.size.as_deref() == Some("thumb");
-    let (key, mime) = match (want_thumb, asset.thumb_key.as_deref()) {
-        (true, Some(thumb)) => (thumb, "image/jpeg"),
-        _ => (asset.object_key.as_str(), asset.mime.as_str()),
+    // 三种尺寸：thumb 列表用、preview 点开看、其余（含下载）给原图
+    let (key, mime, derived) = match query.size.as_deref() {
+        Some("thumb") => match asset.thumb_key.as_deref() {
+            Some(thumb) => (thumb.to_owned(), "image/jpeg", true),
+            None => (asset.object_key.clone(), asset.mime.as_str(), false),
+        },
+        Some("preview") => match asset.preview_key.as_deref() {
+            Some(preview) => (preview.to_owned(), "image/jpeg", true),
+            // 老图没有预览图，第一次访问时补生成，之后就走缓存
+            None => match build_preview(&state, &asset).await {
+                Some(key) => (key, "image/jpeg", true),
+                None => (asset.object_key.clone(), asset.mime.as_str(), false),
+            },
+        },
+        _ => (asset.object_key.clone(), asset.mime.as_str(), false),
     };
 
-    let bytes = state.files.read(key).await.map_err(|err| {
-        tracing::error!(error = %err, key = %key, "读取本地文件失败");
-        ApiError::not_found("图片文件已丢失")
-    })?;
+    let bytes = match state.files.read(&key).await {
+        Ok(bytes) => bytes,
+        Err(err) if derived => {
+            // 派生图丢了就退回原图，别让页面空着
+            tracing::warn!(error = %err, key = %key, "读取派生图失败，回退原图");
+            state.files.read(&asset.object_key).await.map_err(|err| {
+                tracing::error!(error = %err, key = %asset.object_key, "读取本地文件失败");
+                ApiError::not_found("图片文件已丢失")
+            })?
+        }
+        Err(err) => {
+            tracing::error!(error = %err, key = %key, "读取本地文件失败");
+            return Err(ApiError::not_found("图片文件已丢失"));
+        }
+    };
 
-    Ok(([(header::CONTENT_TYPE, mime)], bytes).into_response())
+    // 图片按 id 寻址，内容不会变，让浏览器放心缓存
+    let cache = if derived { "private, max-age=86400" } else { "private, max-age=3600" };
+
+    Ok((
+        [(header::CONTENT_TYPE, mime), (header::CACHE_CONTROL, cache)],
+        bytes,
+    )
+        .into_response())
+}
+
+/// 老资产没有预览图时按需生成，回写路径后复用。
+async fn build_preview(state: &AppState, asset: &asset_store::AssetRow) -> Option<String> {
+    let original = match state.files.read(&asset.object_key).await {
+        Ok(bytes) => bytes,
+        Err(err) => {
+            tracing::warn!(error = %err, key = %asset.object_key, "读取原图失败，无法生成预览");
+            return None;
+        }
+    };
+
+    let preview = crate::storage::thumb::make_preview(&original)?;
+    let key = format!("{}.preview.jpg", asset.object_key);
+
+    if let Err(err) = state.files.save(&key, &preview).await {
+        tracing::warn!(error = %err, key = %key, "写入预览图失败");
+        return None;
+    }
+
+    if let Err(err) = asset_store::set_preview_key(&state.db, asset.id, &key).await {
+        tracing::warn!(error = %err, id = %asset.id, "回写预览图路径失败");
+    }
+
+    Some(key)
 }
 
 /// 生成一个短时有效的下载直链，交给系统浏览器打开。

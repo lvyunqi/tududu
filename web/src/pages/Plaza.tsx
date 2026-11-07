@@ -48,6 +48,12 @@ export default function PlazaPage() {
     };
   }, [active, submitted]);
 
+  /// 把提示词带进新对话，用户直接改两句就能用。
+  function useThis(promptText: string) {
+    localStorage.setItem("tududu.pendingPrompt", promptText);
+    window.location.hash = "#/";
+  }
+
   return (
     <div className="page">
       <h2>提示词广场</h2>
@@ -100,9 +106,16 @@ export default function PlazaPage() {
 
             <h3>{item.title}</h3>
             <p className="prompt">{item.prompt_text}</p>
-            <p className="hint">
-              {item.model} · 赞 {item.like_count} · 看 {item.view_count}
-            </p>
+
+            <div className="plaza-actions">
+              <span className="hint">
+                {item.model} · 赞 {item.like_count} · 看 {item.view_count}
+              </span>
+
+              <button className="chip accent-chip" onClick={() => useThis(item.prompt_text)}>
+                做同款
+              </button>
+            </div>
           </article>
         ))}
       </div>
