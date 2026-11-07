@@ -5,6 +5,11 @@ import Lightbox from "../components/Lightbox";
 import { request } from "../lib/api";
 import type { PromptCategory, PromptItem } from "../lib/types";
 
+interface LikeResult {
+  liked: boolean;
+  like_count: number;
+}
+
 export default function PlazaPage() {
   const [items, setItems] = useState<PromptItem[]>([]);
   const [categories, setCategories] = useState<PromptCategory[]>([]);
@@ -13,6 +18,8 @@ export default function PlazaPage() {
   const [submitted, setSubmitted] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [viewing, setViewing] = useState<PromptItem | null>(null);
+  const [liked, setLiked] = useState<Record<string, boolean>>({});
+  const [bump, setBump] = useState<string | null>(null);
 
   useEffect(() => {
     void request<PromptCategory[]>("/api/v1/prompt-categories", { auth: false })
@@ -48,15 +55,38 @@ export default function PlazaPage() {
     };
   }, [active, submitted]);
 
-  /// 把提示词带进新对话，用户直接改两句就能用。
+  /// 做同款：把提示词带进新对话
   function useThis(promptText: string) {
     localStorage.setItem("tududu.pendingPrompt", promptText);
     window.location.hash = "#/";
   }
 
+  async function toggleLike(item: PromptItem) {
+    setBump(item.short_code);
+
+    try {
+      const result = await request<LikeResult>("/api/v1/prompts/" + item.short_code + "/like", {
+        method: "POST"
+      });
+
+      setLiked((prev) => ({ ...prev, [item.short_code]: result.liked }));
+      setItems((prev) =>
+        prev.map((row) =>
+          row.short_code === item.short_code ? { ...row, like_count: result.like_count } : row
+        )
+      );
+    } catch {
+      // 没登录时点赞会失败，静默忽略
+    } finally {
+      window.setTimeout(() => setBump(null), 420);
+    }
+  }
+
   return (
     <div className="page">
-      <h2>提示词广场</h2>
+      <header className="page-head">
+        <h2>广场</h2>
+      </header>
 
       <form
         className="search"
@@ -89,32 +119,49 @@ export default function PlazaPage() {
       </div>
 
       {error && <p className="error">{error}</p>}
-      {items.length === 0 && !error && <p className="hint">还没有作品</p>}
+      {items.length === 0 && !error && <p className="hint">没有找到作品</p>}
 
-      <div className="list">
-        {items.map((item) => (
-          <article key={item.id} className="card">
+      <div className="plaza-list">
+        {items.map((item, index) => (
+          <article
+            key={item.id}
+            className="plaza-card"
+            style={{ animationDelay: Math.min(index * 40, 480) + "ms" }}
+          >
             {item.cover_asset_id && (
               <button
-                className="image-tap"
+                className="plaza-cover"
                 onClick={() => setViewing(item)}
                 aria-label="查看作品"
               >
                 <AuthImage assetId={item.cover_asset_id} alt={item.title} variant="thumb" />
+
+                <span className="plaza-badge">{item.model}</span>
               </button>
             )}
 
-            <h3>{item.title}</h3>
-            <p className="prompt">{item.prompt_text}</p>
+            <div className="plaza-body">
+              <h3>{item.title}</h3>
+              <p className="prompt">{item.prompt_text}</p>
 
-            <div className="plaza-actions">
-              <span className="hint">
-                {item.model} · 赞 {item.like_count} · 看 {item.view_count}
-              </span>
+              <div className="plaza-actions">
+                <button
+                  className={liked[item.short_code] ? "like on" : "like"}
+                  onClick={() => void toggleLike(item)}
+                  aria-label="点赞"
+                >
+                  <span className={bump === item.short_code ? "heart pop" : "heart"}>♥</span>
+                  {item.like_count}
+                </button>
 
-              <button className="chip accent-chip" onClick={() => useThis(item.prompt_text)}>
-                做同款
-              </button>
+                <span className="hint">看 {item.view_count}</span>
+
+                <span className="spacer" />
+
+                <button className="chip accent-chip" onClick={() => useThis(item.prompt_text)}>
+                  做同款
+                </button>
+              </div>
             </div>
           </article>
         ))}
