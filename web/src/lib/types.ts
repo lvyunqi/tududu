@@ -80,6 +80,8 @@ export interface PromptItem {
   title: string;
   prompt_text: string;
   model: string;
+  /** 模型别称，没差别就退回代号 */
+  model_name?: string | null;
   cover_asset_id: string | null;
   status: number;
   like_count: number;

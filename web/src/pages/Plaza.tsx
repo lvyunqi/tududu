@@ -136,7 +136,7 @@ export default function PlazaPage() {
               >
                 <AuthImage assetId={item.cover_asset_id} alt={item.title} variant="thumb" />
 
-                <span className="plaza-badge">{item.model}</span>
+                <span className="plaza-badge">{item.model_name || item.model}</span>
               </button>
             )}
 

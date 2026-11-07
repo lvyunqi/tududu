@@ -23,6 +23,9 @@ pub struct PromptRow {
     pub title: String,
     pub prompt_text: String,
     pub model: String,
+    /// 模型别称，没配就是代号。查出来给人看用。
+    #[sqlx(default)]
+    pub model_name: Option<String>,
     pub category_id: Option<i64>,
     pub cover_asset_id: Option<Uuid>,
     pub status: i16,
@@ -33,6 +36,14 @@ pub struct PromptRow {
 }
 
 const PROMPT_COLUMNS: &str = "id, short_code, author_user_id, title, prompt_text, model, category_id, cover_asset_id, status, like_count, view_count, published_at, created_at";
+
+/// 查询时顺带把模型别称带出来，没配别称就退回代号。
+/// 只用于 SELECT，INSERT 的 RETURNING 用不到。
+const PROMPT_COLUMNS_NAMED: &str = "id, short_code, author_user_id, title, prompt_text, model, \
+     COALESCE((SELECT NULLIF(m.display_name, '') FROM models m \
+                WHERE m.code = prompts.model ORDER BY m.sort_order, m.id LIMIT 1), prompts.model) \
+       AS model_name, \
+     category_id, cover_asset_id, status, like_count, view_count, published_at, created_at";
 
 pub async fn list_categories(db: &PgPool) -> sqlx::Result<Vec<CategoryRow>> {
     sqlx::query_as::<_, CategoryRow>(
@@ -74,7 +85,8 @@ pub async fn insert(db: &PgPool, item: &NewPrompt<'_>) -> sqlx::Result<PromptRow
 }
 
 pub async fn find_published(db: &PgPool, code: &str) -> sqlx::Result<Option<PromptRow>> {
-    let sql = format!("SELECT {PROMPT_COLUMNS} FROM prompts WHERE short_code = $1 AND status = 2");
+    let sql =
+        format!("SELECT {PROMPT_COLUMNS_NAMED} FROM prompts WHERE short_code = $1 AND status = 2");
 
     sqlx::query_as::<_, PromptRow>(&sql)
         .bind(code)
@@ -90,7 +102,7 @@ pub async fn list_published(
     limit: i64,
 ) -> sqlx::Result<Vec<PromptRow>> {
     let sql = format!(
-        "SELECT {PROMPT_COLUMNS} FROM prompts \
+        "SELECT {PROMPT_COLUMNS_NAMED} FROM prompts \
           WHERE status = 2 \
             AND ($1::bigint IS NULL OR category_id = $1) \
             AND ($2::text IS NULL OR title ILIKE $2 OR prompt_text ILIKE $2) \
@@ -155,7 +167,7 @@ pub async fn list_by_author(
     limit: i64,
 ) -> sqlx::Result<Vec<PromptRow>> {
     let sql = format!(
-        "SELECT {PROMPT_COLUMNS} FROM prompts WHERE author_user_id = $1 AND status <> 3 AND ($2::timestamptz IS NULL OR created_at < $2) ORDER BY created_at DESC LIMIT $3"
+        "SELECT {PROMPT_COLUMNS_NAMED} FROM prompts WHERE author_user_id = $1 AND status <> 3 AND ($2::timestamptz IS NULL OR created_at < $2) ORDER BY created_at DESC LIMIT $3"
     );
 
     sqlx::query_as::<_, PromptRow>(&sql)
@@ -260,7 +272,7 @@ pub async fn list_by_status(
     limit: i64,
 ) -> sqlx::Result<Vec<PromptRow>> {
     let sql = format!(
-        "SELECT {PROMPT_COLUMNS} FROM prompts WHERE status = $1 AND ($2::timestamptz IS NULL OR created_at < $2) ORDER BY created_at DESC LIMIT $3"
+        "SELECT {PROMPT_COLUMNS_NAMED} FROM prompts WHERE status = $1 AND ($2::timestamptz IS NULL OR created_at < $2) ORDER BY created_at DESC LIMIT $3"
     );
 
     sqlx::query_as::<_, PromptRow>(&sql)
