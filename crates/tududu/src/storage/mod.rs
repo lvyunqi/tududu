@@ -100,11 +100,7 @@ pub async fn save_generated(
 }
 
 /// 派生图写盘。生成失败只记日志，不中断入库。
-async fn save_derived(
-    files: &LocalStore,
-    key: &str,
-    produced: Option<Vec<u8>>,
-) -> Option<String> {
+async fn save_derived(files: &LocalStore, key: &str, produced: Option<Vec<u8>>) -> Option<String> {
     let data = produced?;
 
     match files.save(key, &data).await {
@@ -148,7 +144,12 @@ async fn store_asset(
     })?;
 
     // 派生图尽力而为：生成失败不影响原图入库，页面上回退到原图而已
-    let thumb_key = save_derived(files, &format!("{prefix}/{file_id}_thumb.jpg"), thumb::make(bytes)).await;
+    let thumb_key = save_derived(
+        files,
+        &format!("{prefix}/{file_id}_thumb.jpg"),
+        thumb::make(bytes),
+    )
+    .await;
     let preview_key = save_derived(
         files,
         &format!("{prefix}/{file_id}_preview.jpg"),

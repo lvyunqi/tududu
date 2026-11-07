@@ -193,7 +193,11 @@ pub async fn file(
     };
 
     // 图片按 id 寻址，内容不会变，让浏览器放心缓存
-    let cache = if derived { "private, max-age=86400" } else { "private, max-age=3600" };
+    let cache = if derived {
+        "private, max-age=86400"
+    } else {
+        "private, max-age=3600"
+    };
 
     Ok((
         [(header::CONTENT_TYPE, mime), (header::CACHE_CONTROL, cache)],
