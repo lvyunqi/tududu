@@ -137,6 +137,17 @@ pub async fn ensure_category(db: &PgPool, name: &str) -> sqlx::Result<i64> {
     Ok(id)
 }
 
+/// 作者彻底删除自己发布的作品（不是下架，真的删掉）。
+pub async fn purge_by_author(db: &PgPool, author: Uuid, short_code: &str) -> sqlx::Result<bool> {
+    let result = sqlx::query("DELETE FROM prompts WHERE short_code = $1 AND author_user_id = $2")
+        .bind(short_code)
+        .bind(author)
+        .execute(db)
+        .await?;
+
+    Ok(result.rows_affected() > 0)
+}
+
 pub async fn list_by_author(
     db: &PgPool,
     author: Uuid,

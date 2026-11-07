@@ -78,6 +78,25 @@ pub async fn like(
     Ok(Json(ApiBody::ok(result)))
 }
 
+/// 作者彻底删除自己的作品。下架只是隐藏，这个是删掉。
+pub async fn purge(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(code): Path<String>,
+) -> Result<Json<ApiBody<()>>, ApiError> {
+    let current = require_user(&state, &headers).await?;
+
+    if !plaza::store::purge_by_author(&state.db, current.user_id, &code).await? {
+        return Err(ApiError::not_found("作品不存在或不属于你"));
+    }
+
+    Ok(Json(ApiBody {
+        code: 0,
+        message: "ok".to_owned(),
+        data: None,
+    }))
+}
+
 pub async fn unpublish(
     State(state): State<AppState>,
     headers: HeaderMap,

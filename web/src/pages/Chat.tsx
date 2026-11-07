@@ -40,7 +40,10 @@ export default function ChatPage({ auth, sessionId }: { auth: Auth; sessionId?: 
   const [publishTarget, setPublishTarget] = useState<Message | null>(null);
   const [atBottom, setAtBottom] = useState(true);
   const [models, setModels] = useState<PublicModel[]>([]);
-  const [model, setModel] = useState(FALLBACK_MODEL);
+  // 记住上次选的模型，别每次进来都被重置成第一个
+  const [model, setModel] = useState(
+    () => localStorage.getItem("tududu.model") || FALLBACK_MODEL
+  );
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [viewing, setViewing] = useState<Message | null>(null);
   const [sessions, setSessions] = useState<Session[]>([]);
@@ -58,6 +61,21 @@ export default function ChatPage({ auth, sessionId }: { auth: Auth; sessionId?: 
     if (sid) void load(sid);
   }, [sid, load]);
 
+  // 路由上的会话变了（抽屉切换、新对话）时跟上，但不清空正在跑的轮询
+  useEffect(() => {
+    if (sessionId && sessionId !== sid) {
+      setDetail(null);
+      setSid(sessionId);
+      return;
+    }
+
+    // 回到「新对话」时把当前会话清掉，否则会继续显示上一个会话
+    if (!sessionId && sid) {
+      setDetail(null);
+      setSid(null);
+    }
+  }, [sessionId, sid]);
+
   // 从相册点「以这张继续改」过来时，把那张图接进输入框
   useEffect(() => {
     const pending = localStorage.getItem("tududu.pendingInput");
@@ -72,7 +90,11 @@ export default function ChatPage({ auth, sessionId }: { auth: Auth; sessionId?: 
     void request<PublicModel[]>("/api/v1/models", { auth: false })
       .then((list) => {
         setModels(list);
-        if (list.length > 0) setModel(list[0].code);
+
+        // 本地没存过选择时才用第一个兜底
+        if (list.length > 0 && !localStorage.getItem("tududu.model")) {
+          setModel(list[0].code);
+        }
       })
       .catch(() => setModels([]));
   }, []);
@@ -82,6 +104,15 @@ export default function ChatPage({ auth, sessionId }: { auth: Auth; sessionId?: 
       .then(setSessions)
       .catch(() => setSessions([]));
   }, [sid, drawerOpen]);
+
+  // 切到别的会话时，模型跟着会话走
+  useEffect(() => {
+    const saved = detail?.session.model;
+    if (!sid || !saved) return;
+
+    setModel(saved);
+    localStorage.setItem("tududu.model", saved);
+  }, [sid, detail?.session.model]);
 
   // 从别的页面切回正在跑的会话时，接着轮询，不然进度会停在那
   useEffect(() => {
@@ -297,7 +328,10 @@ export default function ChatPage({ auth, sessionId }: { auth: Auth; sessionId?: 
                 <button
                   key={item.code}
                   className={model === item.code ? "chip active" : "chip"}
-                  onClick={() => setModel(item.code)}
+                  onClick={() => {
+                    setModel(item.code);
+                    localStorage.setItem("tududu.model", item.code);
+                  }}
                   type="button"
                 >
                   {item.display_name || item.code}
@@ -458,6 +492,7 @@ function Generating({ phase, startedAt }: { phase: number; startedAt: number }) 
       <div className="gen-meta">
         <span className="gen-phase">{label}</span>
         <span className="gen-time">{elapsed.toFixed(1)}s</span>
+        <span className="gen-bar-inline" aria-hidden="true" />
       </div>
     </div>
   );
@@ -491,16 +526,8 @@ function MessageRow({
 
         {message.output_asset_id && (
           <button className="image-tap" onClick={onOpen} aria-label="查看大图">
-            <AuthImage assetId={message.output_asset_id} alt="结果图" />
+            <AuthImage assetId={message.output_asset_id} alt="结果图" variant="thumb" />
           </button>
-        )}
-
-        {!mine && !message.output_asset_id && message.status === 1 && (
-          <span className="dots">
-            <i />
-            <i />
-            <i />
-          </span>
         )}
 
         {message.status === 4 && (
