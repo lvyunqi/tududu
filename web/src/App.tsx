@@ -35,22 +35,17 @@ function parseRoute(): Route {
 }
 
 export default function App() {
+  // 所有 hook 必须在任何 return 之前，否则登录前后 hook 数量不一致会直接崩
   const auth = useAuth();
   const [route, setRoute] = useState<Route>(parseRoute);
+  const navRef = useRef<HTMLElement>(null);
+  const [pill, setPill] = useState({ left: 0, width: 0 });
 
   useEffect(() => {
     const onHash = () => setRoute(parseRoute());
     window.addEventListener("hashchange", onHash);
     return () => window.removeEventListener("hashchange", onHash);
   }, []);
-
-  if (auth.loading) {
-    return <div className="boot">正在加载…</div>;
-  }
-
-  if (!auth.user) {
-    return <LoginPage auth={auth} />;
-  }
 
   const activeTab: TabKey =
     route.kind === "tab" ? route.tab : route.kind === "recharge" ? "me" : "create";
@@ -61,16 +56,23 @@ export default function App() {
   const chatSessionId = route.kind === "session" ? route.id : undefined;
 
   // 底部导航的滑块跟着选中项滑过去，而不是整块换色
-  const navRef = useRef<HTMLElement>(null);
-  const [pill, setPill] = useState({ left: 0, width: 0 });
-
   useLayoutEffect(() => {
+    if (auth.loading || !auth.user) return;
+
     const nav = navRef.current;
     const active = nav?.querySelector<HTMLElement>(".tab.active");
     if (!active) return;
 
     setPill({ left: active.offsetLeft, width: active.offsetWidth });
-  }, [activeTab, auth.user]);
+  }, [activeTab, auth.user, auth.loading]);
+
+  if (auth.loading) {
+    return <div className="boot">正在加载…</div>;
+  }
+
+  if (!auth.user) {
+    return <LoginPage auth={auth} />;
+  }
 
   return (
     <div className="shell">

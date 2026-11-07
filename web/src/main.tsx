@@ -2,6 +2,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
 import App from "./App";
+import ErrorBoundary from "./components/ErrorBoundary";
 import "./styles.css";
 
 // Android 的 WebView 对 safe-area-inset 支持不一致，很多机型直接给 0。
@@ -20,6 +21,8 @@ if (!container) {
 
 createRoot(container).render(
   <StrictMode>
-    <App />
+    <ErrorBoundary>
+      <App />
+    </ErrorBoundary>
   </StrictMode>
 );

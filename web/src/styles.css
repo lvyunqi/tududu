@@ -2082,3 +2082,29 @@ button:not(.ghost):not(.link):not(.danger):not(.mini):not(.chip):not(.lamp):acti
   60% { transform: scale(0.92); }
   100% { transform: scale(1); }
 }
+
+/* 渲染出错时的兜底页 */
+.crash {
+  position: relative;
+  z-index: 1;
+  max-width: 420px;
+  margin: 0 auto;
+  padding: 72px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  animation: rise 0.4s var(--smooth) both;
+}
+
+.crash h1 {
+  margin: 0;
+  font-size: 22px;
+  letter-spacing: -0.02em;
+}
+
+.crash-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 8px;
+}
