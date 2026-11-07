@@ -195,13 +195,16 @@ pub struct AdminModelRow {
     pub code: String,
     pub display_name: String,
     pub enabled: bool,
+    pub sort_order: i32,
+    pub remark: String,
 }
 
 pub async fn list_all_models(db: &PgPool) -> sqlx::Result<Vec<AdminModelRow>> {
     sqlx::query_as::<_, AdminModelRow>(
-        "SELECT m.id, m.provider_id, p.name AS provider_name, m.code, m.display_name, m.enabled \
+        "SELECT m.id, m.provider_id, p.name AS provider_name, m.code, m.display_name, \
+                m.enabled, m.sort_order, m.remark \
            FROM models m JOIN providers p ON p.id = m.provider_id \
-          ORDER BY p.name, m.code",
+          ORDER BY p.name, m.sort_order, m.code",
     )
     .fetch_all(db)
     .await
@@ -229,6 +232,39 @@ pub async fn set_model_enabled(db: &PgPool, id: Uuid, enabled: bool) -> sqlx::Re
     let result = sqlx::query("UPDATE models SET enabled = $2 WHERE id = $1")
         .bind(id)
         .bind(enabled)
+        .execute(db)
+        .await?;
+
+    Ok(result.rows_affected() > 0)
+}
+
+/// 后台改模型的展示配置：别称、显隐、排序、备注。
+pub async fn update_model(
+    db: &PgPool,
+    id: Uuid,
+    display_name: &str,
+    enabled: bool,
+    sort_order: i32,
+    remark: &str,
+) -> sqlx::Result<bool> {
+    let result = sqlx::query(
+        "UPDATE models SET display_name = $2, enabled = $3, sort_order = $4, remark = $5 \
+          WHERE id = $1",
+    )
+    .bind(id)
+    .bind(display_name)
+    .bind(enabled)
+    .bind(sort_order)
+    .bind(remark)
+    .execute(db)
+    .await?;
+
+    Ok(result.rows_affected() > 0)
+}
+
+pub async fn delete_model(db: &PgPool, id: Uuid) -> sqlx::Result<bool> {
+    let result = sqlx::query("DELETE FROM models WHERE id = $1")
+        .bind(id)
         .execute(db)
         .await?;
 

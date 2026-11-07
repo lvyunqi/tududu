@@ -194,6 +194,85 @@ pub async fn create_model(
 }
 
 #[derive(Debug, Deserialize)]
+pub struct UpdateModelRequest {
+    /// 别称，用户端看到的名字
+    pub display_name: String,
+    pub enabled: bool,
+    #[serde(default)]
+    pub sort_order: Option<i32>,
+    #[serde(default)]
+    pub remark: Option<String>,
+}
+
+pub async fn update_model(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(id): Path<Uuid>,
+    Json(req): Json<UpdateModelRequest>,
+) -> Result<Json<ApiBody<()>>, ApiError> {
+    let operator = require_admin(&state, &headers)?;
+
+    let display = req.display_name.trim();
+    if display.is_empty() || display.len() > 120 {
+        return Err(ApiError::bad_request("别称需要 1 到 120 个字符"));
+    }
+
+    let sort_order = req.sort_order.unwrap_or(100).clamp(0, 9999);
+    let remark = req.remark.as_deref().unwrap_or_default().trim().to_owned();
+
+    if !provider::store::update_model(&state.db, id, display, req.enabled, sort_order, &remark)
+        .await?
+    {
+        return Err(ApiError::not_found("模型不存在"));
+    }
+
+    let detail = format!("name={display} enabled={} sort={sort_order}", req.enabled);
+    let _ = crate::admin::store::record_audit(
+        &state.db,
+        operator.id,
+        "model_update",
+        "model",
+        &id.to_string(),
+        &detail,
+    )
+    .await;
+
+    Ok(Json(ApiBody {
+        code: 0,
+        message: "ok".to_owned(),
+        data: None,
+    }))
+}
+
+pub async fn delete_model(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(id): Path<Uuid>,
+) -> Result<Json<ApiBody<()>>, ApiError> {
+    let operator = require_admin(&state, &headers)?;
+
+    if !provider::store::delete_model(&state.db, id).await? {
+        return Err(ApiError::not_found("模型不存在"));
+    }
+
+    let _ = crate::admin::store::record_audit(
+        &state.db,
+        operator.id,
+        "model_delete",
+        "model",
+        &id.to_string(),
+        "",
+    )
+    .await;
+
+    Ok(Json(ApiBody {
+        code: 0,
+        message: "ok".to_owned(),
+        data: None,
+    }))
+}
+
+#[derive(Debug, Deserialize)]
 pub struct ModelStatusRequest {
     pub enabled: bool,
 }

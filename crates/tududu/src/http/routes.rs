@@ -143,7 +143,12 @@ pub fn router(state: AppState) -> Router {
             "/api/v1/admin/models",
             get(admin::list_all_models).post(admin::create_model),
         )
-        .route("/api/v1/admin/models/{id}", patch(admin::set_model_status))
+        .route(
+            "/api/v1/admin/models/{id}",
+            patch(admin::set_model_status)
+                .put(admin::update_model)
+                .delete(admin::delete_model),
+        )
         .route(
             "/api/v1/admin/providers/{id}/models/refresh",
             post(admin::refresh_models),

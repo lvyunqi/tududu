@@ -175,4 +175,6 @@ export interface AdminModel {
   code: string;
   display_name: string;
   enabled: boolean;
+  sort_order: number;
+  remark: string;
 }
