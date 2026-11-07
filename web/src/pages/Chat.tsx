@@ -633,10 +633,16 @@ function SwipeRow({
       )
     : null;
 
+  const pulled = offset !== 0;
+
   return (
-    <div className={anchor ? "drawer-row lifted" : "drawer-row"}>
+    <div
+      className={[pulled ? "open" : "", anchor ? "lifted" : ""].filter(Boolean).join(" ") + " drawer-row"}
+    >
       <button
         className="swipe-delete"
+        tabIndex={pulled ? 0 : -1}
+        aria-hidden={!pulled}
         onClick={() => {
           closeAll();
           onDelete();

@@ -1448,33 +1448,16 @@ button.link {
   font-weight: 600;
 }
 
+/* 历史对话行：块级、相对定位，删除按钮垫在条目下面，默认完全不可见 */
 .drawer-row {
-  display: flex;
-  align-items: center;
-  gap: 4px;
+  position: relative;
+  display: block;
+  border-radius: 12px;
 }
 
 .drawer-row .drawer-item {
-  flex: 1;
-  min-width: 0;
-}
-
-.drawer-del {
-  flex: none;
-  width: 28px;
-  height: 28px;
-  padding: 0;
-  border-radius: 50%;
-  background: transparent;
-  border: none;
-  color: var(--ink-3);
-  font-size: 13px;
-  line-height: 1;
-}
-
-.drawer-del:active {
-  background: rgba(215, 0, 21, 0.08);
-  color: var(--danger);
+  display: flex;
+  width: 100%;
 }
 
 /* =========================================================
@@ -2356,4 +2339,27 @@ select:focus {
 
 .send-btn:not(:disabled):active {
   box-shadow: 0 1px 3px -1px rgba(0, 113, 227, 0.4);
+}
+
+/* 删除按钮：没拉开就彻底隐身，连点击都不接收 */
+.drawer-row .swipe-delete {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.18s ease;
+}
+
+.drawer-row.open .swipe-delete {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.drawer-row {
+  overflow: hidden;
+}
+
+/* 推开的条目边缘要干净，不要露出半截圆角 */
+.drawer-row .swipe-delete {
+  inset: 0 10px 0 auto;
+  width: 74px;
+  border-radius: 10px;
 }
