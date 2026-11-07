@@ -151,7 +151,9 @@ curl http://127.0.0.1:8080/api/v1/health
 | POST | `/api/v1/admin/providers/{id}/channels` | 添加密钥 |
 | GET | `/api/v1/admin/providers/{id}/models` | 已收录的模型 |
 | GET/POST | `/api/v1/admin/models` | 全部模型与手工添加 |
-| PATCH | `/api/v1/admin/models/{id}` | 启用或停用模型 |
+| PUT | `/api/v1/admin/models/{id}` | 改别称、显隐、排序、备注 |
+| DELETE | `/api/v1/admin/models/{id}` | 删除模型 |
+| PATCH | `/api/v1/admin/models/{id}` | 只切换启用状态 |
 | GET | `/api/v1/models` | 用户端可选的模型（已启用且渠道商启用） |
 | POST | `/api/v1/admin/providers/{id}/models/refresh` | 调用上游 `/models` 在线拉取并入库 |
 | GET/PUT | `/api/v1/admin/billing/prices` | 查询与批量设置价格（模型 × 尺寸 × 质量） |
