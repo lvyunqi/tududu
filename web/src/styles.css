@@ -1476,3 +1476,383 @@ button.link {
   background: rgba(215, 0, 21, 0.08);
   color: var(--danger);
 }
+
+/* =========================================================
+   动效系统：弹簧曲线 + 微交互
+   参考 amicro 的 spring preset 与 ReactBits 的 micro 组件
+   ========================================================= */
+
+:root {
+  /* 带过冲的弹簧，用于按下/回弹；不带过冲的用于位移 */
+  --spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --spring-soft: cubic-bezier(0.22, 1.2, 0.36, 1);
+  --smooth: cubic-bezier(0.32, 0.72, 0, 1);
+  --t-fast: 140ms;
+  --t-mid: 220ms;
+  --t-slow: 380ms;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes pulse-ring {
+  0% { transform: scale(0.9); opacity: 0.6; }
+  70% { transform: scale(1.35); opacity: 0; }
+  100% { transform: scale(1.35); opacity: 0; }
+}
+
+@keyframes check-in {
+  from { stroke-dashoffset: 18; }
+  to { stroke-dashoffset: 0; }
+}
+
+@keyframes pop-in {
+  0% { opacity: 0; transform: scale(0.9) translateY(6px); }
+  60% { opacity: 1; transform: scale(1.02) translateY(0); }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+/* 所有可点的东西：按下有物理反馈 */
+button,
+.chip,
+.tile,
+.tool-btn,
+.icon-btn,
+.lamp,
+.tab,
+a.button,
+.drawer-item {
+  transition:
+    transform var(--t-fast) var(--spring),
+    background-color var(--t-fast) ease,
+    border-color var(--t-fast) ease,
+    box-shadow var(--t-fast) ease,
+    color var(--t-fast) ease;
+  will-change: transform;
+}
+
+button:active:not(:disabled),
+.chip:active,
+.tool-btn:active,
+.icon-btn:active,
+.lamp:active:not(:disabled),
+a.button:active {
+  transform: scale(0.955);
+}
+
+/* 主按钮：按下压扁回弹，带一点光晕 */
+button:not(.ghost):not(.link):not(.danger):not(.mini):not(.chip):not(.lamp) {
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06), 0 10px 24px -16px rgba(0, 113, 227, 0.6);
+}
+
+button:not(.ghost):not(.link):not(.danger):not(.mini):not(.chip):not(.lamp)::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(circle at center, rgba(255, 255, 255, 0.35), transparent 60%);
+  opacity: 0;
+  transition: opacity var(--t-mid) ease;
+}
+
+button:not(.ghost):not(.link):not(.danger):not(.mini):not(.chip):not(.lamp):active::after {
+  opacity: 1;
+}
+
+/* ---------- 状态标记：环 → 弧 → 对勾 ---------- */
+
+.status-mark {
+  position: relative;
+  width: 16px;
+  height: 16px;
+  flex: none;
+  display: inline-block;
+}
+
+.status-mark .ring,
+.status-mark .arc {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 2px solid rgba(0, 113, 227, 0.22);
+}
+
+.status-mark .arc {
+  border-color: transparent;
+  border-top-color: var(--accent);
+  border-right-color: var(--accent);
+  animation: spin 0.85s linear infinite;
+  transition: opacity var(--t-mid) ease;
+}
+
+.status-mark .glow {
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  border: 2px solid rgba(0, 113, 227, 0.5);
+  animation: pulse-ring 1.6s ease-out infinite;
+}
+
+.status-mark svg {
+  position: absolute;
+  inset: 0;
+  width: 16px;
+  height: 16px;
+}
+
+.status-mark .check {
+  fill: none;
+  stroke: var(--ok);
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 18;
+  animation: check-in 0.32s var(--smooth) both;
+}
+
+.status-mark.done .ring {
+  border-color: rgba(18, 168, 121, 0.35);
+}
+
+.status-mark.done .arc,
+.status-mark.done .glow {
+  opacity: 0;
+  animation: none;
+}
+
+/* ---------- 生成中的状态行 ---------- */
+
+.gen-line {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 2px 0;
+  animation: fade-in var(--t-mid) ease both;
+}
+
+.gen-line .label {
+  font-size: 13px;
+  color: var(--ink);
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+
+.gen-line .elapsed {
+  font-size: 12px;
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.gen-line .fuse {
+  flex: 1;
+  height: 2px;
+  border-radius: 2px;
+  background: rgba(0, 0, 0, 0.06);
+  overflow: hidden;
+  position: relative;
+}
+
+.gen-line .fuse::after {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 32%;
+  background: var(--accent);
+  animation: slide-bar 1.5s ease-in-out infinite;
+}
+
+/* ---------- 输入框：更有质感 ---------- */
+
+.composer-inner {
+  position: relative;
+  background: linear-gradient(180deg, #ffffff, #fcfdff);
+  border: 1px solid rgba(0, 0, 0, 0.07);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.9) inset,
+    0 2px 6px rgba(16, 24, 40, 0.04),
+    0 18px 40px -28px rgba(16, 24, 40, 0.5);
+  transition:
+    border-color var(--t-mid) ease,
+    box-shadow var(--t-mid) ease,
+    transform var(--t-mid) var(--spring);
+}
+
+.composer-inner:focus-within {
+  transform: translateY(-1px);
+  border-color: rgba(0, 113, 227, 0.35);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.9) inset,
+    0 0 0 4px rgba(0, 113, 227, 0.1),
+    0 24px 48px -30px rgba(16, 24, 40, 0.6);
+}
+
+/* 发送按钮：拉弓——按下沉、松开弹回 */
+.send-btn {
+  transition:
+    transform var(--t-fast) var(--spring),
+    background-color var(--t-fast) ease,
+    box-shadow var(--t-fast) ease;
+}
+
+.send-btn:not(:disabled):active {
+  transform: scale(0.86) translateY(1px);
+}
+
+.send-btn:not(:disabled) {
+  box-shadow: 0 6px 16px -8px rgba(0, 113, 227, 0.8);
+}
+
+/* 模型胶囊：选中的鼓起来，旁边的让开 */
+.model-row .chip {
+  transition:
+    transform var(--t-mid) var(--spring),
+    background-color var(--t-fast) ease,
+    color var(--t-fast) ease,
+    border-color var(--t-fast) ease;
+}
+
+.model-row .chip.active {
+  transform: scale(1.06);
+}
+
+.model-row .chip:active {
+  transform: scale(0.94);
+}
+
+/* ---------- 消息入场 ---------- */
+
+.msg {
+  animation-duration: var(--t-slow);
+  animation-timing-function: var(--spring-soft);
+}
+
+.msg.user {
+  animation-name: pop-in;
+}
+
+.msg.bot {
+  animation-name: pop-in;
+}
+
+/* ---------- 底部导航：滑块跟随 ---------- */
+
+.tabbar {
+  position: fixed;
+}
+
+.tab-indicator {
+  position: absolute;
+  top: 5px;
+  bottom: calc(5px + var(--safe-bottom));
+  border-radius: 12px;
+  background: rgba(0, 113, 227, 0.1);
+  transition:
+    left var(--t-slow) var(--spring),
+    width var(--t-slow) var(--spring);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.tab {
+  position: relative;
+  z-index: 1;
+}
+
+.tab.active {
+  background: transparent;
+}
+
+/* ---------- 抽屉：滑动删除 ---------- */
+
+.drawer-row {
+  position: relative;
+  overflow: hidden;
+  border-radius: 12px;
+}
+
+.drawer-row .swipe-delete {
+  position: absolute;
+  inset: 0 0 0 auto;
+  width: 72px;
+  display: grid;
+  place-items: center;
+  background: var(--danger);
+  color: #fff;
+  font-size: 12px;
+  border-radius: 12px;
+}
+
+.drawer-row .drawer-item {
+  position: relative;
+  background: var(--surface);
+  z-index: 1;
+  touch-action: pan-y;
+}
+
+/* ---------- 提示条：带引信 ---------- */
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(96px + var(--safe-bottom));
+  transform: translateX(-50%);
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  border-radius: 999px;
+  background: rgba(29, 29, 31, 0.92);
+  color: #fff;
+  font-size: 13px;
+  box-shadow: 0 18px 40px -24px rgba(0, 0, 0, 0.8);
+  animation: pop-in var(--t-mid) var(--spring) both;
+  backdrop-filter: blur(10px);
+}
+
+.toast .fuse {
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  bottom: 4px;
+  height: 2px;
+  border-radius: 2px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.toast .fuse::after {
+  content: "";
+  display: block;
+  height: 100%;
+  background: #fff;
+  transform-origin: left center;
+  animation: fuse-burn 2.6s linear forwards;
+}
+
+@keyframes fuse-burn {
+  from { transform: scaleX(1); }
+  to { transform: scaleX(0); }
+}
+
+/* ---------- 图片：入场更柔 ---------- */
+
+.lightbox-stage img {
+  animation: pop-in var(--t-slow) var(--spring-soft) both;
+}
+
+.tile .thumb {
+  transition: transform var(--t-mid) var(--spring);
+}
+
+.tile:active .thumb {
+  transform: scale(1.04);
+}
+
+/* 灯箱里不再用文字提示，改由统一的 toast 承担 */
+.lightbox-tip {
+  display: none;
+}

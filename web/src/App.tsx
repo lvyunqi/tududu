@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
 import { useAuth } from "./lib/store";
 import ChatPage from "./pages/Chat";
@@ -60,6 +60,18 @@ export default function App() {
   const inChat = (route.kind === "tab" && route.tab === "create") || route.kind === "session";
   const chatSessionId = route.kind === "session" ? route.id : undefined;
 
+  // 底部导航的滑块跟着选中项滑过去，而不是整块换色
+  const navRef = useRef<HTMLElement>(null);
+  const [pill, setPill] = useState({ left: 0, width: 0 });
+
+  useLayoutEffect(() => {
+    const nav = navRef.current;
+    const active = nav?.querySelector<HTMLElement>(".tab.active");
+    if (!active) return;
+
+    setPill({ left: active.offsetLeft, width: active.offsetWidth });
+  }, [activeTab, auth.user]);
+
   return (
     <div className="shell">
       <header className="topbar">
@@ -77,7 +89,13 @@ export default function App() {
         {route.kind === "recharge" && <RechargePage auth={auth} />}
       </main>
 
-      <nav className="tabbar">
+      <nav className="tabbar" ref={navRef}>
+        <span
+          className="tab-indicator"
+          style={{ left: pill.left, width: pill.width }}
+          aria-hidden="true"
+        />
+
         {TABS.map((item) => (
           <a
             key={item.key}

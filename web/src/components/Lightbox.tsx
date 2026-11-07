@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 
+import Toast from "./Toast";
 import { BASE, request, requestBlob } from "../lib/api";
 
 interface DownloadLink {
@@ -115,7 +116,7 @@ export default function Lightbox({
           {error && <p className="hint">{error}</p>}
         </div>
 
-        {tip && <p className="lightbox-tip">{tip}</p>}
+        {tip && <Toast text={tip} onDone={() => setTip(null)} />}
 
         <div className="lightbox-actions">
           <button className="lamp" onClick={onClose} aria-label="关闭">

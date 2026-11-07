@@ -459,7 +459,7 @@ export default function ChatPage({ auth, sessionId }: { auth: Auth; sessionId?: 
               {sessions.length === 0 && <p className="hint">还没有对话</p>}
 
               {sessions.map((item) => (
-                <div key={item.id} className="drawer-row">
+                <SwipeRow key={item.id} onDelete={() => void removeSession(item.id)}>
                   <a
                     className={item.id === sid ? "drawer-item active" : "drawer-item"}
                     href={"#/session/" + item.id}
@@ -468,20 +468,62 @@ export default function ChatPage({ auth, sessionId }: { auth: Auth; sessionId?: 
                     <span className="drawer-title">{item.title || "未命名对话"}</span>
                     <span className="drawer-time">{shortTime(item.last_active_at)}</span>
                   </a>
-
-                  <button
-                    className="drawer-del"
-                    aria-label="删除对话"
-                    onClick={() => void removeSession(item.id)}
-                  >
-                    ✕
-                  </button>
-                </div>
+                </SwipeRow>
               ))}
             </div>
           </aside>
         </div>
       )}
+    </div>
+  );
+}
+
+/** 左滑露出一条删除，滑过一半直接删。参考 ReactBits 的 Swipe Row。 */
+function SwipeRow({ children, onDelete }: { children: React.ReactNode; onDelete: () => void }) {
+  const [offset, setOffset] = useState(0);
+  const startX = useRef<number | null>(null);
+
+  function onDown(event: React.PointerEvent) {
+    startX.current = event.clientX;
+  }
+
+  function onMove(event: React.PointerEvent) {
+    if (startX.current === null) return;
+
+    const delta = Math.min(0, event.clientX - startX.current);
+    if (delta < 0) setOffset(Math.max(delta, -96));
+  }
+
+  function onUp() {
+    if (startX.current === null) return;
+    startX.current = null;
+
+    if (offset < -56) {
+      setOffset(-96);
+      return;
+    }
+
+    setOffset(0);
+  }
+
+  return (
+    <div className="drawer-row">
+      <button className="swipe-delete" onClick={onDelete} aria-label="删除对话">
+        删除
+      </button>
+
+      <div
+        style={{
+          transform: "translateX(" + offset + "px)",
+          transition: startX.current === null ? "transform 0.22s cubic-bezier(0.34,1.56,0.64,1)" : "none"
+        }}
+        onPointerDown={onDown}
+        onPointerMove={onMove}
+        onPointerUp={onUp}
+        onPointerCancel={onUp}
+      >
+        {children}
+      </div>
     </div>
   );
 }
@@ -499,7 +541,12 @@ function shortTime(value: string): string {
   return date.getMonth() + 1 + "月" + date.getDate() + "日";
 }
 
-/** 生成中的占位：像素格子错峰闪，配当前阶段和已用时间。 */
+/**
+ * 生成状态：一个会形变的标记，环 → 弧 → 对勾。
+ *
+ * 参考 ReactBits 的 Status Mark 与 Thought Line：
+ * 状态不该是文字加等待条，而是一个「活着」的图形，结束时收成一句结论。
+ */
 function Generating({ phase, startedAt }: { phase: number; startedAt: number }) {
   const [elapsed, setElapsed] = useState(0);
 
@@ -516,21 +563,16 @@ function Generating({ phase, startedAt }: { phase: number; startedAt: number }) 
   const label = phase === 0 ? "排队中" : phase === 1 ? "正在生成" : "收尾中";
 
   return (
-    <div className="gen">
-      <div className="pixel-grid" aria-hidden="true">
-        {Array.from({ length: 25 }).map((_, index) => (
-          <i
-            key={index}
-            style={{ animationDelay: (index % 5 + Math.floor(index / 5)) * 0.07 + "s" }}
-          />
-        ))}
-      </div>
+    <div className="gen-line">
+      <span className="status-mark">
+        <span className="glow" />
+        <span className="ring" />
+        <span className="arc" />
+      </span>
 
-      <div className="gen-meta">
-        <span className="gen-phase">{label}</span>
-        <span className="gen-time">{elapsed.toFixed(1)}s</span>
-        <span className="gen-bar-inline" aria-hidden="true" />
-      </div>
+      <span className="label">{label}</span>
+      <span className="elapsed">{elapsed.toFixed(1)}s</span>
+      <span className="fuse" aria-hidden="true" />
     </div>
   );
 }
