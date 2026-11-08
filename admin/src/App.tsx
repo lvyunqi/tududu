@@ -10,6 +10,7 @@ import PayChannelsPage from "./pages/PayChannels";
 import PromptsPage from "./pages/Prompts";
 import ProvidersPage from "./pages/Providers";
 import SettingsPage from "./pages/Settings";
+import UpdatePage from "./pages/Update";
 import UsersPage from "./pages/Users";
 
 const SECTIONS = [
@@ -22,7 +23,8 @@ const SECTIONS = [
   { key: "models", label: "模型" },
   { key: "billing", label: "计费" },
   { key: "pay", label: "支付" },
-  { key: "settings", label: "配置" }
+  { key: "settings", label: "配置" },
+  { key: "update", label: "升级" }
 ] as const;
 
 type SectionKey = (typeof SECTIONS)[number]["key"];
@@ -75,6 +77,7 @@ export default function App() {
         {section === "billing" && <BillingPage />}
         {section === "pay" && <PayChannelsPage />}
         {section === "settings" && <SettingsPage />}
+        {section === "update" && <UpdatePage />}
       </main>
     </div>
   );

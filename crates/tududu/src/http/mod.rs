@@ -1,6 +1,7 @@
 pub mod admin;
 pub mod admin_auth;
 pub mod admin_ops;
+pub mod admin_update;
 pub mod assets;
 pub mod auth;
 pub mod billing;
@@ -59,6 +60,9 @@ pub async fn serve(config: Config, db: PgPool) -> anyhow::Result<()> {
         limiter: Arc::new(crate::ratelimit::RateLimiter::new()),
         settings: Arc::new(std::sync::RwLock::new(live)),
         updates: crate::update::UpdateService::new(update_repo()),
+        upgrade: Arc::new(std::sync::Mutex::new(
+            crate::http::admin_update::PendingUpgrade::default(),
+        )),
     };
 
     let app = routes::router(state).layer(cors_layer(&cors_origins));

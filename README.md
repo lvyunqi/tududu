@@ -161,6 +161,9 @@ curl http://127.0.0.1:8080/api/v1/health
 | GET | `/api/v1/models` | 用户端可选的模型（已启用且渠道商启用） |
 | GET | `/api/v1/app/version` | 查最新版本，`platform` + `current` 两个参数，公开接口 |
 | GET | `/api/v1/app/download` | 安装包下载中转，流式转发 GitHub 的包 |
+| GET | `/api/v1/admin/update` | 后台查自己的版本与待重启状态 |
+| POST | `/api/v1/admin/update/install` | 备份并替换当前二进制，校验 SHA-256 |
+| POST | `/api/v1/admin/update/restart` | 以退出码 75 结束进程，由启动器拉起
 | POST | `/api/v1/admin/providers/{id}/models/refresh` | 调用上游 `/models` 在线拉取并入库 |
 | GET/PUT | `/api/v1/admin/billing/prices` | 查询与批量设置价格（模型 × 尺寸 × 质量） |
 | GET/PUT | `/api/v1/admin/billing/config` | 计费单位名称与每元换算数量 |
@@ -204,6 +207,10 @@ curl http://127.0.0.1:8080/api/v1/health
 
 **安卓端**：启动后 2.5 秒查一次版本，有新版就弹窗；点「立即更新」走应用内下载，
 进度实时显示，下完拉起系统安装界面；原生拉起失败时退回浏览器下载。
+
+**后台**：管理后台有「升级」页，显示当前与最新版本、更新说明，
+点「下载并安装」由服务端自己下载、校验 SHA-256、覆盖二进制，装完点「重启服务」以 75 退出交给启动器拉起。
+容器部署或程序目录不可写时该页会禁用安装并说明原因。
 
 **服务端**：`tududu update check` 看版本，`tududu update install --yes` 下载校验并替换二进制，
 替换成功后以退出码 75 退出，表示「已更新待重启」。
