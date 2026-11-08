@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import AuthImage from "../components/AuthImage";
-import { GalleryIcon, GearIcon, StarIcon, WalletIcon } from "../components/Icons";
+import { GalleryIcon, GearIcon, PlanetIcon, WalletIcon } from "../components/Icons";
 import Lightbox from "../components/Lightbox";
 import Toast from "../components/Toast";
 import { request } from "../lib/api";
@@ -343,9 +343,9 @@ export default function ChatPage({ auth, sessionId }: { auth: Auth; sessionId?: 
 
         <span className="chat-title">{detail?.session.title ?? "新对话"}</span>
 
-        {/* 广场入口：一颗有渐变和高光的小星 */}
+        {/* 广场入口：一颗小星球，卫星绕着飞 */}
         <a className="plaza-btn" href="#/plaza" aria-label="去广场">
-          <StarIcon />
+          <PlanetIcon size={26} />
         </a>
       </div>
 
@@ -574,7 +574,7 @@ export default function ChatPage({ auth, sessionId }: { auth: Auth; sessionId?: 
                 </a>
                 <a href="#/plaza" onClick={() => setDrawerOpen(false)}>
                   <span aria-hidden="true">
-                    <StarIcon size={16} />
+                    <PlanetIcon size={19} />
                   </span>
                   广场
                 </a>

@@ -3224,7 +3224,7 @@ select:focus {
   transition: transform 0.16s var(--spring), background 0.16s ease;
 }
 
-.drawer-links a span {
+.drawer-links a > span {
   font-size: 15px;
   line-height: 1;
 }
@@ -3362,10 +3362,10 @@ select:focus {
   gap: 5px;
 }
 
-.drawer-links a span,
-.drawer-links a:nth-child(2) span,
-.drawer-links a:nth-child(3) span,
-.drawer-links a:nth-child(4) span {
+.drawer-links a > span,
+.drawer-links a:nth-child(2) > span,
+.drawer-links a:nth-child(3) > span,
+.drawer-links a:nth-child(4) > span {
   display: grid;
   place-items: center;
   width: 26px;
@@ -3378,7 +3378,7 @@ select:focus {
   opacity: 1;
 }
 
-.drawer-links a span svg {
+.drawer-links a > span > svg {
   filter:
     drop-shadow(0 1px 0 rgba(255, 255, 255, 0.85))
     drop-shadow(0 1.5px 2px rgba(16, 24, 40, 0.22));
@@ -3390,7 +3390,7 @@ select:focus {
   box-shadow: none;
 }
 
-.drawer-links a:active span svg {
+.drawer-links a:active > span > svg {
   transform: scale(0.9);
 }
 
@@ -3437,4 +3437,116 @@ select:focus {
   top: -4px;
   right: -5px;
   opacity: 0.6;
+}
+
+/* =========================================================
+   广场入口：小星球 + 卫星
+   ========================================================= */
+
+.planet {
+  position: relative;
+  display: inline-block;
+  line-height: 0;
+  flex: none;
+}
+
+/* 星球本体：上亮下暗，球感靠渐变 + 高光 + 底部投影 */
+.planet-body {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 32% 26%, #bcd2ff 0%, #7d93f0 32%, #4f63ea 62%, #2f45b8 100%);
+  box-shadow:
+    inset -2px -3px 6px rgba(20, 35, 110, 0.35),
+    inset 2px 2px 4px rgba(255, 255, 255, 0.35),
+    0 4px 10px -4px rgba(47, 69, 184, 0.6);
+  animation: planet-float 4.6s ease-in-out infinite;
+}
+
+/* 左上角一点镜面反光 */
+.planet-shine {
+  position: absolute;
+  top: 14%;
+  left: 20%;
+  width: 34%;
+  height: 24%;
+  border-radius: 50%;
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0));
+  transform: rotate(-18deg);
+  pointer-events: none;
+}
+
+/* 星球下面的一圈柔影 */
+.planet-shadow {
+  position: absolute;
+  left: 12%;
+  right: 12%;
+  bottom: -5px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(47, 69, 184, 0.22);
+  filter: blur(3px);
+  z-index: -1;
+}
+
+/* 卫星轨道 */
+.planet-orbit {
+  position: absolute;
+  inset: 0;
+  animation: planet-orbit-spin 3.4s linear infinite;
+}
+
+.planet-sat {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 5px;
+  height: 5px;
+  margin: -2.5px 0 0 -2.5px;
+  border-radius: 50%;
+  background: linear-gradient(160deg, #ffffff, #9fb4ff 60%, #5b74e8);
+  box-shadow: 0 0 6px rgba(120, 150, 255, 0.9);
+  transform: translateX(var(--sat-radius, 15px));
+  animation: planet-sat-depth 3.4s linear infinite;
+}
+
+@keyframes planet-float {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-1px) scale(1.03); }
+}
+
+@keyframes planet-orbit-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* 前半圈在前面，后半圈钻到星球背后 */
+@keyframes planet-sat-depth {
+  0%, 49% { z-index: 0; }
+  50%, 100% { z-index: 2; }
+}
+
+.plaza-btn .planet {
+  --sat-radius: 16px;
+  filter: drop-shadow(0 1px 0 rgba(255, 255, 255, 0.5));
+}
+
+/* 侧边栏里的星球小一号，卫星轨道也收一点 */
+.drawer-links .planet {
+  --sat-radius: 12px;
+}
+
+.drawer-links .planet-body {
+  animation: none;
+}
+
+.drawer-links .planet-orbit {
+  animation-duration: 4.6s;
+}
+
+.drawer-links .planet-sat {
+  animation-duration: 4.6s;
+  width: 4px;
+  height: 4px;
+  margin: -2px 0 0 -2px;
 }

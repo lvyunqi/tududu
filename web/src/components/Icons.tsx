@@ -68,47 +68,21 @@ export function GalleryIcon({ size = 17 }: Props) {
   );
 }
 
-/** 广场入口：一颗主火花加一颗小火花，像 AI 生成的那种记号。 */
-export function StarIcon({ size = 22 }: Props) {
-  const small = Math.round(size * 0.44);
-
+/**
+ * 广场入口：一颗小星球，卫星绕着飞。
+ *
+ * 纯 CSS 动画，卫星转到星球后面时会被挡住，看起来更像真的在绕行。
+ */
+export function PlanetIcon({ size = 24 }: { size?: number }) {
   return (
-    <span className="sparkle-mark" style={{ width: size, height: size }}>
-      <svg viewBox="0 0 24 24" width={size} height={size} aria-hidden="true">
-        <defs>
-          <linearGradient id="sparkle-main" x1="0.3" y1="0" x2="0.75" y2="1">
-            <stop offset="0%" stopColor="#5f6875" />
-            <stop offset="46%" stopColor="#252a33" />
-            <stop offset="100%" stopColor="#0b0e13" />
-          </linearGradient>
-        </defs>
+    <span className="planet" style={{ width: size, height: size }}>
+      <span className="planet-orbit">
+        <span className="planet-sat" />
+      </span>
 
-        <path
-          d="M12 1.6c.72 5.72 4.68 9.68 10.4 10.4-5.72.72-9.68 4.68-10.4 10.4C11.28 16.68 7.32 12.72 1.6 12 7.32 11.28 11.28 7.32 12 1.6Z"
-          fill="url(#sparkle-main)"
-        />
-
-        {/* 内芯一抹亮，火花才有中间发亮的感觉 */}
-        <path
-          d="M12 5.2c.34 2.7 2.1 4.46 4.8 4.8-2.7.34-4.46 2.1-4.8 4.8-.34-2.7-2.1-4.46-4.8-4.8 2.7-.34 4.46-2.1 4.8-4.8Z"
-          fill="#ffffff"
-          opacity="0.16"
-        />
-      </svg>
-
-      {/* 右上角的小火花，自己有个闪烁节奏 */}
-      <svg
-        className="sparkle-small"
-        viewBox="0 0 24 24"
-        width={small}
-        height={small}
-        aria-hidden="true"
-      >
-        <path
-          d="M12 1.6c.72 5.72 4.68 9.68 10.4 10.4-5.72.72-9.68 4.68-10.4 10.4C11.28 16.68 7.32 12.72 1.6 12 7.32 11.28 11.28 7.32 12 1.6Z"
-          fill="url(#sparkle-main)"
-        />
-      </svg>
+      <span className="planet-body" />
+      <span className="planet-shine" />
+      <span className="planet-shadow" />
     </span>
   );
 }
