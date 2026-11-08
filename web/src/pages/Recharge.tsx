@@ -123,7 +123,7 @@ export default function RechargePage({ auth }: { auth: Auth }) {
 
   return (
     <div className="page">
-      <a className="link back" href="#/me">
+      <a className="link back" href="#/">
         返回
       </a>
 

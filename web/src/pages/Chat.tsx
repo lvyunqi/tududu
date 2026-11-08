@@ -67,6 +67,20 @@ export default function ChatPage({ auth, sessionId }: { auth: Auth; sessionId?: 
     if (sid) void load(sid);
   }, [sid, load]);
 
+  // 输入法弹出、页面被压缩时，保持在最新一条上
+  useEffect(() => {
+    const viewport = window.visualViewport;
+    if (!viewport) return;
+
+    const onResize = () => {
+      if (atBottom) scrollToBottom();
+    };
+
+    viewport.addEventListener("resize", onResize);
+
+    return () => viewport.removeEventListener("resize", onResize);
+  }, [atBottom]);
+
   // 路由上的会话变了（抽屉切换、新对话）时跟上，但不清空正在跑的轮询
   useEffect(() => {
     if (sessionId && sessionId !== sid) {
@@ -165,6 +179,18 @@ export default function ChatPage({ auth, sessionId }: { auth: Auth; sessionId?: 
     );
     setError(null);
     textRef.current?.focus();
+  }
+
+  /// 从侧边栏或顶栏开一段新对话：清干净当前状态，别把上一段的图和字带过来。
+  function startNew() {
+    setSid(null);
+    setDetail(null);
+    setText("");
+    setAssets([]);
+    setError(null);
+    setDrawerOpen(false);
+    window.location.hash = "#/";
+    requestAnimationFrame(() => textRef.current?.focus());
   }
 
   /// 删掉一个会话；删的是当前这个就回到新对话。
@@ -302,12 +328,25 @@ export default function ChatPage({ auth, sessionId }: { auth: Auth; sessionId?: 
       </div>
 
       <div className="chat-tools">
-        <button className="tool-btn" onClick={() => setDrawerOpen(true)} aria-label="历史对话">
+        <button
+          className="tool-btn"
+          onClick={() => setDrawerOpen(true)}
+          aria-label="打开侧边栏"
+        >
           ☰
         </button>
-        <span className="chat-title">{detail?.session.title ?? "新对话"}</span>
-        <a className="tool-btn" href="#/" aria-label="新对话">
+
+        <a className="tool-btn" href="#/" onClick={() => startNew()} aria-label="新对话">
           ＋
+        </a>
+
+        <span className="chat-title">{detail?.session.title ?? "新对话"}</span>
+
+        {/* 广场入口：一圈会转的轨道 + 绕行的点，不用文字 */}
+        <a className="plaza-orb" href="#/plaza" aria-label="去广场">
+          <span className="orb-ring" />
+          <span className="orb-ball" />
+          <span className="orb-core" />
         </a>
       </div>
 
@@ -503,11 +542,40 @@ export default function ChatPage({ auth, sessionId }: { auth: Auth; sessionId?: 
       {drawerOpen && (
         <div className="drawer-backdrop" onClick={() => setDrawerOpen(false)}>
           <aside className="drawer" onClick={(event) => event.stopPropagation()}>
+            <div className="drawer-profile">
+              <div className="drawer-profile-top">
+                <div className="avatar">{(auth.user?.nickname ?? "?").slice(0, 1).toUpperCase()}</div>
+
+                <div className="drawer-profile-main">
+                  <strong>{auth.user?.nickname}</strong>
+                  <span className="hint">
+                    {auth.balance} {auth.unitName}
+                  </span>
+                </div>
+              </div>
+
+              <div className="drawer-links">
+                <a href="#/me" onClick={() => setDrawerOpen(false)}>
+                  <span aria-hidden="true">⚙</span>
+                  设置
+                </a>
+                <a href="#/recharge" onClick={() => setDrawerOpen(false)}>
+                  <span aria-hidden="true">◎</span>
+                  钱包
+                </a>
+                <a href="#/gallery" onClick={() => setDrawerOpen(false)}>
+                  <span aria-hidden="true">▤</span>
+                  相册
+                </a>
+                <a href="#/plaza" onClick={() => setDrawerOpen(false)}>
+                  <span aria-hidden="true">✦</span>
+                  广场
+                </a>
+              </div>
+            </div>
+
             <div className="drawer-head">
               <strong>历史对话</strong>
-              <a className="chip" href="#/" onClick={() => setDrawerOpen(false)}>
-                新对话
-              </a>
             </div>
 
             <div className="drawer-list">
@@ -527,15 +595,10 @@ export default function ChatPage({ auth, sessionId }: { auth: Auth; sessionId?: 
               ))}
             </div>
 
-            <div className="drawer-foot">
-              <span className="hint">余额</span>
-              <strong>
-                {auth.balance} {auth.unitName}
-              </strong>
-              <a className="chip" href="#/recharge" onClick={() => setDrawerOpen(false)}>
-                充值
-              </a>
-            </div>
+            <a className="drawer-new" href="#/" onClick={() => startNew()}>
+              <span aria-hidden="true">＋</span>
+              新建对话
+            </a>
           </aside>
         </div>
       )}
