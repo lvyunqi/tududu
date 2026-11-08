@@ -23,3 +23,4 @@ pub mod sign;
 pub mod storage;
 pub mod tasks;
 pub mod telemetry;
+pub mod update;

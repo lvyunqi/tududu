@@ -159,6 +159,8 @@ curl http://127.0.0.1:8080/api/v1/health
 | DELETE | `/api/v1/admin/models/{id}` | 删除模型 |
 | PATCH | `/api/v1/admin/models/{id}` | 只切换启用状态 |
 | GET | `/api/v1/models` | 用户端可选的模型（已启用且渠道商启用） |
+| GET | `/api/v1/app/version` | 查最新版本，`platform` + `current` 两个参数，公开接口 |
+| GET | `/api/v1/app/download` | 安装包下载中转，流式转发 GitHub 的包 |
 | POST | `/api/v1/admin/providers/{id}/models/refresh` | 调用上游 `/models` 在线拉取并入库 |
 | GET/PUT | `/api/v1/admin/billing/prices` | 查询与批量设置价格（模型 × 尺寸 × 质量） |
 | GET/PUT | `/api/v1/admin/billing/config` | 计费单位名称与每元换算数量 |

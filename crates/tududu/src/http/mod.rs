@@ -12,6 +12,7 @@ pub mod qrcode;
 pub mod routes;
 pub mod sessions;
 pub mod static_files;
+pub mod update;
 
 use std::sync::Arc;
 
@@ -57,6 +58,7 @@ pub async fn serve(config: Config, db: PgPool) -> anyhow::Result<()> {
         files,
         limiter: Arc::new(crate::ratelimit::RateLimiter::new()),
         settings: Arc::new(std::sync::RwLock::new(live)),
+        updates: crate::update::UpdateService::new(update_repo()),
     };
 
     let app = routes::router(state).layer(cors_layer(&cors_origins));
@@ -67,6 +69,11 @@ pub async fn serve(config: Config, db: PgPool) -> anyhow::Result<()> {
         .context("axum serve 失败")?;
 
     Ok(())
+}
+
+/// 更新源仓库，默认就是本项目的 GitHub 地址，可以用环境变量换掉（比如自己搭的镜像）。
+fn update_repo() -> String {
+    std::env::var("TUDUDU_UPDATE_REPO").unwrap_or_else(|_| "lvyunqi/tududu".to_owned())
 }
 
 /// 跨域策略。列表为空时不加这一层，等价于只允许同源。
