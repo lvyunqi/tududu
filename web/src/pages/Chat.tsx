@@ -1,7 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import AuthImage from "../components/AuthImage";
-import { GalleryIcon, GearIcon, StarIcon, WalletIcon } from "../components/Icons";
+import {
+  GalleryIcon,
+  GearIcon,
+  MenuIcon,
+  PlusIcon,
+  StarIcon,
+  WalletIcon
+} from "../components/Icons";
 import Lightbox from "../components/Lightbox";
 import Toast from "../components/Toast";
 import { request } from "../lib/api";
@@ -334,11 +341,11 @@ export default function ChatPage({ auth, sessionId }: { auth: Auth; sessionId?: 
           onClick={() => setDrawerOpen(true)}
           aria-label="打开侧边栏"
         >
-          ☰
+          <MenuIcon />
         </button>
 
         <a className="tool-btn" href="#/" onClick={() => startNew()} aria-label="新对话">
-          ＋
+          <PlusIcon />
         </a>
 
         <span className="chat-title">{detail?.session.title ?? "新对话"}</span>
