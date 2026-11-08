@@ -33,11 +33,22 @@ fn main() {
 }
 
 fn run() -> anyhow::Result<()> {
-    let args = parse_args(std::env::args().skip(1).collect())?;
+    let mut args = parse_args(std::env::args().skip(1).collect())?;
 
     if args.help {
         print_help();
         return Ok(());
+    }
+
+    // 主程序必须带子命令，没给就用 TUDUDU_ARGS，再没有就默认 serve
+    if args.program_args.is_empty()
+        && let Ok(extra) = std::env::var("TUDUDU_ARGS")
+    {
+        args.program_args = extra.split_whitespace().map(str::to_owned).collect();
+    }
+
+    if args.program_args.is_empty() {
+        args.program_args = vec!["serve".to_owned()];
     }
 
     if let Some(dir) = args.workdir {
@@ -259,10 +270,12 @@ fn print_help() {
         "图嘟嘟服务端启动器",
         "",
         "用法：tududu-launcher [--env-file PATH] [--] [主程序参数...]",
+        "不给参数时默认执行 serve，也可以用 TUDUDU_ARGS 覆盖",
         "",
         "环境变量：",
         "  TUDUDU_BIN       主程序路径，默认用启动器同目录下的 tududu",
         "  TUDUDU_WORKDIR   主程序工作目录，默认当前目录",
+        "  TUDUDU_ARGS      主程序参数，默认 serve",
         "",
         "说明：",
         "  环境文件只补充缺失变量，父进程已有的同名变量优先",

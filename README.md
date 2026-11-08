@@ -218,7 +218,7 @@ curl http://127.0.0.1:8080/api/v1/health
 **启动器**：`tududu-launcher` 是独立的二进制（`crates/tududu-launcher`），放在主程序同一目录即可：
 
 ```bash
-./tududu-launcher            # 默认拉起同目录的 ./tududu serve
+./tududu-launcher            # 不带参数就是 serve，可用 TUDUDU_ARGS 改
 ./tududu-launcher -- --log-filter debug
 ./tududu-launcher --env-file /etc/tududu/tududu.env
 ```
