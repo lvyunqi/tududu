@@ -30,6 +30,8 @@ pub struct AppState {
     pub limiter: Arc<crate::ratelimit::RateLimiter>,
     /// 后台可改的运行时配置，改完立刻写回这里。
     pub settings: Arc<std::sync::RwLock<crate::settings::LiveSettings>>,
+    /// 版本检测与下载中转，内部带 GitHub 响应的缓存。
+    pub updates: crate::update::UpdateService,
 }
 
 impl AppState {
@@ -111,6 +113,8 @@ pub fn router(state: AppState) -> Router {
             post(sessions::send_message),
         )
         .route("/api/v1/models", get(models::list))
+        .route("/api/v1/app/version", get(crate::http::update::version))
+        .route("/api/v1/app/download", get(crate::http::update::download))
         .route("/api/v1/qrcode", post(qrcode::render))
         .route("/api/v1/prompt-categories", get(plaza::categories))
         .route("/api/v1/prompts", get(plaza::list).post(plaza::publish))
