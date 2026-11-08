@@ -230,6 +230,37 @@ jobs:
       - name: 初始化安卓工程
         run: pnpm tauri android init --ci
 
+      # Maven Central 偶尔把大 jar 重定向到 GitHub release，那条路径在 runner 上一直 504。
+      # 同时挂上国内镜像兜底，命中一个就能继续。
+      - name: 配置 Maven 镜像
+        run: |
+          mkdir -p "$HOME/.gradle"
+          cat > "$HOME/.gradle/init.gradle" <<'EOF'
+          allprojects {
+            buildscript {
+              repositories {
+                maven { url "https://maven.aliyun.com/repository/public" }
+                maven { url "https://maven.aliyun.com/repository/google" }
+                maven { url "https://maven.aliyun.com/repository/gradle-plugin" }
+              }
+            }
+            repositories {
+              maven { url "https://maven.aliyun.com/repository/public" }
+              maven { url "https://maven.aliyun.com/repository/google" }
+            }
+          }
+
+          settingsEvaluated { settings ->
+            settings.pluginManagement {
+              repositories {
+                maven { url "https://maven.aliyun.com/repository/gradle-plugin" }
+                maven { url "https://maven.aliyun.com/repository/public" }
+              }
+            }
+          }
+          EOF
+          cat "$HOME/.gradle/init.gradle"
+
       # services.gradle.org 走 CDN，runner 拉大文件经常 504。
       # 先用 curl 多源重试把分发包拿到本地，再让 wrapper 读 file://，彻底绕开下载。
       - name: 预下载 Gradle 分发包
