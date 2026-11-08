@@ -349,23 +349,27 @@ export default function ChatPage({ auth, sessionId }: { auth: Auth; sessionId?: 
       )}
 
       <div className="composer">
-        <div className="composer-inner">
-          {asset && (
-            <div className="attach-preview">
+        {/* 参考图放在输入框上方，单独一条，比塞在框里清楚 */}
+        {asset && (
+          <div className="attach-bar">
+            <div className="attach-item">
               <button
                 type="button"
                 className="attach-thumb"
                 onClick={() => setViewing({ output_asset_id: asset.id } as Message)}
-                aria-label="查看待发送的图片"
+                aria-label="查看参考图"
               >
-                <AuthImage assetId={asset.id} alt="待发送的图片" variant="thumb" />
+                <AuthImage assetId={asset.id} alt="参考图" variant="thumb" />
               </button>
-              <button onClick={() => setAsset(null)} aria-label="移除图片">
-                ×
+              <button className="attach-remove" onClick={() => setAsset(null)} aria-label="移除参考图">
+                ✕
               </button>
+              <span className="attach-label">参考图</span>
             </div>
-          )}
+          </div>
+        )}
 
+        <div className="composer-inner">
           {/* 模型没拉回来之前先摆骨架，别让人看见空荡荡一行 */}
           {!modelsReady && (
             <div className="model-row" aria-hidden="true">
