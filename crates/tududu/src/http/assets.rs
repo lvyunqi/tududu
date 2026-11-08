@@ -154,9 +154,7 @@ pub async fn file(
     // 管理员要能看到被封禁的图，才方便核对；普通用户只能看自己的、且没被封的
     let is_admin = crate::http::admin::require_admin(&state, &headers).is_ok();
 
-    let asset = if is_admin {
-        asset_store::find_any(&state.db, id).await?
-    } else if signed {
+    let asset = if is_admin || signed {
         asset_store::find_any(&state.db, id).await?
     } else {
         let current = require_user(&state, &headers).await?;

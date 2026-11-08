@@ -139,7 +139,11 @@ pub async fn ban_assets(
     let status: i16 = if req.banned { 3 } else { 1 };
     let changed = crate::storage::store::set_status_many(&state.db, &req.ids, status).await?;
 
-    let action = if req.banned { "asset_ban" } else { "asset_unban" };
+    let action = if req.banned {
+        "asset_ban"
+    } else {
+        "asset_unban"
+    };
     let _ = admin_store::record_audit(
         &state.db,
         operator.id,
