@@ -37,6 +37,10 @@ export default function MePage({ auth }: { auth: Auth }) {
 
   return (
     <div className="page">
+      <a className="back-home" href="#/" aria-label="回到对话">
+        ←
+      </a>
+
       <ProfileCard auth={auth} onToast={setToast} />
 
       <section className="card">

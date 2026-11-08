@@ -214,11 +214,90 @@ jobs:
           fi
           echo "产物已包含后端地址"
 
+      # services.gradle.org 经常 504，把分发和依赖缓存下来，命中就不必再拉
+      - name: 缓存 Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/wrapper
+            ~/.gradle/caches
+          key: gradle-${{ runner.os }}-${{ hashFiles('src-tauri/**/*.gradle*') }}
+          restore-keys: gradle-${{ runner.os }}-
+
       - name: 安装 Tauri CLI
         run: pnpm install --no-frozen-lockfile
 
       - name: 初始化安卓工程
         run: pnpm tauri android init --ci
+
+      # Maven Central 偶尔把大 jar 重定向到 GitHub release，那条路径在 runner 上一直 504。
+      # 同时挂上国内镜像兜底，命中一个就能继续。
+      - name: 配置 Maven 镜像
+        run: |
+          mkdir -p "$HOME/.gradle"
+          cat > "$HOME/.gradle/init.gradle" <<'EOF'
+          allprojects {
+            buildscript {
+              repositories {
+                maven { url "https://maven.aliyun.com/repository/public" }
+                maven { url "https://maven.aliyun.com/repository/google" }
+                maven { url "https://maven.aliyun.com/repository/gradle-plugin" }
+              }
+            }
+            repositories {
+              maven { url "https://maven.aliyun.com/repository/public" }
+              maven { url "https://maven.aliyun.com/repository/google" }
+            }
+          }
+
+          settingsEvaluated { settings ->
+            settings.pluginManagement {
+              repositories {
+                maven { url "https://maven.aliyun.com/repository/gradle-plugin" }
+                maven { url "https://maven.aliyun.com/repository/public" }
+              }
+            }
+          }
+          EOF
+          cat "$HOME/.gradle/init.gradle"
+
+      # services.gradle.org 走 CDN，runner 拉大文件经常 504。
+      # 先用 curl 多源重试把分发包拿到本地，再让 wrapper 读 file://，彻底绕开下载。
+      - name: 预下载 Gradle 分发包
+        run: |
+          set -euo pipefail
+          WRAPPER=$(find src-tauri/gen/android -name gradle-wrapper.properties | head -1)
+          VERSION=$(grep -oE "gradle-[0-9.]+-bin\.zip" "$WRAPPER" | head -1 | sed -E "s/gradle-(.*)-bin\.zip/\1/")
+          ZIP="$RUNNER_TEMP/gradle-$VERSION-bin.zip"
+          echo "gradle: $VERSION -> $ZIP"
+
+          URLS=(
+            "https://services.gradle.org/distributions/gradle-$VERSION-bin.zip"
+            "https://downloads.gradle.org/distributions/gradle-$VERSION-bin.zip"
+            "https://mirrors.cloud.tencent.com/gradle/gradle-$VERSION-bin.zip"
+            "https://mirrors.aliyun.com/macports/distfiles/gradle/gradle-$VERSION-bin.zip"
+          )
+
+          ok=0
+          for url in "${URLS[@]}"; do
+            echo "尝试 $url"
+            if curl -fL --retry 6 --retry-delay 4 --retry-all-errors --connect-timeout 20 -o "$ZIP" "$url"; then
+              ok=1
+              break
+            fi
+            rm -f "$ZIP"
+          done
+          test "$ok" = "1" || { echo "所有 Gradle 分发源都失败"; exit 1; }
+          ls -lh "$ZIP"
+
+          # properties 里的冒号是转义过的，直接整行重写指向本地文件
+          {
+            grep -v "^distributionUrl=" "$WRAPPER" || true
+            printf "distributionUrl=file\\://%s\n" "$ZIP"
+            printf "networkTimeout=60000\n"
+          } > "$WRAPPER.new"
+          mv "$WRAPPER.new" "$WRAPPER"
+          cat "$WRAPPER"
 
       - name: 打包 APK
         run: pnpm tauri android build --apk --target aarch64
