@@ -3317,92 +3317,51 @@ select:focus {
   flex: 1;
 }
 
+
 /* =========================================================
-   收一版：质感留在细节，不靠重阴影和撞色
+   图标最终版：图形本身有厚度，不加底座
    ========================================================= */
 
-/* 广场球：单色蓝、轻高光、轻投影，不要厚度感太夸张 */
-.orb-core {
-  width: 17px;
-  height: 17px;
-  border-radius: 5px;
-  background: linear-gradient(160deg, #7d93f0 0%, #4f63ea 60%, #3b4fd0 100%);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.55),
-    inset 0 -1px 1px rgba(0, 0, 0, 0.14),
-    0 3px 8px -4px rgba(53, 72, 201, 0.55);
-  transform: none;
-  animation: orb-breathe 4s ease-in-out infinite;
-}
-
-.orb-core::before {
-  top: 2.5px;
-  left: 3px;
-  width: 7px;
-  height: 3.5px;
+/* 广场入口：一颗会轻轻浮动的星 */
+.plaza-btn {
+  width: 38px;
+  height: 38px;
+  flex: none;
+  display: grid;
+  place-items: center;
   border-radius: 50%;
-  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0));
+  text-decoration: none;
+  transition: transform 0.18s var(--spring), background 0.18s ease;
 }
 
-.orb-core::after {
-  display: none;
+.plaza-btn:active {
+  transform: scale(0.92);
+  background: rgba(0, 0, 0, 0.05);
 }
 
-@keyframes orb-breathe {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.05); }
+.plaza-btn svg {
+  /* 下沿阴影 + 上沿反光，让星面看起来是凸的 */
+  filter:
+    drop-shadow(0 1px 0 rgba(255, 255, 255, 0.75))
+    drop-shadow(0 2px 3px rgba(16, 24, 40, 0.28));
+  animation: star-float 3.6s ease-in-out infinite;
 }
 
-.orb-ring {
-  inset: 4px;
-  border-width: 1px;
-  border-top-color: rgba(0, 113, 227, 0.4);
-  border-right-color: rgba(0, 113, 227, 0.14);
-  animation-duration: 5s;
+@keyframes star-float {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-1.5px) rotate(6deg); }
 }
 
-.orb-ball {
-  width: 4.5px;
-  height: 4.5px;
-  margin: -2.25px 0 0 -2.25px;
-  box-shadow: none;
-  opacity: 0.85;
-}
-
-/* 侧边栏入口：去掉彩色徽章，回到单色的轻卡片 */
+/* 侧边栏四个入口：无底色，图标自己带光影 */
 .drawer-links a {
-  padding: 10px 2px;
-  border-radius: 11px;
-  background: #ffffff;
-  border: 0.5px solid rgba(0, 0, 0, 0.06);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.9),
-    0 1px 2px rgba(16, 24, 40, 0.04);
-}
-
-.drawer-links a span,
-.drawer-links a:nth-child(2) span,
-.drawer-links a:nth-child(3) span,
-.drawer-links a:nth-child(4) span {
-  display: block;
-  width: auto;
-  height: auto;
-  border-radius: 0;
-  font-size: 16px;
-  line-height: 1;
-  color: var(--ink);
-  background: none;
+  padding: 8px 2px;
+  border-radius: 10px;
+  background: transparent;
+  border: none;
   box-shadow: none;
-  opacity: 0.82;
+  gap: 5px;
 }
 
-.drawer-links a:active {
-  transform: scale(0.97);
-  background: #f4f5f9;
-  box-shadow: inset 0 1px 2px rgba(16, 24, 40, 0.08);
-}
-
-/* 图标加一层极淡的圆角底，结构更清楚，但不引入彩色 */
 .drawer-links a span,
 .drawer-links a:nth-child(2) span,
 .drawer-links a:nth-child(3) span,
@@ -3410,28 +3369,27 @@ select:focus {
   display: grid;
   place-items: center;
   width: 26px;
-  height: 26px;
+  height: 24px;
   margin: 0 auto;
-  border-radius: 9px;
-  font-size: 14px;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
   color: var(--ink);
-  background: linear-gradient(180deg, #f7f8fc, #eef1f7);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.95),
-    inset 0 -1px 1px rgba(16, 24, 40, 0.04);
-  opacity: 0.9;
+  opacity: 1;
 }
 
-.drawer-links a {
-  gap: 4px;
+.drawer-links a span svg {
+  filter:
+    drop-shadow(0 1px 0 rgba(255, 255, 255, 0.85))
+    drop-shadow(0 1.5px 2px rgba(16, 24, 40, 0.22));
+  transition: transform 0.16s var(--spring);
 }
 
-/* 轨道最终版：一段细弧在转，比虚线干净 */
-.orb-ring {
-  inset: 4px;
-  border: 1px solid transparent;
-  border-top-color: rgba(0, 113, 227, 0.45);
-  border-right-color: rgba(0, 113, 227, 0.15);
-  border-radius: 50%;
-  animation: orb-spin 5s linear infinite;
+.drawer-links a:active {
+  background: transparent;
+  box-shadow: none;
+}
+
+.drawer-links a:active span svg {
+  transform: scale(0.9);
 }

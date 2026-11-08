@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import AuthImage from "../components/AuthImage";
+import { GalleryIcon, GearIcon, StarIcon, WalletIcon } from "../components/Icons";
 import Lightbox from "../components/Lightbox";
 import Toast from "../components/Toast";
 import { request } from "../lib/api";
@@ -342,11 +343,9 @@ export default function ChatPage({ auth, sessionId }: { auth: Auth; sessionId?: 
 
         <span className="chat-title">{detail?.session.title ?? "新对话"}</span>
 
-        {/* 广场入口：一圈会转的轨道 + 绕行的点，不用文字 */}
-        <a className="plaza-orb" href="#/plaza" aria-label="去广场">
-          <span className="orb-ring" />
-          <span className="orb-ball" />
-          <span className="orb-core" />
+        {/* 广场入口：一颗有渐变和高光的小星 */}
+        <a className="plaza-btn" href="#/plaza" aria-label="去广场">
+          <StarIcon />
         </a>
       </div>
 
@@ -556,19 +555,27 @@ export default function ChatPage({ auth, sessionId }: { auth: Auth; sessionId?: 
 
               <div className="drawer-links">
                 <a href="#/me" onClick={() => setDrawerOpen(false)}>
-                  <span aria-hidden="true">⚙</span>
+                  <span aria-hidden="true">
+                    <GearIcon />
+                  </span>
                   设置
                 </a>
                 <a href="#/recharge" onClick={() => setDrawerOpen(false)}>
-                  <span aria-hidden="true">◎</span>
+                  <span aria-hidden="true">
+                    <WalletIcon />
+                  </span>
                   钱包
                 </a>
                 <a href="#/gallery" onClick={() => setDrawerOpen(false)}>
-                  <span aria-hidden="true">▤</span>
+                  <span aria-hidden="true">
+                    <GalleryIcon />
+                  </span>
                   相册
                 </a>
                 <a href="#/plaza" onClick={() => setDrawerOpen(false)}>
-                  <span aria-hidden="true">✦</span>
+                  <span aria-hidden="true">
+                    <StarIcon size={16} />
+                  </span>
                   广场
                 </a>
               </div>
