@@ -230,6 +230,17 @@ jobs:
       - name: 初始化安卓工程
         run: pnpm tauri android init --ci
 
+      # services.gradle.org 最近长期 504，改从 GitHub 上的官方分发镜像拉
+      - name: 换掉 Gradle 分发地址
+        run: |
+          set -euo pipefail
+          WRAPPER=$(find src-tauri/gen/android -name gradle-wrapper.properties | head -1)
+          echo "wrapper: $WRAPPER"
+          VERSION=$(grep -oE "gradle-[0-9.]+-bin\.zip" "$WRAPPER" | head -1 | sed -E "s/gradle-(.*)-bin\.zip/\1/")
+          echo "gradle: $VERSION"
+          sed -i "s#https://services.gradle.org/distributions/#https://github.com/gradle/gradle-distributions/releases/download/v${VERSION}/#g" "$WRAPPER"
+          grep distributionUrl "$WRAPPER"
+
       - name: 打包 APK
         run: pnpm tauri android build --apk --target aarch64
 
