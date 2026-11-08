@@ -179,8 +179,30 @@ jobs:
           }
           EOF
 
+      # 用仓库里的源图重新生成全套图标（含安卓各密度），保证和设计稿一致
+      - name: 生成图标
+        run: pnpm tauri icon src-tauri/icon-source.png
+
       - name: 初始化安卓工程
         run: pnpm tauri android init --ci
+
+      # 装到手机上的名字改成中文
+      - name: 改应用名
+        run: |
+          set -euo pipefail
+          F="src-tauri/gen/android/app/src/main/res/values/strings.xml"
+          if [ ! -f "$F" ]; then echo "没找到 strings.xml"; exit 1; fi
+          python3 - "$F" <<'PY'
+          import re, sys
+          path = sys.argv[1]
+          text = open(path, encoding="utf-8").read()
+          new, n = re.subn(r"<string name=\"app_name\">.*?</string>",
+                           "<string name=\"app_name\">图嘟嘟</string>", text)
+          if n == 0:
+              sys.exit("strings.xml 里没有 app_name")
+          open(path, "w", encoding="utf-8").write(new)
+          print(new)
+          PY
 
       - name: 预下载 Gradle 分发包
         run: |
