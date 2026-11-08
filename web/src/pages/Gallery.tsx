@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 
 import AuthImage from "../components/AuthImage";
+import BackHome from "../components/BackHome";
 import Lightbox from "../components/Lightbox";
 import Toast from "../components/Toast";
 import { request } from "../lib/api";
@@ -100,9 +101,7 @@ export default function GalleryPage() {
   return (
     <div className={selecting ? "page selecting" : "page"}>
       <header className="page-head">
-        <a className="back-home" href="#/" aria-label="回到对话">
-          ←
-        </a>
+        <BackHome />
         <div className="page-head-main">
           <h2>相册</h2>
           <p className="hint">{items.length} 张图片</p>

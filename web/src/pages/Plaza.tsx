@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 
 import AuthImage from "../components/AuthImage";
+import BackHome from "../components/BackHome";
 import Lightbox from "../components/Lightbox";
 import { request } from "../lib/api";
 import type { PromptCategory, PromptItem } from "../lib/types";
@@ -85,9 +86,7 @@ export default function PlazaPage() {
   return (
     <div className="page">
       <header className="page-head">
-        <a className="back-home" href="#/" aria-label="回到对话">
-          ←
-        </a>
+        <BackHome />
         <h2>广场</h2>
         <span className="spacer" />
       </header>
