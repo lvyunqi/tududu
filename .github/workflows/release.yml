@@ -150,8 +150,72 @@ jobs:
       - name: 安装 Tauri CLI
         run: pnpm install --no-frozen-lockfile
 
+      # ---- 网络兜底：Gradle 分发与 Maven 依赖在这台 runner 上经常 504 ----
+      - name: 配置 Maven 镜像
+        run: |
+          mkdir -p "$HOME/.gradle"
+          cat > "$HOME/.gradle/init.gradle" <<'EOF'
+          allprojects {
+            buildscript {
+              repositories {
+                maven { url "https://maven.aliyun.com/repository/public" }
+                maven { url "https://maven.aliyun.com/repository/google" }
+                maven { url "https://maven.aliyun.com/repository/gradle-plugin" }
+              }
+            }
+            repositories {
+              maven { url "https://maven.aliyun.com/repository/public" }
+              maven { url "https://maven.aliyun.com/repository/google" }
+            }
+          }
+
+          settingsEvaluated { settings ->
+            settings.pluginManagement {
+              repositories {
+                maven { url "https://maven.aliyun.com/repository/gradle-plugin" }
+                maven { url "https://maven.aliyun.com/repository/public" }
+              }
+            }
+          }
+          EOF
+
       - name: 初始化安卓工程
         run: pnpm tauri android init --ci
+
+      - name: 预下载 Gradle 分发包
+        run: |
+          set -euo pipefail
+          WRAPPER=$(find src-tauri/gen/android -name gradle-wrapper.properties | head -1)
+          VERSION=$(grep -oE "gradle-[0-9.]+-bin\.zip" "$WRAPPER" | head -1 | sed -E "s/gradle-(.*)-bin\.zip/\1/")
+          ZIP="$RUNNER_TEMP/gradle-$VERSION-bin.zip"
+          echo "gradle: $VERSION -> $ZIP"
+
+          URLS=(
+            "https://services.gradle.org/distributions/gradle-$VERSION-bin.zip"
+            "https://downloads.gradle.org/distributions/gradle-$VERSION-bin.zip"
+            "https://mirrors.cloud.tencent.com/gradle/gradle-$VERSION-bin.zip"
+            "https://mirrors.aliyun.com/macports/distfiles/gradle/gradle-$VERSION-bin.zip"
+          )
+
+          ok=0
+          for url in "${URLS[@]}"; do
+            echo "尝试 $url"
+            if curl -fL --retry 6 --retry-delay 4 --retry-all-errors --connect-timeout 20 -o "$ZIP" "$url"; then
+              ok=1
+              break
+            fi
+            rm -f "$ZIP"
+          done
+          test "$ok" = "1" || { echo "所有 Gradle 分发源都失败"; exit 1; }
+          ls -lh "$ZIP"
+
+          {
+            grep -v "^distributionUrl=" "$WRAPPER" || true
+            printf "distributionUrl=file\\://%s\n" "$ZIP"
+            printf "networkTimeout=60000\n"
+          } > "$WRAPPER.new"
+          mv "$WRAPPER.new" "$WRAPPER"
+          cat "$WRAPPER"
 
       - name: 打包 APK
         run: pnpm tauri android build --apk --target aarch64
