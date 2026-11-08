@@ -169,7 +169,9 @@ pub async fn list_by_author(
     limit: i64,
 ) -> sqlx::Result<Vec<PromptRow>> {
     let sql = format!(
-        "SELECT {PROMPT_COLUMNS_NAMED} FROM prompts WHERE author_user_id = $1 AND status <> 3 AND ($2::timestamptz IS NULL OR created_at < $2) ORDER BY created_at DESC LIMIT $3"
+        // 下架（status = 3）也要列出来，作者得能看到自己隐藏了什么，
+        // 真删掉的作品是直接 DELETE，不会留行
+        "SELECT {PROMPT_COLUMNS_NAMED} FROM prompts WHERE author_user_id = $1 AND ($2::timestamptz IS NULL OR created_at < $2) ORDER BY created_at DESC LIMIT $3"
     );
 
     sqlx::query_as::<_, PromptRow>(&sql)
