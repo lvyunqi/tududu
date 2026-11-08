@@ -79,14 +79,6 @@ export default function App() {
     return () => window.removeEventListener("hashchange", onHash);
   }, []);
 
-  if (auth.loading) {
-    return <div className="boot">正在加载…</div>;
-  }
-
-  if (!auth.user) {
-    return <LoginPage auth={auth} />;
-  }
-
   // 对话页在「新建」和「某个会话」之间必须占同一个节点，否则会被卸载重建
   const inChat = route.kind === "chat" || route.kind === "session";
   const chatSessionId = route.kind === "session" ? route.id : undefined;
@@ -96,9 +88,18 @@ export default function App() {
   const depth = inChat ? 0 : 1;
   const direction = depth >= depthRef.current ? "push" : "pop";
 
+  // 这一句必须待在下面的提前 return 之前，否则登录前后 hook 数量不一致会直接崩
   useEffect(() => {
     depthRef.current = depth;
   }, [depth]);
+
+  if (auth.loading) {
+    return <div className="boot">正在加载…</div>;
+  }
+
+  if (!auth.user) {
+    return <LoginPage auth={auth} />;
+  }
 
   return (
     <div className="shell">
