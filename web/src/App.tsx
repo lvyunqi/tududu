@@ -76,13 +76,6 @@ export default function App() {
 
   return (
     <div className="shell">
-      <header className="topbar">
-        <div className="brand">图嘟嘟</div>
-        <div className="balance">
-          {auth.balance} {auth.unitName}
-        </div>
-      </header>
-
       <main className="content">
         {inChat && <ChatPage auth={auth} sessionId={chatSessionId} />}
         {route.kind === "tab" && route.tab === "plaza" && <PlazaPage />}
