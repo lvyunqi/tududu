@@ -110,3 +110,28 @@ export function StarIcon({ size = 22 }: Props) {
     </span>
   );
 }
+
+/** 侧边栏开关：三根粗细一致的横线。 */
+export function MenuIcon({ size = 18 }: Props) {
+  return (
+    <svg viewBox="0 0 24 24" width={size} height={size} aria-hidden="true">
+      <g fill="currentColor">
+        <rect x="3.4" y="6.6" width="17.2" height="2" rx="1" />
+        <rect x="3.4" y="11" width="17.2" height="2" rx="1" />
+        <rect x="3.4" y="15.4" width="17.2" height="2" rx="1" />
+      </g>
+    </svg>
+  );
+}
+
+/** 新对话：一个加号。 */
+export function PlusIcon({ size = 18 }: Props) {
+  return (
+    <svg viewBox="0 0 24 24" width={size} height={size} aria-hidden="true">
+      <g fill="currentColor">
+        <rect x="10.9" y="4.6" width="2.2" height="14.8" rx="1.1" />
+        <rect x="4.6" y="10.9" width="14.8" height="2.2" rx="1.1" />
+      </g>
+    </svg>
+  );
+}

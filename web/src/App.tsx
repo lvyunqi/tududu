@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { useAuth } from "./lib/store";
 import ChatPage from "./pages/Chat";
@@ -68,6 +68,8 @@ export default function App() {
   // 所有 hook 必须在任何 return 之前
   const auth = useAuth();
   const [route, setRoute] = useState<Route>(parseRoute);
+  // 记住上一次的层级，用来决定新页面是从右边推进来还是往左边退回去
+  const depthRef = useRef(0);
 
   useViewportHeight();
 
@@ -89,13 +91,19 @@ export default function App() {
   const inChat = route.kind === "chat" || route.kind === "session";
   const chatSessionId = route.kind === "session" ? route.id : undefined;
 
-  // 换页面时整块淡入上浮；对话页内部切换会话不算换页，所以 key 固定是 chat
+  // 对话是主页面（第 0 层），其余二级页面是第 1 层
   const pageKey = inChat ? "chat" : route.kind;
+  const depth = inChat ? 0 : 1;
+  const direction = depth >= depthRef.current ? "push" : "pop";
+
+  useEffect(() => {
+    depthRef.current = depth;
+  }, [depth]);
 
   return (
     <div className="shell">
       <main className="content">
-        <div className="page-switch" key={pageKey}>
+        <div className={"page-switch " + direction} key={pageKey}>
           {inChat && <ChatPage auth={auth} sessionId={chatSessionId} />}
           {route.kind === "plaza" && <PlazaPage />}
           {route.kind === "gallery" && <GalleryPage />}

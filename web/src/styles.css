@@ -3555,3 +3555,76 @@ select:focus {
 .calm .page-switch .page > * {
   animation: none !important;
 }
+
+/* =========================================================
+   页面推拉切换 + 顶栏按钮与侧边栏间距
+   ========================================================= */
+
+/* 进入的页面从右侧推入、从左退回，退出方向交给系统动画完成 */
+.page-switch.push {
+  animation: page-push 0.36s var(--smooth) both;
+}
+
+.page-switch.pop {
+  animation: page-pop 0.34s var(--smooth) both;
+}
+
+@keyframes page-push {
+  from { opacity: 0; transform: translateX(26px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes page-pop {
+  from { opacity: 0; transform: translateX(-22px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+/* 卡片错开上浮保留，但幅度小一点，不跟推拉打架 */
+.page-switch .page > * {
+  animation: page-item 0.36s var(--spring-soft) both;
+  animation-delay: 0.04s;
+}
+
+@keyframes page-item {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.page-switch .chat > * {
+  animation: none;
+  opacity: 1;
+  transform: none;
+}
+
+.calm .page-switch,
+.calm .page-switch .page > * {
+  animation: none !important;
+}
+
+/* 顶栏两个按钮：去掉白圆底，只留图标，按下才给一层浅底 */
+.chat-tools .tool-btn {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  color: var(--ink);
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  font-size: 17px;
+}
+
+.chat-tools .tool-btn:active {
+  background: rgba(0, 0, 0, 0.06);
+  transform: scale(0.94);
+}
+
+/* 侧边栏顶部不要那么多空 */
+.drawer {
+  padding-top: calc(8px + var(--safe-top));
+  gap: 8px;
+}
+
+.drawer-profile {
+  margin-top: 0;
+  padding: 12px;
+}
