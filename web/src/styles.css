@@ -1524,14 +1524,17 @@ a.button:active {
   transform: scale(0.955);
 }
 
-/* 主按钮：按下压扁回弹，带一点光晕 */
-button:not(.ghost):not(.link):not(.danger):not(.mini):not(.chip):not(.lamp) {
+/* 主按钮：按下压扁回弹，带一点光晕。
+   注意不要用 :not(...) 反选——那会把 position:relative 强加给图标按钮，
+   让绝对定位的小角标（删除、移除）回落到文档流里。 */
+.button,
+.send-btn {
   position: relative;
   overflow: hidden;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06), 0 10px 24px -16px rgba(0, 113, 227, 0.6);
 }
 
-button:not(.ghost):not(.link):not(.danger):not(.mini):not(.chip):not(.lamp)::after {
+.button::after,
+.send-btn::after {
   content: "";
   position: absolute;
   inset: 0;
@@ -1539,9 +1542,11 @@ button:not(.ghost):not(.link):not(.danger):not(.mini):not(.chip):not(.lamp)::aft
   background: radial-gradient(circle at center, rgba(255, 255, 255, 0.35), transparent 60%);
   opacity: 0;
   transition: opacity var(--t-mid) ease;
+  pointer-events: none;
 }
 
-button:not(.ghost):not(.link):not(.danger):not(.mini):not(.chip):not(.lamp):active::after {
+.button:active::after,
+.send-btn:active::after {
   opacity: 1;
 }
 
@@ -2797,4 +2802,37 @@ select:focus {
   height: 64px;
   border-radius: 10px;
   object-fit: cover;
+}
+
+/* =========================================================
+   绝对定位的小角标：移除参考图、抽屉删除
+   显式声明，不依赖有没有被别的选择器覆盖
+   ========================================================= */
+
+.attach-item .attach-remove {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  left: auto;
+  bottom: auto;
+  z-index: 3;
+  width: 20px;
+  height: 20px;
+  min-width: 20px;
+  padding: 0;
+  border-radius: 50%;
+  font-size: 10px;
+  line-height: 1;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  background: rgba(17, 24, 39, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(6px);
+}
+
+.attach-item .attach-remove:active {
+  transform: scale(0.85);
+  background: rgba(215, 0, 21, 0.85);
 }
