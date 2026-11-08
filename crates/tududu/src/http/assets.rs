@@ -151,13 +151,21 @@ pub async fn file(
         _ => false,
     };
 
-    let asset = if signed {
+    // 管理员要能看到被封禁的图，才方便核对；普通用户只能看自己的、且没被封的
+    let is_admin = crate::http::admin::require_admin(&state, &headers).is_ok();
+
+    let asset = if is_admin || signed {
         asset_store::find_any(&state.db, id).await?
     } else {
         let current = require_user(&state, &headers).await?;
         asset_store::find_owned(&state.db, id, current.user_id).await?
     }
     .ok_or_else(|| ApiError::not_found("图片不存在"))?;
+
+    // 封禁的图不外发：列表、灯箱、签名直链全部堵住
+    if asset.status == 3 && !is_admin {
+        return Err(ApiError::forbidden("这张图片已被封禁"));
+    }
 
     // 三种尺寸：thumb 列表用、preview 点开看、其余（含下载）给原图
     let (key, mime, derived) = match query.size.as_deref() {
@@ -239,9 +247,13 @@ pub async fn download_link(
 ) -> Result<Json<ApiBody<DownloadLink>>, ApiError> {
     let current = require_user(&state, &headers).await?;
 
-    asset_store::find_owned(&state.db, id, current.user_id)
+    let asset = asset_store::find_owned(&state.db, id, current.user_id)
         .await?
         .ok_or_else(|| ApiError::not_found("图片不存在"))?;
+
+    if asset.status == 3 {
+        return Err(ApiError::forbidden("这张图片已被封禁"));
+    }
 
     let expires_at = chrono::Utc::now().timestamp() + crate::sign::LINK_TTL_SECS;
     let signature = crate::sign::sign(&state.config.jwt_secret, &id.to_string(), expires_at);

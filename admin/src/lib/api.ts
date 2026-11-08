@@ -61,11 +61,28 @@ export async function adminRequest<T>(path: string, options: Options = {}): Prom
   }
 }
 
-async function send<T>(path: string, options: Options = {}): Promise<T> {
+function authHeaders(extra: Record<string, string> = {}): Record<string, string> {
   const token = getAdminToken();
-  const headers: Record<string, string> = token.startsWith("ey") 
+  const head: Record<string, string> = token.startsWith("ey")
     ? { Authorization: `Bearer ${token}` }
     : { "x-admin-token": token };
+
+  return { ...head, ...extra };
+}
+
+/// 取图片字节，带上管理员令牌，不然被 401 挡住。
+export async function adminBlob(path: string): Promise<Blob> {
+  const response = await fetch(path, { headers: authHeaders() });
+
+  if (!response.ok) {
+    throw new AdminApiError(response.status, `图片读取失败（${response.status}）`);
+  }
+
+  return response.blob();
+}
+
+async function send<T>(path: string, options: Options = {}): Promise<T> {
+  const headers = authHeaders();
 
   let payload: BodyInit | undefined;
   if (options.body !== undefined) {

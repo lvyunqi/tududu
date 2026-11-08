@@ -104,6 +104,8 @@ pub async fn list_published(
     let sql = format!(
         "SELECT {PROMPT_COLUMNS_NAMED} FROM prompts \
           WHERE status = 2 \
+            AND NOT EXISTS (SELECT 1 FROM assets a \
+                             WHERE a.id = prompts.cover_asset_id AND a.status = 3) \
             AND ($1::bigint IS NULL OR category_id = $1) \
             AND ($2::text IS NULL OR title ILIKE $2 OR prompt_text ILIKE $2) \
             AND ($3::timestamptz IS NULL OR published_at < $3) \

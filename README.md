@@ -168,6 +168,9 @@ curl http://127.0.0.1:8080/api/v1/health
 | PUT | `/api/v1/admin/settings/{key}` | 改一项运行时配置，保存后立刻生效 |
 | GET | `/api/v1/admin/users` | 用户列表，带余额 |
 | PATCH | `/api/v1/admin/users/{id}/status` | 改用户状态（正常 / 禁言 / 封禁） |
+| GET | `/api/v1/admin/users/{id}/assets` | 看某个用户相册，含回收站与已封禁 |
+| POST | `/api/v1/admin/assets/ban` | 批量封禁或解封图片（封禁后用户端看不到、下载不了） |
+| DELETE | `/api/v1/admin/assets/{id}` | 管理员把图片移入回收站 |
 | GET | `/api/v1/admin/pay-orders` | 充值订单列表 |
 | GET | `/api/v1/admin/jobs` | 任务列表，可按状态筛 |
 | GET | `/api/v1/admin/jobs/{id}` | 任务详情，含每次上游调用记录 |

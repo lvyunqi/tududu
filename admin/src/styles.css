@@ -801,3 +801,100 @@ textarea:focus {
   0% { background-position: -40% 0; }
   100% { background-position: 140% 0; }
 }
+
+/* ---------- 弹层与相册 ---------- */
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: rgba(17, 24, 39, 0.35);
+  backdrop-filter: blur(3px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.modal {
+  width: 100%;
+  max-width: 760px;
+  max-height: 86vh;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: 0 30px 70px -40px rgba(16, 24, 40, 0.8);
+  overflow: hidden;
+}
+
+.modal-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: none;
+}
+
+.modal-head strong {
+  font-size: 15px;
+}
+
+.modal-head .hint {
+  flex: 1;
+}
+
+.album-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
+  gap: 10px;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+.album-cell {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fbfcfe;
+}
+
+.album-cell.banned {
+  border-color: #f3c9c4;
+  background: #fdf6f5;
+}
+
+.album-img,
+.album-ph {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: 8px;
+  background: #eef1f6;
+  display: block;
+}
+
+.album-cell figcaption {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  font-size: 11px;
+}
+
+.album-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.album-actions button {
+  flex: 1;
+  padding: 5px 8px;
+  font-size: 12px;
+}

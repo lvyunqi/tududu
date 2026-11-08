@@ -1,5 +1,6 @@
 import { useState } from "react";
 
+import UserAlbum from "../components/UserAlbum";
 import { useLoad } from "../components/useLoad";
 import { adminRequest } from "../lib/api";
 import type { AdminUser } from "../lib/types";
@@ -17,6 +18,7 @@ export default function UsersPage() {
     adminRequest<AdminUser[]>("/api/v1/admin/users?limit=50")
   );
   const [busy, setBusy] = useState<string | null>(null);
+  const [album, setAlbum] = useState<AdminUser | null>(null);
 
   async function changeStatus(user: AdminUser, status: number) {
     setBusy(user.id);
@@ -60,6 +62,9 @@ export default function UsersPage() {
               <td className="mono">{formatBytes(user.used_bytes)}</td>
               <td>{USER_STATUS[user.status] ?? user.status}</td>
               <td className="actions">
+                <button className="small" onClick={() => setAlbum(user)}>
+                  相册
+                </button>
                 {[1, 2, 3].map((status) => (
                   <button
                     key={status}
@@ -76,6 +81,14 @@ export default function UsersPage() {
         </tbody>
       </table>
       {(data ?? []).length === 0 && <p className="hint">还没有用户</p>}
+
+      {album && (
+        <UserAlbum
+          userId={album.id}
+          nickname={album.nickname}
+          onClose={() => setAlbum(null)}
+        />
+      )}
     </section>
   );
 }
