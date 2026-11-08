@@ -208,33 +208,30 @@ curl http://127.0.0.1:8080/api/v1/health
 **服务端**：`tududu update check` 看版本，`tududu update install --yes` 下载校验并替换二进制，
 替换成功后以退出码 75 退出，表示「已更新待重启」。
 
-**启动器**：`deploy/tududu-launcher.sh` 负责托管主程序，行为对齐常见的服务端发行包做法：
+**启动器**：`tududu-launcher` 是独立的二进制（`crates/tududu-launcher`），放在主程序同一目录即可：
+
+```bash
+./tududu-launcher            # 默认拉起同目录的 ./tududu serve
+./tududu-launcher -- --log-filter debug
+./tududu-launcher --env-file /etc/tududu/tududu.env
+```
 
 - 环境变量透传：systemd、面板、shell 里已有的变量原样带给主程序
 - `.env` 只补缺：工作目录下的 `.env` 解析后**只填充父进程没有的变量**，同名时父进程优先
 - `--env-file PATH` 可以指定别的环境文件；文件不可读或格式不对时直接报错退出，只报行号不回显内容（里面可能是密钥）
-- 主程序参数放在 `--` 之后：`tududu-launcher.sh -- --log-filter debug`
-- 标准输出和错误输出沿用启动器的，交给服务管理器收日志；主程序不接面板的 stdin
-- 收到 TERM/INT 时先转发给主程序，等它自己收尾
+- 主程序参数放在 `--` 之后
+- 主程序不接面板的 stdin，输出沿用启动器的，交给服务管理器收日志
+- 收到 TERM / INT / HUP 时先转发给主程序，等它自己收尾
 - 主程序以 75 退出表示「新版本已装好」，启动器重新拉起；其它退出码原样退出
 
-发行包里再套一层 `deploy/start.sh`，解压后直接 `./start.sh` 就行。
-
-```bash
-tududu update check
-tududu update install --yes    # 会校验 SHA-256，旧版本留在同目录的 tududu-backup
-```
-
-systemd 里把 `ExecStart` 指向启动器即可：
+systemd 里让启动器当前台进程就行：
 
 ```ini
 [Service]
-ExecStart=/opt/tududu/tududu-launcher.sh
+ExecStart=/opt/tududu/tududu-launcher
+WorkingDirectory=/opt/tududu
 Restart=always
-Environment=TUDUDU_BIN=/opt/tududu/tududu
-Environment=TUDUDU_ARGS=serve
 ```
-
 ## 配置
 
 启动参数从环境变量读取，也可以写进 `.env` 文件。服务启动时会自动加载当前目录的 `.env`，
