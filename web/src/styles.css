@@ -2551,3 +2551,32 @@ select:focus {
   overflow: hidden;
   transition: opacity 0.16s ease;
 }
+
+/* =========================================================
+   去掉顶栏后：让内容自己吃掉状态栏高度
+   ========================================================= */
+
+.shell {
+  padding-top: var(--safe-top);
+}
+
+/* 顶栏相关样式保留但不再渲染，避免别处引用时花掉 */
+.topbar,
+.brand {
+  display: none;
+}
+
+.drawer-foot {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 4px 2px;
+  border-top: 0.5px solid var(--line);
+}
+
+.drawer-foot strong {
+  flex: 1;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}

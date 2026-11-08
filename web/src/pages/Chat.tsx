@@ -495,6 +495,16 @@ export default function ChatPage({ auth, sessionId }: { auth: Auth; sessionId?: 
                 />
               ))}
             </div>
+
+            <div className="drawer-foot">
+              <span className="hint">余额</span>
+              <strong>
+                {auth.balance} {auth.unitName}
+              </strong>
+              <a className="chip" href="#/recharge" onClick={() => setDrawerOpen(false)}>
+                充值
+              </a>
+            </div>
           </aside>
         </div>
       )}
