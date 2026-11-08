@@ -9,6 +9,8 @@ export interface VersionInfo {
   published_at: string;
   size: number;
   download_url: string;
+  sha256?: string | null;
+  build_commit?: string | null;
 }
 
 interface TauriGlobal {
@@ -30,25 +32,34 @@ export function tauri(): TauriGlobal | null {
   return global?.core ? global : null;
 }
 
-/** 当前应用版本，浏览器里退回一个空串表示不检查。 */
-export async function currentVersion(): Promise<string> {
+interface BuildInfo {
+  version: string;
+  commit: string;
+}
+
+/** 当前版本与构建提交；浏览器里返回空，表示不做检查。 */
+export async function currentBuild(): Promise<BuildInfo> {
   const api = tauri();
-  if (!api?.app?.getVersion) return "";
+  if (!api?.core) return { version: "", commit: "" };
 
   try {
-    return await api.app.getVersion();
+    const info = (await api.core.invoke("app_build_info")) as BuildInfo;
+    return { version: info?.version ?? "", commit: info?.commit ?? "" };
   } catch {
-    return "";
+    // 老版本没有这个命令，退回只拿版本号
+    const version = api.app?.getVersion ? await api.app.getVersion().catch(() => "") : "";
+    return { version, commit: "" };
   }
 }
 
 /** 问服务端有没有新版本。出错就当没有，不能因为查版本卡住启动。 */
 export async function checkUpdate(platform: string): Promise<VersionInfo | null> {
-  const current = await currentVersion();
+  const build = await currentBuild();
 
   try {
     const params = new URLSearchParams({ platform });
-    if (current) params.set("current", current);
+    if (build.version) params.set("current", build.version);
+    if (build.commit) params.set("commit", build.commit);
 
     const response = await fetch(BASE + "/api/v1/app/version?" + params.toString());
     if (!response.ok) return null;

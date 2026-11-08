@@ -26,13 +26,20 @@ fn current_version() -> String {
     crate::update::build_version()
 }
 
+/// 当前二进制的构建提交，没注入就是空，服务端会跳过同版本比较。
+fn current_commit() -> String {
+    option_env!("TUDUDU_BUILD_COMMIT").unwrap_or("").to_owned()
+}
+
 /// 查一下有没有新版本，打印结果。
 pub async fn check(options: &UpdateOptions) -> anyhow::Result<Option<serde_json::Value>> {
     let current = current_version();
+    let commit = current_commit();
     let url = format!(
-        "{}/api/v1/app/version?platform=linux&current={}",
+        "{}/api/v1/app/version?platform=linux&current={}&commit={}",
         options.base_url.trim_end_matches('/'),
-        current
+        current,
+        commit
     );
 
     let body: serde_json::Value = reqwest::get(&url).await?.json().await?;

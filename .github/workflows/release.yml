@@ -68,6 +68,7 @@ jobs:
           CC_x86_64_unknown_linux_musl: musl-gcc
           AR_x86_64_unknown_linux_musl: ar
           TUDUDU_BUILD_VERSION: ${{ env.RELEASE_VERSION }}
+          TUDUDU_BUILD_COMMIT: ${{ github.sha }}
         run: cargo build --release --target x86_64-unknown-linux-musl
 
       - name: 整理产物
@@ -299,6 +300,8 @@ jobs:
           PY
 
       - name: 打包 APK
+        env:
+          TUDUDU_BUILD_COMMIT: ${{ github.sha }}
         run: pnpm tauri android build --apk --target aarch64
 
       - name: 签名并整理产物
@@ -358,13 +361,25 @@ jobs:
           path: dist
           merge-multiple: true
 
-      - name: 生成校验和
+      - name: 生成校验和与构建信息
         run: |
           set -euo pipefail
           cd dist
           ls -lh
           sha256sum tududu-* > SHA256SUMS.txt
           cat SHA256SUMS.txt
+
+          # 同一个标签可能被覆盖发布，版本号看不出新旧，这里记下提交号和两个包的哈希
+          APK=$(sha256sum tududu-*-arm64.apk | awk '{print $1}')
+          LINUX=$(sha256sum tududu-*-linux-x86_64 | awk '{print $1}')
+          {
+            echo "version=${RELEASE_VERSION}"
+            echo "commit=${GITHUB_SHA}"
+            echo "built_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            echo "android_sha256=$APK"
+            echo "linux_sha256=$LINUX"
+          } > BUILD_INFO.txt
+          cat BUILD_INFO.txt
 
       - name: 写入发布说明
         run: |
@@ -375,6 +390,7 @@ jobs:
           - tududu-*-linux-x86_64：服务端，静态链接，单文件，接口与两个前端都在里面
           - tududu-*-arm64.apk：安卓包，已用发布密钥签名
           - SHA256SUMS.txt：上面两个文件的校验和
+          - BUILD_INFO.txt：这次构建的提交号与两个包的哈希，同一个标签覆盖发布时靠它区分新旧
 
           ## 服务端怎么跑
 
@@ -420,9 +436,9 @@ jobs:
           echo "=== 最终附件 ==="
           gh release view "$VERSION" --json assets --jq '.assets[] | "\(.name)  \(.size)"'
 
-          # 两个包加一份校验和，少一个就说明上传不完整
+          # 两个包 + 校验和 + 构建信息，少一个就说明上传不完整
           COUNT=$(gh release view "$VERSION" --json assets --jq '.assets | length')
-          if [ "$COUNT" -lt 3 ]; then
+          if [ "$COUNT" -lt 4 ]; then
             echo "附件只有 $COUNT 个，上传不完整"
             exit 1
           fi
