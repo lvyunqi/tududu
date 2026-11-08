@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import AuthImage from "../components/AuthImage";
 import Lightbox from "../components/Lightbox";
+import Toast from "../components/Toast";
 import { request } from "../lib/api";
 import type { useAuth } from "../lib/store";
 import type {
@@ -160,8 +161,6 @@ export default function ChatPage({ auth, sessionId }: { auth: Auth; sessionId?: 
 
   /// 删掉一个会话；删的是当前这个就回到新对话。
   async function removeSession(id: string) {
-    if (!window.confirm("删掉这个对话？里面的图片还在相册里。")) return;
-
     try {
       await request("/api/v1/sessions/" + id, { method: "DELETE" });
       setSessions((prev) => prev.filter((item) => item.id !== id));
@@ -554,6 +553,8 @@ function SwipeRow({
 }) {
   const [offset, setOffset] = useState(0);
   const [dragging, setDragging] = useState(false);
+  // 删除要点两下，第一下变成「确认」，3 秒不点自己退回去
+  const [armed, setArmed] = useState(false);
 
   const startX = useRef<number | null>(null);
   const longPress = useRef<number | null>(null);
@@ -620,15 +621,24 @@ function SwipeRow({
       className={pulled ? "drawer-row open" : "drawer-row"}
     >
       <button
-        className="swipe-delete danger"
+        className={armed ? "swipe-delete danger armed" : "swipe-delete danger"}
         tabIndex={pulled ? 0 : -1}
         aria-hidden={!pulled}
-        onClick={() => {
+        onClick={(event) => {
+          event.stopPropagation();
+
+          if (!armed) {
+            setArmed(true);
+            window.setTimeout(() => setArmed(false), 3200);
+            return;
+          }
+
+          setArmed(false);
           closeAll();
           onDelete();
         }}
       >
-        删除
+        {armed ? "确认" : "删除"}
       </button>
 
       <a
@@ -871,7 +881,7 @@ function PublishSheet({
           ))}
         </div>
 
-        {note && <p className="hint">{note}</p>}
+        {note && <Toast text={note} onDone={() => setNote(null)} />}
 
         <div className="composer-row">
           <button className="ghost" onClick={onClose}>

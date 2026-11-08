@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 
+import Toast from "../components/Toast";
 import { BASE, request } from "../lib/api";
 import type { useAuth } from "../lib/store";
 import type { PromptItem, Session } from "../lib/types";
@@ -9,7 +10,7 @@ type Auth = ReturnType<typeof useAuth>;
 export default function MePage({ auth }: { auth: Auth }) {
   const [works, setWorks] = useState<PromptItem[]>([]);
   const [sessions, setSessions] = useState<Session[]>([]);
-  const [note, setNote] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
 
   async function loadWorks() {
     try {
@@ -27,33 +28,6 @@ export default function MePage({ auth }: { auth: Auth }) {
       .then(setSessions)
       .catch(() => setSessions([]));
   }, []);
-
-  /// 下架只是从广场隐藏，作品还在。
-  async function hide(code: string) {
-    setNote(null);
-
-    try {
-      await request("/api/v1/prompts/" + code, { method: "DELETE" });
-      setNote("已从广场移除");
-      await loadWorks();
-    } catch (err) {
-      setNote(err instanceof Error ? err.message : "操作失败");
-    }
-  }
-
-  /// 彻底删除，不可恢复。
-  async function purge(code: string) {
-    if (!window.confirm("删除后不可恢复，确定吗？")) return;
-    setNote(null);
-
-    try {
-      await request("/api/v1/prompts/" + code + "/permanent", { method: "DELETE" });
-      setNote("已删除");
-      await loadWorks();
-    } catch (err) {
-      setNote(err instanceof Error ? err.message : "删除失败");
-    }
-  }
 
   return (
     <div className="page">
@@ -96,26 +70,16 @@ export default function MePage({ auth }: { auth: Auth }) {
           <span className="tag">{works.length} 个</span>
         </div>
 
-        {note && <p className="hint">{note}</p>}
         {works.length === 0 && <p className="hint">还没有发布过</p>}
 
         {works.map((item) => (
-          <div key={item.id} className="row">
-            <span className="row-main">{item.title}</span>
-            <span className={item.status === 2 ? "tag ok" : "tag"}>
-              {item.status === 2 ? "广场可见" : item.status === 1 ? "待审核" : "已隐藏"}
-            </span>
-            <span className="row-actions">
-              {item.status === 2 && (
-                <button className="mini" onClick={() => void hide(item.short_code)}>
-                  隐藏
-                </button>
-              )}
-              <button className="mini danger" onClick={() => void purge(item.short_code)}>
-                删除
-              </button>
-            </span>
-          </div>
+          <WorkRow
+            key={item.id}
+            item={item}
+            onToast={setToast}
+            onRemoved={(id) => setWorks((prev) => prev.filter((row) => row.id !== id))}
+            onChanged={() => void loadWorks()}
+          />
         ))}
       </section>
 
@@ -128,6 +92,92 @@ export default function MePage({ auth }: { auth: Auth }) {
       <button className="danger" onClick={() => void auth.logout()}>
         退出登录
       </button>
+
+      {toast && <Toast text={toast} onDone={() => setToast(null)} />}
+    </div>
+  );
+}
+
+/** 一行作品。删除要点两下：先展开确认，再真的删，删除时整行收起来。 */
+function WorkRow({
+  item,
+  onToast,
+  onRemoved,
+  onChanged
+}: {
+  item: PromptItem;
+  onToast: (text: string) => void;
+  onRemoved: (id: string) => void;
+  onChanged: () => void;
+}) {
+  const [stage, setStage] = useState<"idle" | "confirm" | "busy" | "leaving">("idle");
+
+  async function hide() {
+    setStage("busy");
+
+    try {
+      await request("/api/v1/prompts/" + item.short_code, { method: "DELETE" });
+      onToast("已从广场撤下");
+      onChanged();
+      setStage("idle");
+    } catch (err) {
+      onToast(err instanceof Error ? err.message : "操作失败");
+      setStage("idle");
+    }
+  }
+
+  async function purge() {
+    setStage("busy");
+
+    try {
+      await request("/api/v1/prompts/" + item.short_code + "/permanent", {
+        method: "DELETE"
+      });
+
+      // 先播收起动画，再真的从列表里去掉
+      setStage("leaving");
+      window.setTimeout(() => onRemoved(item.id), 260);
+      onToast("作品已删除");
+    } catch (err) {
+      onToast(err instanceof Error ? err.message : "删除失败");
+      setStage("idle");
+    }
+  }
+
+  const leaving = stage === "leaving";
+  const busy = stage === "busy";
+
+  return (
+    <div className={leaving ? "row work-row leaving" : "row work-row"}>
+      <span className="row-main">{item.title}</span>
+
+      <span className={item.status === 2 ? "tag ok" : "tag"}>
+        {item.status === 2 ? "广场可见" : item.status === 1 ? "待审核" : "已隐藏"}
+      </span>
+
+      <span className="row-actions">
+        {stage === "confirm" ? (
+          <>
+            <button className="mini" onClick={() => setStage("idle")} disabled={busy}>
+              取消
+            </button>
+            <button className="mini danger" onClick={() => void purge()} disabled={busy}>
+              {busy ? "删除中" : "确认删除"}
+            </button>
+          </>
+        ) : (
+          <>
+            {item.status === 2 && (
+              <button className="mini" onClick={() => void hide()} disabled={busy}>
+                {busy ? "处理中" : "隐藏"}
+              </button>
+            )}
+            <button className="mini danger" onClick={() => setStage("confirm")} disabled={busy}>
+              删除
+            </button>
+          </>
+        )}
+      </span>
     </div>
   );
 }

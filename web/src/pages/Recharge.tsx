@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 
+import Toast from "../components/Toast";
+
 import { BASE, getToken, request } from "../lib/api";
 import type { useAuth } from "../lib/store";
 import type { CheckoutInfo, PayOrder, RechargePlan } from "../lib/types";
@@ -187,7 +189,7 @@ export default function RechargePage({ auth }: { auth: Auth }) {
             </button>
           </div>
 
-          {note && <p className="hint">{note}</p>}
+          {note && <Toast text={note} onDone={() => setNote(null)} />}
         </div>
       )}
     </div>
