@@ -41,13 +41,10 @@ fn run() -> anyhow::Result<()> {
     }
 
     // 主程序必须带子命令，没给就用 TUDUDU_ARGS，再没有就默认 serve
-    if args.program_args.is_empty() {
-        if let Ok(extra) = std::env::var("TUDUDU_ARGS") {
-            args.program_args = extra
-                .split_whitespace()
-                .map(str::to_owned)
-                .collect::<Vec<_>>();
-        }
+    if args.program_args.is_empty()
+        && let Ok(extra) = std::env::var("TUDUDU_ARGS")
+    {
+        args.program_args = extra.split_whitespace().map(str::to_owned).collect();
     }
 
     if args.program_args.is_empty() {
