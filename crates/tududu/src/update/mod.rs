@@ -82,9 +82,14 @@ impl UpdateService {
         }
     }
 
-    /// 取最新 release，带 5 分钟缓存。
+    /// 取最新 release，带 5 分钟缓存；refresh 为真时跳过缓存。
     pub async fn latest(&self) -> Result<Release, String> {
-        if let Some((at, release)) = self.cache.read().await.as_ref()
+        self.latest_fresh(false).await
+    }
+
+    pub async fn latest_fresh(&self, refresh: bool) -> Result<Release, String> {
+        if !refresh
+            && let Some((at, release)) = self.cache.read().await.as_ref()
             && at.elapsed() < CACHE_TTL
         {
             return Ok(release.clone());
@@ -208,7 +213,18 @@ impl UpdateService {
         current: &str,
         current_commit: &str,
     ) -> Result<VersionInfo, String> {
-        let release = self.latest().await?;
+        self.version_fresh(platform, current, current_commit, false)
+            .await
+    }
+
+    pub async fn version_fresh(
+        &self,
+        platform: &str,
+        current: &str,
+        current_commit: &str,
+        refresh: bool,
+    ) -> Result<VersionInfo, String> {
+        let release = self.latest_fresh(refresh).await?;
         let latest = normalize(&release.tag_name);
         let asset = Self::asset_for(&release, platform);
         let info = self.build_info(&release).await;

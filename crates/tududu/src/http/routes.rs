@@ -126,6 +126,10 @@ pub fn router(state: AppState) -> Router {
             get(crate::http::admin_update::status),
         )
         .route(
+            "/api/v1/admin/update/check",
+            post(crate::http::admin_update::check),
+        )
+        .route(
             "/api/v1/admin/update/install",
             post(crate::http::admin_update::install),
         )

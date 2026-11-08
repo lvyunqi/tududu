@@ -61,7 +61,7 @@ pub async fn serve(config: Config, db: PgPool) -> anyhow::Result<()> {
         settings: Arc::new(std::sync::RwLock::new(live)),
         updates: crate::update::UpdateService::new(update_repo()),
         upgrade: Arc::new(std::sync::Mutex::new(
-            crate::http::admin_update::PendingUpgrade::default(),
+            crate::http::admin_update::SoftwareState::default(),
         )),
     };
 
