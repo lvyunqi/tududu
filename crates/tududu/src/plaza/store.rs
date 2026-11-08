@@ -94,6 +94,33 @@ pub async fn find_published(db: &PgPool, code: &str) -> sqlx::Result<Option<Prom
         .await
 }
 
+/// 作者查自己的作品，不看状态。
+pub async fn find_own(db: &PgPool, code: &str, author: Uuid) -> sqlx::Result<Option<PromptRow>> {
+    let sql = format!(
+        "SELECT {PROMPT_COLUMNS_NAMED} FROM prompts WHERE short_code = $1 AND author_user_id = $2"
+    );
+
+    sqlx::query_as::<_, PromptRow>(&sql)
+        .bind(code)
+        .bind(author)
+        .fetch_optional(db)
+        .await
+}
+
+/// 作者重新上架：把已下架的作品改回目标状态。
+pub async fn republish(db: &PgPool, code: &str, author: Uuid, status: i16) -> sqlx::Result<bool> {
+    let result = sqlx::query(
+        "UPDATE prompts SET status = $3 WHERE short_code = $1 AND author_user_id = $2 AND status = 3",
+    )
+    .bind(code)
+    .bind(author)
+    .bind(status)
+    .execute(db)
+    .await?;
+
+    Ok(result.rows_affected() > 0)
+}
+
 pub async fn list_published(
     db: &PgPool,
     category_id: Option<i64>,

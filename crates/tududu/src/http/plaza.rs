@@ -78,6 +78,18 @@ pub async fn like(
     Ok(Json(ApiBody::ok(result)))
 }
 
+/// 作者把自己下架的作品重新上架。
+pub async fn republish(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(code): Path<String>,
+) -> Result<Json<ApiBody<plaza::store::PromptRow>>, ApiError> {
+    let current = require_user(&state, &headers).await?;
+    let row = plaza::republish(&state.db, current.user_id, &code).await?;
+
+    Ok(Json(ApiBody::ok(row)))
+}
+
 /// 作者彻底删除自己的作品。下架只是隐藏，这个是删掉。
 pub async fn purge(
     State(state): State<AppState>,

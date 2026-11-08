@@ -4,6 +4,7 @@ import AuthImage from "../components/AuthImage";
 import Lightbox from "../components/Lightbox";
 import Toast from "../components/Toast";
 import { request } from "../lib/api";
+import { readPrefs } from "../lib/prefs";
 import type { useAuth } from "../lib/store";
 import type {
   Asset,
@@ -230,7 +231,7 @@ export default function ChatPage({ auth, sessionId }: { auth: Auth; sessionId?: 
       });
 
       setText("");
-      setAssets([]);
+      if (!readPrefs().keepInput) setAssets([]);
       if (textRef.current) textRef.current.style.height = "auto";
 
       await load(current);

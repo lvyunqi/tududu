@@ -82,6 +82,8 @@ curl http://127.0.0.1:8080/api/v1/health
 | POST | `/api/v1/auth/refresh` | 刷新访问令牌，同时轮换刷新令牌 |
 | POST | `/api/v1/auth/logout` | 登出当前设备 |
 | GET | `/api/v1/me` | 当前登录用户资料 |
+| PATCH | `/api/v1/me` | 改昵称 |
+| POST | `/api/v1/me/password` | 改密码，改完其它会话全部失效 |
 | POST | `/api/v1/uploads` | 上传图片，multipart 字段名 `file`，仅 PNG/JPEG/WebP，单张不超过 20MB |
 | GET | `/api/v1/assets` | 我的图片列表，游标分页（`before`、`limit`） |
 | GET | `/api/v1/assets/{id}` | 图片详情 |
@@ -92,6 +94,7 @@ curl http://127.0.0.1:8080/api/v1/health
 | POST | `/api/v1/storage/batch-delete` | 批量移入回收站，一次最多 200 张 |
 | DELETE | `/api/v1/prompts/{code}` | 作者下架自己的作品（从广场隐藏） |
 | DELETE | `/api/v1/prompts/{code}/permanent` | 作者彻底删除自己的作品 |
+| POST | `/api/v1/prompts/{code}/republish` | 作者把下架的作品重新上架 |
 | GET | `/api/v1/storage/quota` | 当前占用与上限 |
 | POST | `/api/v1/jobs` | 提交修图任务，立即返回任务号，上游调用在后台执行 |
 | GET | `/api/v1/jobs/{id}` | 查询任务状态与结果图 |

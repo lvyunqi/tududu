@@ -44,6 +44,35 @@ pub async fn find_user_by_id(db: &PgPool, id: Uuid) -> sqlx::Result<Option<UserR
         .await
 }
 
+pub async fn update_nickname(db: &PgPool, id: Uuid, nickname: &str) -> sqlx::Result<bool> {
+    let result = sqlx::query("UPDATE users SET nickname = $2 WHERE id = $1")
+        .bind(id)
+        .bind(nickname)
+        .execute(db)
+        .await?;
+
+    Ok(result.rows_affected() > 0)
+}
+
+pub async fn update_password(db: &PgPool, id: Uuid, hash: &str) -> sqlx::Result<bool> {
+    let result = sqlx::query("UPDATE users SET password_hash = $2 WHERE id = $1")
+        .bind(id)
+        .bind(hash)
+        .execute(db)
+        .await?;
+
+    Ok(result.rows_affected() > 0)
+}
+
+pub async fn revoke_all_sessions(db: &PgPool, user_id: Uuid) -> sqlx::Result<u64> {
+    let result = sqlx::query("DELETE FROM sessions WHERE user_id = $1")
+        .bind(user_id)
+        .execute(db)
+        .await?;
+
+    Ok(result.rows_affected())
+}
+
 pub struct NewUser<'a> {
     pub short_code: &'a str,
     pub nickname: &'a str,

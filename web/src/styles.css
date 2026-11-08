@@ -2836,3 +2836,176 @@ select:focus {
   transform: scale(0.85);
   background: rgba(215, 0, 21, 0.85);
 }
+
+/* =========================================================
+   我的页：资料卡、偏好开关、存储条、作品封面
+   ========================================================= */
+
+.profile-card {
+  flex-direction: row;
+  align-items: center;
+  gap: 14px;
+}
+
+.avatar {
+  width: 54px;
+  height: 54px;
+  flex: none;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 22px;
+  font-weight: 600;
+  color: #fff;
+  background: linear-gradient(135deg, #4f63ea, #22b8dc);
+  box-shadow: 0 8px 20px -12px rgba(0, 113, 227, 0.8);
+}
+
+.profile-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.profile-main h2 {
+  margin: 0;
+  font-size: 19px;
+  letter-spacing: -0.02em;
+}
+
+.profile-edit {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.profile-edit input {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 10px;
+  font-size: 14px;
+}
+
+/* 开关行 */
+.switch-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 10px 0;
+  border-bottom: 0.5px solid var(--line);
+  cursor: pointer;
+}
+
+.switch-row:last-child {
+  border-bottom: none;
+}
+
+.switch-row span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 14px;
+  color: var(--ink);
+}
+
+.switch-row em {
+  font-style: normal;
+  font-size: 12px;
+  color: var(--ink-3);
+}
+
+.switch-row input[type="checkbox"] {
+  width: 44px;
+  height: 26px;
+  flex: none;
+  appearance: none;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.12);
+  position: relative;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.switch-row input[type="checkbox"]::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+  transition: transform 0.22s var(--spring);
+}
+
+.switch-row input[type="checkbox"]:checked {
+  background: var(--accent);
+}
+
+.switch-row input[type="checkbox"]:checked::after {
+  transform: translateX(18px);
+}
+
+/* 存储条 */
+.meter {
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.07);
+  overflow: hidden;
+}
+
+.meter span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #4f63ea, #22b8dc);
+  transition: width 0.5s var(--smooth);
+}
+
+/* 改密码 */
+.password-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* 作品封面 */
+.work-cover {
+  width: 40px;
+  height: 40px;
+  flex: none;
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--surface-2);
+}
+
+.work-cover img,
+.work-cover-ph {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.work-cover-ph {
+  background: linear-gradient(100deg, rgba(0, 0, 0, 0.04), rgba(0, 0, 0, 0.09), rgba(0, 0, 0, 0.04));
+  background-size: 240% 100%;
+  animation: shimmer 1.5s linear infinite;
+}
+
+/* 偏好里关掉动效 */
+.calm *,
+.calm *::before,
+.calm *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+}
+
+.calm .chat-particles {
+  display: none;
+}

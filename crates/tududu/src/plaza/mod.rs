@@ -96,6 +96,34 @@ pub async fn publish(
     Ok(store::insert(db, &new_prompt).await?)
 }
 
+/// 作者重新上架自己下架过的作品。命中敏感词还是走人工审核。
+pub async fn republish(
+    db: &PgPool,
+    author: Uuid,
+    code: &str,
+) -> Result<store::PromptRow, ApiError> {
+    let prompt = store::find_own(db, code, author)
+        .await?
+        .ok_or_else(|| ApiError::not_found("作品不存在"))?;
+
+    let hits =
+        store::sensitive_hits(db, &format!("{}\n{}", prompt.title, prompt.prompt_text)).await?;
+    let status = if hits.is_empty() {
+        store::STATUS_PUBLISHED
+    } else {
+        tracing::info!(words = ?hits, "重新上架命中敏感词，转人工审核");
+        store::STATUS_REVIEWING
+    };
+
+    if !store::republish(db, code, author, status).await? {
+        return Err(ApiError::bad_request("这个作品当前不是下架状态"));
+    }
+
+    store::find_own(db, code, author)
+        .await?
+        .ok_or_else(|| ApiError::not_found("作品不存在"))
+}
+
 pub async fn detail(db: &PgPool, code: &str) -> Result<store::PromptRow, ApiError> {
     let found = store::find_published(db, code)
         .await?

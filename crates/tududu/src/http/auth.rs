@@ -76,6 +76,48 @@ pub async fn logout(
     }))
 }
 
+#[derive(Debug, serde::Deserialize)]
+pub struct RenameRequest {
+    pub nickname: String,
+}
+
+pub async fn rename(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Json(req): Json<RenameRequest>,
+) -> Result<Json<ApiBody<auth::UserInfo>>, ApiError> {
+    let current = require_user(&state, &headers).await?;
+    let profile = auth::rename(&state.db, current.user_id, &req.nickname).await?;
+    Ok(Json(ApiBody::ok(profile)))
+}
+
+#[derive(Debug, serde::Deserialize)]
+pub struct ChangePasswordRequest {
+    pub old_password: String,
+    pub new_password: String,
+}
+
+pub async fn change_password(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Json(req): Json<ChangePasswordRequest>,
+) -> Result<Json<ApiBody<()>>, ApiError> {
+    let current = require_user(&state, &headers).await?;
+    auth::change_password(
+        &state.db,
+        current.user_id,
+        &req.old_password,
+        &req.new_password,
+    )
+    .await?;
+
+    Ok(Json(ApiBody {
+        code: 0,
+        message: "ok".to_owned(),
+        data: None,
+    }))
+}
+
 pub async fn me(
     State(state): State<AppState>,
     headers: HeaderMap,

@@ -60,7 +60,8 @@ pub fn router(state: AppState) -> Router {
         .route("/api/v1/auth/login", post(auth::login))
         .route("/api/v1/auth/refresh", post(auth::refresh))
         .route("/api/v1/auth/logout", post(auth::logout))
-        .route("/api/v1/me", get(auth::me))
+        .route("/api/v1/me", get(auth::me).patch(auth::rename))
+        .route("/api/v1/me/password", post(auth::change_password))
         .route(
             "/api/v1/uploads",
             post(assets::upload).layer(DefaultBodyLimit::max(
@@ -123,6 +124,7 @@ pub fn router(state: AppState) -> Router {
             "/api/v1/prompts/{code}/permanent",
             axum::routing::delete(plaza::purge),
         )
+        .route("/api/v1/prompts/{code}/republish", post(plaza::republish))
         .route(
             "/api/v1/admin/providers",
             get(admin::list_providers).post(admin::create_provider),
