@@ -68,29 +68,47 @@ export function GalleryIcon({ size = 17 }: Props) {
   );
 }
 
-/** 广场入口：一颗有明暗面的星。 */
+/** 广场入口：一颗主火花加一颗小火花，像 AI 生成的那种记号。 */
 export function StarIcon({ size = 22 }: Props) {
+  const small = Math.round(size * 0.44);
+
   return (
-    <svg viewBox="0 0 24 24" width={size} height={size} aria-hidden="true">
-      <defs>
-        <linearGradient id="star-shade" x1="0.25" y1="0" x2="0.75" y2="1">
-          <stop offset="0%" stopColor="#5b636f" />
-          <stop offset="45%" stopColor="#2b3039" />
-          <stop offset="100%" stopColor="#0e1116" />
-        </linearGradient>
-      </defs>
+    <span className="sparkle-mark" style={{ width: size, height: size }}>
+      <svg viewBox="0 0 24 24" width={size} height={size} aria-hidden="true">
+        <defs>
+          <linearGradient id="sparkle-main" x1="0.3" y1="0" x2="0.75" y2="1">
+            <stop offset="0%" stopColor="#5f6875" />
+            <stop offset="46%" stopColor="#252a33" />
+            <stop offset="100%" stopColor="#0b0e13" />
+          </linearGradient>
+        </defs>
 
-      <path
-        d="M12 2.4l2.98 6.2 6.62.92-4.82 4.62 1.18 6.56L12 17.6l-5.96 3.1 1.18-6.56L2.4 9.52l6.62-.92z"
-        fill="url(#star-shade)"
-      />
+        <path
+          d="M12 1.6c.72 5.72 4.68 9.68 10.4 10.4-5.72.72-9.68 4.68-10.4 10.4C11.28 16.68 7.32 12.72 1.6 12 7.32 11.28 11.28 7.32 12 1.6Z"
+          fill="url(#sparkle-main)"
+        />
 
-      {/* 左上角一抹高光，星面才有反光 */}
-      <path
-        d="M12 4.6l1.72 3.6 3.7.52-2.4 2.3-3.02-6.42z"
-        fill="#ffffff"
-        opacity="0.38"
-      />
-    </svg>
+        {/* 内芯一抹亮，火花才有中间发亮的感觉 */}
+        <path
+          d="M12 5.2c.34 2.7 2.1 4.46 4.8 4.8-2.7.34-4.46 2.1-4.8 4.8-.34-2.7-2.1-4.46-4.8-4.8 2.7-.34 4.46-2.1 4.8-4.8Z"
+          fill="#ffffff"
+          opacity="0.16"
+        />
+      </svg>
+
+      {/* 右上角的小火花，自己有个闪烁节奏 */}
+      <svg
+        className="sparkle-small"
+        viewBox="0 0 24 24"
+        width={small}
+        height={small}
+        aria-hidden="true"
+      >
+        <path
+          d="M12 1.6c.72 5.72 4.68 9.68 10.4 10.4-5.72.72-9.68 4.68-10.4 10.4C11.28 16.68 7.32 12.72 1.6 12 7.32 11.28 11.28 7.32 12 1.6Z"
+          fill="url(#sparkle-main)"
+        />
+      </svg>
+    </span>
   );
 }
