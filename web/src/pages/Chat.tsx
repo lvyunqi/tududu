@@ -566,20 +566,21 @@ function SwipeRow({
       longPress.current = null;
       if (moved.current) return;
 
-      setOffset(-88);
+      setOffset(-84);
     }, 380);
   }
 
   function onMove(event: React.PointerEvent<HTMLAnchorElement>) {
     if (startX.current === null) return;
 
-    const delta = event.clientX - startX.current;
+    // 只允许往左拉，往右是死的
+    const delta = Math.min(0, event.clientX - startX.current);
     if (Math.abs(delta) > 8) {
       moved.current = true;
       clearLongPress();
     }
 
-    setOffset(Math.max(-88, Math.min(88, delta)));
+    setOffset(Math.max(-84, delta));
   }
 
   function onUp() {
@@ -589,9 +590,9 @@ function SwipeRow({
     if (startX.current === null) return;
     startX.current = null;
 
-    // 推开得够远才停住，否则弹回去
-    if (Math.abs(offset) > 52) {
-      setOffset(offset < 0 ? -88 : 88);
+    // 拉开得够远才停住，否则弹回去
+    if (offset < -42) {
+      setOffset(-84);
       return;
     }
 
@@ -609,7 +610,7 @@ function SwipeRow({
       className={pulled ? "drawer-row open" : "drawer-row"}
     >
       <button
-        className="swipe-delete"
+        className="swipe-delete danger"
         tabIndex={pulled ? 0 : -1}
         aria-hidden={!pulled}
         onClick={() => {
