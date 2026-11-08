@@ -62,10 +62,12 @@ jobs:
       - name: 安装 musl 工具链
         run: sudo apt-get update && sudo apt-get install -y musl-tools
 
+      # 版本号以标签为准注入，别让程序自称 0.1.0、更新检查永远认为有新版本
       - name: 编译静态二进制
         env:
           CC_x86_64_unknown_linux_musl: musl-gcc
           AR_x86_64_unknown_linux_musl: ar
+          TUDUDU_BUILD_VERSION: ${{ env.RELEASE_VERSION }}
         run: cargo build --release --target x86_64-unknown-linux-musl
 
       - name: 整理产物
@@ -277,6 +279,24 @@ jobs:
           } > "$WRAPPER.new"
           mv "$WRAPPER.new" "$WRAPPER"
           cat "$WRAPPER"
+
+      # App 上报的版本来自 tauri.conf.json，跟着标签走，否则更新检测会一直误报
+      - name: 写入版本号
+        run: |
+          set -euo pipefail
+          VERSION="${RELEASE_VERSION#v}"
+          python3 - "$VERSION" <<'PY'
+          import json, sys
+          version = sys.argv[1]
+          for path in ("src-tauri/tauri.conf.json", "package.json"):
+              with open(path, encoding="utf-8") as handle:
+                  data = json.load(handle)
+              data["version"] = version
+              with open(path, "w", encoding="utf-8") as handle:
+                  json.dump(data, handle, ensure_ascii=False, indent=2)
+                  handle.write("\n")
+              print(path, "->", version)
+          PY
 
       - name: 打包 APK
         run: pnpm tauri android build --apk --target aarch64

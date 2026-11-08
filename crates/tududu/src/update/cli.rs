@@ -23,7 +23,7 @@ pub fn default_base() -> String {
 }
 
 fn current_version() -> String {
-    env!("CARGO_PKG_VERSION").to_owned()
+    crate::update::build_version()
 }
 
 /// 查一下有没有新版本，打印结果。

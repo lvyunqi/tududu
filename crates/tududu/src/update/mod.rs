@@ -163,6 +163,15 @@ impl UpdateService {
     }
 }
 
+/// 当前程序的版本号。
+///
+/// 发版流水线会用 TUDUDU_BUILD_VERSION 注入标签里的版本，
+/// 仓库里 Cargo.toml 的版本只在本地开发时兜底，免得两边对不上。
+pub fn build_version() -> String {
+    let raw = option_env!("TUDUDU_BUILD_VERSION").unwrap_or(env!("CARGO_PKG_VERSION"));
+    normalize(raw)
+}
+
 /// 去掉版本号前面的 v。
 pub fn normalize(version: &str) -> String {
     version.trim().trim_start_matches(['v', 'V']).to_owned()
