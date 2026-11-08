@@ -196,6 +196,10 @@ jobs:
 
           groups=0
           for d in "$SRC"/mipmap-*; do
+            # anydpi-v26 里放的是 xml，没有 png，跳过
+            if ! ls "$d"/*.png > /dev/null 2>&1; then
+              continue
+            fi
             name=$(basename "$d")
             mkdir -p "$RES/$name"
             cp -f "$d"/*.png "$RES/$name"/
