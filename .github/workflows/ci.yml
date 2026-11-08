@@ -230,19 +230,39 @@ jobs:
       - name: 初始化安卓工程
         run: pnpm tauri android init --ci
 
-      # services.gradle.org 最近长期 504 / 超时，改从 GitHub 上的官方分发镜像拉
-      - name: 换掉 Gradle 分发地址
+      # services.gradle.org 走 CDN，runner 拉大文件经常 504。
+      # 先用 curl 多源重试把分发包拿到本地，再让 wrapper 读 file://，彻底绕开下载。
+      - name: 预下载 Gradle 分发包
         run: |
           set -euo pipefail
           WRAPPER=$(find src-tauri/gen/android -name gradle-wrapper.properties | head -1)
-          echo "wrapper: $WRAPPER"
           VERSION=$(grep -oE "gradle-[0-9.]+-bin\.zip" "$WRAPPER" | head -1 | sed -E "s/gradle-(.*)-bin\.zip/\1/")
-          echo "gradle: $VERSION"
+          ZIP="$RUNNER_TEMP/gradle-$VERSION-bin.zip"
+          echo "gradle: $VERSION -> $ZIP"
 
-          # properties 里的冒号是转义过的，正则匹配容易踩坑，直接整行重写
+          URLS=(
+            "https://services.gradle.org/distributions/gradle-$VERSION-bin.zip"
+            "https://downloads.gradle.org/distributions/gradle-$VERSION-bin.zip"
+            "https://mirrors.cloud.tencent.com/gradle/gradle-$VERSION-bin.zip"
+            "https://mirrors.aliyun.com/macports/distfiles/gradle/gradle-$VERSION-bin.zip"
+          )
+
+          ok=0
+          for url in "${URLS[@]}"; do
+            echo "尝试 $url"
+            if curl -fL --retry 6 --retry-delay 4 --retry-all-errors --connect-timeout 20 -o "$ZIP" "$url"; then
+              ok=1
+              break
+            fi
+            rm -f "$ZIP"
+          done
+          test "$ok" = "1" || { echo "所有 Gradle 分发源都失败"; exit 1; }
+          ls -lh "$ZIP"
+
+          # properties 里的冒号是转义过的，直接整行重写指向本地文件
           {
             grep -v "^distributionUrl=" "$WRAPPER" || true
-            printf "distributionUrl=https\\://github.com/gradle/gradle-distributions/releases/download/v%s/gradle-%s-bin.zip\n" "$VERSION" "$VERSION"
+            printf "distributionUrl=file\\://%s\n" "$ZIP"
             printf "networkTimeout=60000\n"
           } > "$WRAPPER.new"
           mv "$WRAPPER.new" "$WRAPPER"
