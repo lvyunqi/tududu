@@ -16,7 +16,6 @@
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::sync::atomic::{AtomicI32, Ordering};
-use std::time::Duration;
 
 use anyhow::{Context, bail};
 
@@ -58,8 +57,8 @@ fn run() -> anyhow::Result<()> {
     };
 
     if let Some(path) = &env_file {
-        let applied = load_env_file(path)
-            .with_context(|| format!("读取环境文件 {} 失败", path.display()))?;
+        let applied =
+            load_env_file(path).with_context(|| format!("读取环境文件 {} 失败", path.display()))?;
         println!(
             "已加载环境文件：{}（补了 {applied} 个变量，父进程已有的跳过）",
             path.display()
@@ -141,7 +140,7 @@ fn install_signal_forwarding() -> anyhow::Result<()> {
 
 /// 转发信号。用 extern 直接声明，避免为了一次调用把 libc 引进依赖树。
 fn forward(pid: i32, signal: i32) {
-    extern "C" {
+    unsafe extern "C" {
         fn kill(pid: i32, sig: i32) -> i32;
     }
 
@@ -221,7 +220,11 @@ fn load_env_file(path: &Path) -> anyhow::Result<usize> {
         };
 
         let key = key.trim();
-        if key.is_empty() || !key.chars().all(|ch| ch.is_ascii_alphanumeric() || ch == '_') {
+        if key.is_empty()
+            || !key
+                .chars()
+                .all(|ch| ch.is_ascii_alphanumeric() || ch == '_')
+        {
             bail!("第 {} 行的键名不合法", number + 1);
         }
 
