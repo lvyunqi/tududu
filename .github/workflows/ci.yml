@@ -214,6 +214,16 @@ jobs:
           fi
           echo "产物已包含后端地址"
 
+      # services.gradle.org 经常 504，把分发和依赖缓存下来，命中就不必再拉
+      - name: 缓存 Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/wrapper
+            ~/.gradle/caches
+          key: gradle-${{ runner.os }}-${{ hashFiles('src-tauri/**/*.gradle*') }}
+          restore-keys: gradle-${{ runner.os }}-
+
       - name: 安装 Tauri CLI
         run: pnpm install --no-frozen-lockfile
 
