@@ -3224,7 +3224,7 @@ select:focus {
   transition: transform 0.16s var(--spring), background 0.16s ease;
 }
 
-.drawer-links a span {
+.drawer-links a > span {
   font-size: 15px;
   line-height: 1;
 }
@@ -3315,4 +3315,243 @@ select:focus {
 
 .page-head .spacer {
   flex: 1;
+}
+
+
+/* =========================================================
+   图标最终版：图形本身有厚度，不加底座
+   ========================================================= */
+
+/* 广场入口：一颗会轻轻浮动的星 */
+.plaza-btn {
+  width: 38px;
+  height: 38px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  text-decoration: none;
+  transition: transform 0.18s var(--spring), background 0.18s ease;
+}
+
+.plaza-btn:active {
+  transform: scale(0.92);
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.plaza-btn {
+  position: relative;
+}
+
+/* 背后一层很淡的光，跟着一起呼吸 */
+.plaza-btn::before {
+  content: "";
+  position: absolute;
+  inset: 3px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(70, 95, 200, 0.22), transparent 68%);
+  opacity: 0;
+  animation: star-glow 4.2s ease-in-out infinite;
+  pointer-events: none;
+}
+
+/* 主火花：轻微缩放 + 缓慢摆动，像悬在那儿 */
+.plaza-btn .sparkle-mark > svg:first-child {
+  filter:
+    drop-shadow(0 1px 0 rgba(255, 255, 255, 0.75))
+    drop-shadow(0 2px 3px rgba(16, 24, 40, 0.28));
+  animation: star-sway 4.2s ease-in-out infinite;
+}
+
+/* 旁边的小火花闪得更快一点，节奏错开 */
+.plaza-btn .sparkle-small {
+  animation: star-twinkle 2.6s ease-in-out infinite;
+}
+
+@keyframes star-sway {
+  0%, 100% { transform: rotate(-4deg) scale(1); }
+  45% { transform: rotate(6deg) scale(1.08); }
+  70% { transform: rotate(2deg) scale(1.02); }
+}
+
+@keyframes star-twinkle {
+  0%, 100% { opacity: 0.45; transform: scale(0.85); }
+  50% { opacity: 1; transform: scale(1.15); }
+}
+
+@keyframes star-glow {
+  0%, 100% { opacity: 0; transform: scale(0.9); }
+  50% { opacity: 1; transform: scale(1.06); }
+}
+
+/* 侧边栏四个入口：无底色，图标自己带光影 */
+.drawer-links a {
+  padding: 8px 2px;
+  border-radius: 10px;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  gap: 5px;
+}
+
+.drawer-links a > span,
+.drawer-links a:nth-child(2) > span,
+.drawer-links a:nth-child(3) > span,
+.drawer-links a:nth-child(4) > span {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 24px;
+  margin: 0 auto;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  color: var(--ink);
+  opacity: 1;
+}
+
+.drawer-links a > span > svg {
+  filter:
+    drop-shadow(0 1px 0 rgba(255, 255, 255, 0.85))
+    drop-shadow(0 1.5px 2px rgba(16, 24, 40, 0.22));
+  transition: transform 0.16s var(--spring);
+}
+
+.drawer-links a:active {
+  background: transparent;
+  box-shadow: none;
+}
+
+.drawer-links a:active > span > svg {
+  transform: scale(0.9);
+}
+
+/* ---------- 广场火花 ---------- */
+
+.sparkle-mark {
+  position: relative;
+  display: inline-block;
+  line-height: 0;
+}
+
+.sparkle-mark > svg:first-child {
+  filter:
+    drop-shadow(0 1px 0 rgba(255, 255, 255, 0.7))
+    drop-shadow(0 2px 4px rgba(16, 24, 40, 0.22));
+  animation: sparkle-breathe 4.4s ease-in-out infinite;
+}
+
+.sparkle-small {
+  position: absolute;
+  top: -3px;
+  right: -4px;
+  opacity: 0.65;
+  animation: sparkle-twinkle 2.8s ease-in-out infinite;
+}
+
+@keyframes sparkle-breathe {
+  0%, 100% { transform: scale(1) rotate(0deg); }
+  50% { transform: scale(1.06) rotate(4deg); }
+}
+
+@keyframes sparkle-twinkle {
+  0%, 100% { opacity: 0.55; transform: scale(0.92); }
+  50% { opacity: 0.95; transform: scale(1.08); }
+}
+
+/* 侧边栏里的「广场」图标不需要再叠动画，安静一点 */
+.drawer-links .sparkle-mark > svg:first-child,
+.drawer-links .sparkle-small {
+  animation: none;
+}
+
+.drawer-links .sparkle-small {
+  top: -4px;
+  right: -5px;
+  opacity: 0.6;
+}
+
+/* 二级页统一返回按钮：圆形、细描边、能压下去 */
+.back-home {
+  width: 34px;
+  height: 34px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: var(--ink);
+  text-decoration: none;
+  background: var(--surface);
+  border: 0.5px solid var(--line);
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
+  transition: transform 0.16s var(--spring), background 0.16s ease;
+}
+
+.back-home:active {
+  transform: scale(0.92);
+  background: #f1f3f8;
+}
+
+.page-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.page-head h2 {
+  flex: none;
+}
+
+/* =========================================================
+   页面切换动效
+   ========================================================= */
+
+.page-switch {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  animation: page-enter 0.34s var(--smooth) both;
+  will-change: opacity, transform;
+}
+
+@keyframes page-enter {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.994);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* 页面里的卡片错开一点上来，像内容在铺开 */
+.page-switch .page > * {
+  animation: page-item 0.42s var(--spring-soft) both;
+}
+
+.page-switch .page > *:nth-child(1) { animation-delay: 0.02s; }
+.page-switch .page > *:nth-child(2) { animation-delay: 0.05s; }
+.page-switch .page > *:nth-child(3) { animation-delay: 0.08s; }
+.page-switch .page > *:nth-child(4) { animation-delay: 0.11s; }
+.page-switch .page > *:nth-child(5) { animation-delay: 0.14s; }
+.page-switch .page > *:nth-child(n + 6) { animation-delay: 0.17s; }
+
+@keyframes page-item {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* 对话页不参与逐项错开，免得消息也一起动 */
+.page-switch .chat > * {
+  animation: none;
+  opacity: 1;
+  transform: none;
+}
+
+/* 偏好里关掉动效时一并收掉 */
+.calm .page-switch,
+.calm .page-switch .page > * {
+  animation: none !important;
 }

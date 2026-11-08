@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 
+import BackHome from "../components/BackHome";
 import Toast from "../components/Toast";
 
 import { BASE, getToken, request } from "../lib/api";
@@ -123,11 +124,12 @@ export default function RechargePage({ auth }: { auth: Auth }) {
 
   return (
     <div className="page">
-      <a className="link back" href="#/">
-        返回
-      </a>
+      <header className="page-head">
+        <BackHome />
+        <h2>充值</h2>
+        <span className="spacer" />
+      </header>
 
-      <h2>充值</h2>
       <p className="hint">
         当前余额 {auth.balance} {auth.unitName}
       </p>

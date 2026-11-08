@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 
 import Toast from "../components/Toast";
+import BackHome from "../components/BackHome";
 import { BASE, request, requestBlob } from "../lib/api";
 import type { useAuth } from "../lib/store";
 import { readPrefs, writePrefs } from "../lib/prefs";
@@ -37,9 +38,11 @@ export default function MePage({ auth }: { auth: Auth }) {
 
   return (
     <div className="page">
-      <a className="back-home" href="#/" aria-label="回到对话">
-        ←
-      </a>
+      <header className="page-head">
+        <BackHome />
+        <h2>我的</h2>
+        <span className="spacer" />
+      </header>
 
       <ProfileCard auth={auth} onToast={setToast} />
 
