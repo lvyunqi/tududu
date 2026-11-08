@@ -89,14 +89,19 @@ export default function App() {
   const inChat = route.kind === "chat" || route.kind === "session";
   const chatSessionId = route.kind === "session" ? route.id : undefined;
 
+  // 换页面时整块淡入上浮；对话页内部切换会话不算换页，所以 key 固定是 chat
+  const pageKey = inChat ? "chat" : route.kind;
+
   return (
     <div className="shell">
       <main className="content">
-        {inChat && <ChatPage auth={auth} sessionId={chatSessionId} />}
-        {route.kind === "plaza" && <PlazaPage />}
-        {route.kind === "gallery" && <GalleryPage />}
-        {route.kind === "me" && <MePage auth={auth} />}
-        {route.kind === "recharge" && <RechargePage auth={auth} />}
+        <div className="page-switch" key={pageKey}>
+          {inChat && <ChatPage auth={auth} sessionId={chatSessionId} />}
+          {route.kind === "plaza" && <PlazaPage />}
+          {route.kind === "gallery" && <GalleryPage />}
+          {route.kind === "me" && <MePage auth={auth} />}
+          {route.kind === "recharge" && <RechargePage auth={auth} />}
+        </div>
       </main>
     </div>
   );

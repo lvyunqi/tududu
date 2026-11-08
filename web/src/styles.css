@@ -3501,3 +3501,57 @@ select:focus {
 .page-head h2 {
   flex: none;
 }
+
+/* =========================================================
+   页面切换动效
+   ========================================================= */
+
+.page-switch {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  animation: page-enter 0.34s var(--smooth) both;
+  will-change: opacity, transform;
+}
+
+@keyframes page-enter {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.994);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* 页面里的卡片错开一点上来，像内容在铺开 */
+.page-switch .page > * {
+  animation: page-item 0.42s var(--spring-soft) both;
+}
+
+.page-switch .page > *:nth-child(1) { animation-delay: 0.02s; }
+.page-switch .page > *:nth-child(2) { animation-delay: 0.05s; }
+.page-switch .page > *:nth-child(3) { animation-delay: 0.08s; }
+.page-switch .page > *:nth-child(4) { animation-delay: 0.11s; }
+.page-switch .page > *:nth-child(5) { animation-delay: 0.14s; }
+.page-switch .page > *:nth-child(n + 6) { animation-delay: 0.17s; }
+
+@keyframes page-item {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* 对话页不参与逐项错开，免得消息也一起动 */
+.page-switch .chat > * {
+  animation: none;
+  opacity: 1;
+  transform: none;
+}
+
+/* 偏好里关掉动效时一并收掉 */
+.calm .page-switch,
+.calm .page-switch .page > * {
+  animation: none !important;
+}
