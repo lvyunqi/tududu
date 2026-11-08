@@ -230,7 +230,7 @@ jobs:
       - name: 初始化安卓工程
         run: pnpm tauri android init --ci
 
-      # services.gradle.org 最近长期 504，改从 GitHub 上的官方分发镜像拉
+      # services.gradle.org 最近长期 504 / 超时，改从 GitHub 上的官方分发镜像拉
       - name: 换掉 Gradle 分发地址
         run: |
           set -euo pipefail
@@ -238,8 +238,15 @@ jobs:
           echo "wrapper: $WRAPPER"
           VERSION=$(grep -oE "gradle-[0-9.]+-bin\.zip" "$WRAPPER" | head -1 | sed -E "s/gradle-(.*)-bin\.zip/\1/")
           echo "gradle: $VERSION"
-          sed -i "s#https://services.gradle.org/distributions/#https://github.com/gradle/gradle-distributions/releases/download/v${VERSION}/#g" "$WRAPPER"
-          grep distributionUrl "$WRAPPER"
+
+          # properties 里的冒号是转义过的，正则匹配容易踩坑，直接整行重写
+          {
+            grep -v "^distributionUrl=" "$WRAPPER" || true
+            printf "distributionUrl=https\\://github.com/gradle/gradle-distributions/releases/download/v%s/gradle-%s-bin.zip\n" "$VERSION" "$VERSION"
+            printf "networkTimeout=60000\n"
+          } > "$WRAPPER.new"
+          mv "$WRAPPER.new" "$WRAPPER"
+          cat "$WRAPPER"
 
       - name: 打包 APK
         run: pnpm tauri android build --apk --target aarch64
