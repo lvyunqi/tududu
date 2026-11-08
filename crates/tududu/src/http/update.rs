@@ -19,6 +19,8 @@ pub struct VersionQuery {
     pub platform: Option<String>,
     /// 客户端当前版本，比如 0.1.13
     pub current: Option<String>,
+    /// 客户端这次构建的提交号，用来识别同版本的覆盖发布
+    pub commit: Option<String>,
 }
 
 /// 查最新版本。公开接口，App 启动时调一次。
@@ -28,10 +30,11 @@ pub async fn version(
 ) -> Result<Json<ApiBody<crate::update::VersionInfo>>, ApiError> {
     let platform = query.platform.as_deref().unwrap_or("android");
     let current = query.current.as_deref().unwrap_or_default();
+    let commit = query.commit.as_deref().unwrap_or_default();
 
     let info = state
         .updates
-        .version(platform, current)
+        .version(platform, current, commit)
         .await
         .map_err(|err| {
             tracing::warn!(error = %err, "查询最新版本失败");

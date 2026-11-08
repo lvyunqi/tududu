@@ -46,6 +46,17 @@ pub struct VersionInfo {
     pub download_url: String,
     /// 安装包的 SHA-256，有才校验
     pub sha256: Option<String>,
+    /// 这次构建对应的提交，同一个版本号重新发布时靠它区分
+    pub build_commit: Option<String>,
+}
+
+/// release 里附带的构建信息，发行包每次构建都会重新生成。
+#[derive(Debug, Clone, Default)]
+pub struct BuildInfo {
+    pub version: String,
+    pub commit: String,
+    pub android_sha256: String,
+    pub linux_sha256: String,
 }
 
 #[derive(Clone)]
@@ -53,6 +64,7 @@ pub struct UpdateService {
     http: reqwest::Client,
     repo: String,
     cache: Arc<RwLock<Option<(Instant, Release)>>>,
+    build_cache: Arc<RwLock<Option<(Instant, BuildInfo)>>>,
 }
 
 impl UpdateService {
@@ -66,6 +78,7 @@ impl UpdateService {
             http,
             repo,
             cache: Arc::new(RwLock::new(None)),
+            build_cache: Arc::new(RwLock::new(None)),
         }
     }
 
@@ -114,6 +127,52 @@ impl UpdateService {
         })
     }
 
+    /// 取并缓存 BUILD_INFO.txt。
+    ///
+    /// 同一个标签可能被反复覆盖发布，光看版本号分不出新旧，
+    /// 所以额外发一份构建信息，里面带提交号和每个包的哈希。
+    pub async fn build_info(&self, release: &Release) -> Option<BuildInfo> {
+        if let Some((at, info)) = self.build_cache.read().await.as_ref()
+            && at.elapsed() < CACHE_TTL
+        {
+            return Some(info.clone());
+        }
+
+        let asset = release
+            .assets
+            .iter()
+            .find(|item| item.name.eq_ignore_ascii_case("BUILD_INFO.txt"))?;
+
+        let text = self
+            .http
+            .get(&asset.browser_download_url)
+            .header("User-Agent", "tududu-update")
+            .send()
+            .await
+            .ok()?
+            .text()
+            .await
+            .ok()?;
+
+        let mut info = BuildInfo::default();
+        for line in text.lines() {
+            let Some((key, value)) = line.split_once('=') else {
+                continue;
+            };
+            let value = value.trim().to_owned();
+            match key.trim() {
+                "version" => info.version = value,
+                "commit" => info.commit = value,
+                "android_sha256" => info.android_sha256 = value,
+                "linux_sha256" => info.linux_sha256 = value,
+                _ => {}
+            }
+        }
+
+        *self.build_cache.write().await = Some((Instant::now(), info.clone()));
+        Some(info)
+    }
+
     /// 从 SHA256SUMS.txt 里找出某个包的校验和。找不到就返回 None，不阻塞更新。
     pub async fn checksum_for(&self, release: &Release, asset_name: &str) -> Option<String> {
         let sums = release
@@ -141,17 +200,48 @@ impl UpdateService {
         })
     }
 
-    pub async fn version(&self, platform: &str, current: &str) -> Result<VersionInfo, String> {
+    /// 查版本。除了比版本号，同版本还要比构建哈希：
+    /// 覆盖发布同一个标签时版本号没变，得靠构建信息区分新旧。
+    pub async fn version(
+        &self,
+        platform: &str,
+        current: &str,
+        current_commit: &str,
+    ) -> Result<VersionInfo, String> {
         let release = self.latest().await?;
         let latest = normalize(&release.tag_name);
         let asset = Self::asset_for(&release, platform);
-        let sha256 = match asset {
-            Some(item) => self.checksum_for(&release, &item.name).await,
-            None => None,
+        let info = self.build_info(&release).await;
+
+        let sha256 = match (&info, asset) {
+            (Some(build), Some(item)) => {
+                let from_build = if platform == "android" {
+                    &build.android_sha256
+                } else {
+                    &build.linux_sha256
+                };
+
+                if from_build.is_empty() {
+                    self.checksum_for(&release, &item.name).await
+                } else {
+                    Some(from_build.clone())
+                }
+            }
+            (None, Some(item)) => self.checksum_for(&release, &item.name).await,
+            _ => None,
+        };
+
+        let same_version = latest == normalize(current);
+        let rebuilt = match &info {
+            Some(build) if !build.commit.is_empty() && !current_commit.is_empty() => {
+                build.commit != current_commit
+            }
+            _ => false,
         };
 
         Ok(VersionInfo {
-            has_update: is_newer(&latest, current),
+            // 版本号更高要更新；版本号相同但构建对不上，说明这个标签被重新发过，也要更新
+            has_update: is_newer(&latest, current) || (same_version && rebuilt),
             latest,
             current: normalize(current),
             notes: release.body.clone(),
@@ -159,8 +249,18 @@ impl UpdateService {
             size: asset.map(|item| item.size).unwrap_or(0),
             download_url: format!("/api/v1/app/download?platform={platform}"),
             sha256,
+            build_commit: info.as_ref().map(|build| build.commit.clone()),
         })
     }
+}
+
+/// 当前程序的版本号。
+///
+/// 发版流水线会用 TUDUDU_BUILD_VERSION 注入标签里的版本，
+/// 仓库里 Cargo.toml 的版本只在本地开发时兜底，免得两边对不上。
+pub fn build_version() -> String {
+    let raw = option_env!("TUDUDU_BUILD_VERSION").unwrap_or(env!("CARGO_PKG_VERSION"));
+    normalize(raw)
 }
 
 /// 去掉版本号前面的 v。
@@ -222,6 +322,22 @@ mod tests {
     fn empty_current_means_always_update() {
         assert!(is_newer("0.1.13", ""));
         assert!(!is_newer("", "0.1.13"));
+    }
+
+    #[test]
+    fn same_version_rebuild_is_detected_by_commit() {
+        // 覆盖发布时版本号不变，提交对不上就该更新
+        let build = BuildInfo {
+            version: "0.1.13".to_owned(),
+            commit: "new-sha".to_owned(),
+            ..Default::default()
+        };
+
+        let same_version = normalize("v0.1.13") == normalize("0.1.13");
+        let rebuilt = build.commit != "old-sha";
+
+        assert!(same_version && rebuilt);
+        assert!(!(same_version && build.commit != "new-sha"));
     }
 
     #[test]

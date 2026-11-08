@@ -41,7 +41,7 @@ async fn main() -> anyhow::Result<()> {
             println!("数据库迁移完成");
         }
         Command::Version => {
-            println!("tududu {}", env!("CARGO_PKG_VERSION"));
+            println!("tududu {}", tududu::update::build_version());
         }
         Command::Update { action } => match action {
             UpdateAction::Check { url } => {

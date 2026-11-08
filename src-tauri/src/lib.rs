@@ -63,6 +63,17 @@ async fn download_update(
     Ok(path.to_string_lossy().to_string())
 }
 
+/// 当前构建的版本与提交号，前端拿去问服务端有没有更新。
+///
+/// 版本取打包时写进配置的版本；提交号由流水线注入，没有就是空。
+#[tauri::command]
+fn app_build_info(app: tauri::AppHandle) -> serde_json::Value {
+    serde_json::json!({
+        "version": app.package_info().version.to_string(),
+        "commit": option_env!("TUDUDU_BUILD_COMMIT").unwrap_or(""),
+    })
+}
+
 /// 拉起系统安装界面。安卓上交给系统解析 apk，桌面上直接打开文件。
 #[tauri::command]
 fn install_update(app: tauri::AppHandle, path: String) -> Result<(), String> {
@@ -78,7 +89,8 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             open_external,
             download_update,
-            install_update
+            install_update,
+            app_build_info
         ])
         .run(tauri::generate_context!())
         .expect("启动失败");
