@@ -98,6 +98,91 @@ pub async fn list_users(
     Ok(Json(ApiBody::ok(rows)))
 }
 
+/// 看某个用户相册里的图片，包含回收站和已封禁的。
+pub async fn list_user_assets(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(id): Path<Uuid>,
+    Query(query): Query<PageQuery>,
+) -> Result<Json<ApiBody<Vec<crate::storage::store::AssetRow>>>, ApiError> {
+    require_admin(&state, &headers)?;
+
+    let rows =
+        crate::storage::store::list_for_admin(&state.db, id, query.before, page_limit(query.limit))
+            .await?;
+
+    Ok(Json(ApiBody::ok(rows)))
+}
+
+#[derive(Debug, Deserialize)]
+pub struct BanAssetsRequest {
+    pub ids: Vec<Uuid>,
+    /// true 封禁，false 解封
+    pub banned: bool,
+}
+
+pub async fn ban_assets(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Json(req): Json<BanAssetsRequest>,
+) -> Result<Json<ApiBody<u64>>, ApiError> {
+    let operator = require_admin(&state, &headers)?;
+
+    if req.ids.is_empty() {
+        return Err(ApiError::bad_request("没有选中图片"));
+    }
+
+    if req.ids.len() > 200 {
+        return Err(ApiError::bad_request("一次最多处理 200 张"));
+    }
+
+    let status: i16 = if req.banned { 3 } else { 1 };
+    let changed = crate::storage::store::set_status_many(&state.db, &req.ids, status).await?;
+
+    let action = if req.banned { "asset_ban" } else { "asset_unban" };
+    let _ = admin_store::record_audit(
+        &state.db,
+        operator.id,
+        action,
+        "asset",
+        &req.ids.len().to_string(),
+        "ids",
+    )
+    .await;
+
+    Ok(Json(ApiBody::ok(changed)))
+}
+
+/// 管理员直接删掉某张图，进回收站，和用户自己删一个效果。
+pub async fn delete_asset(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(id): Path<Uuid>,
+) -> Result<Json<ApiBody<()>>, ApiError> {
+    let operator = require_admin(&state, &headers)?;
+
+    let changed = crate::storage::store::set_status_many(&state.db, &[id], 2).await?;
+    if changed == 0 {
+        return Err(ApiError::not_found("图片不存在"));
+    }
+
+    let _ = admin_store::record_audit(
+        &state.db,
+        operator.id,
+        "asset_delete",
+        "asset",
+        &id.to_string(),
+        "",
+    )
+    .await;
+
+    Ok(Json(ApiBody {
+        code: 0,
+        message: "ok".to_owned(),
+        data: None,
+    }))
+}
+
 #[derive(Debug, Deserialize)]
 pub struct UserStatusRequest {
     pub status: i16,

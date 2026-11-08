@@ -183,6 +183,15 @@ pub fn router(state: AppState) -> Router {
         )
         .route("/api/v1/admin/users", get(admin_ops::list_users))
         .route(
+            "/api/v1/admin/users/{id}/assets",
+            get(admin_ops::list_user_assets),
+        )
+        .route("/api/v1/admin/assets/ban", post(admin_ops::ban_assets))
+        .route(
+            "/api/v1/admin/assets/{id}",
+            axum::routing::delete(admin_ops::delete_asset),
+        )
+        .route(
             "/api/v1/admin/users/{id}/status",
             patch(admin_ops::set_user_status),
         )

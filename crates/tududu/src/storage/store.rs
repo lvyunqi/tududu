@@ -104,6 +104,45 @@ pub async fn list(
 }
 
 /// 用户当前占用的字节数，只算正常状态的资产。
+/// 后台看某个用户的相册，包含回收站和已封禁的，方便管理员判断。
+pub async fn list_for_admin(
+    db: &PgPool,
+    owner: Uuid,
+    before: Option<DateTime<Utc>>,
+    limit: i64,
+) -> sqlx::Result<Vec<AssetRow>> {
+    let sql = format!(
+        "SELECT {ASSET_COLUMNS} FROM assets WHERE owner_user_id = $1 \
+           AND ($2::timestamptz IS NULL OR created_at < $2) \
+         ORDER BY created_at DESC LIMIT $3"
+    );
+
+    sqlx::query_as::<_, AssetRow>(&sql)
+        .bind(owner)
+        .bind(before)
+        .bind(limit)
+        .fetch_all(db)
+        .await
+}
+
+/// 管理员封禁或解封一批图片。封禁用 3，解封回到 1。
+pub async fn set_status_many(db: &PgPool, ids: &[Uuid], status: i16) -> sqlx::Result<u64> {
+    if ids.is_empty() {
+        return Ok(0);
+    }
+
+    let result = sqlx::query(
+        "UPDATE assets SET status = $2, trashed_at = CASE WHEN $2 = 2 THEN now() ELSE NULL END \
+          WHERE id = ANY($1)",
+    )
+    .bind(ids.to_vec())
+    .bind(status)
+    .execute(db)
+    .await?;
+
+    Ok(result.rows_affected())
+}
+
 pub async fn used_bytes(db: &PgPool, owner: Uuid) -> sqlx::Result<i64> {
     sqlx::query_scalar(
         "SELECT COALESCE(SUM(byte_size), 0)::bigint FROM assets WHERE owner_user_id = $1 AND status = 1",

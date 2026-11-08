@@ -178,3 +178,14 @@ export interface AdminModel {
   sort_order: number;
   remark: string;
 }
+
+export interface AdminAsset {
+  id: string;
+  owner_user_id: string;
+  mime: string;
+  byte_size: number;
+  sha256: string;
+  source: string;
+  status: number;
+  created_at: string;
+}
