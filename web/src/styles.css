@@ -3316,3 +3316,185 @@ select:focus {
 .page-head .spacer {
   flex: 1;
 }
+
+/* =========================================================
+   立体感：广场球芯 + 侧边栏图标
+   ========================================================= */
+
+/* 球芯做成一块有厚度的小方块：顶面高光、底面暗边、外投影 */
+.plaza-orb {
+  width: 40px;
+  height: 40px;
+}
+
+.orb-core {
+  position: relative;
+  width: 19px;
+  height: 19px;
+  border-radius: 6px;
+  background:
+    linear-gradient(155deg, #9dc0ff 0%, #6e86f2 38%, #3f56d8 72%, #2c46b8 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.75),
+    inset 0 -1px 1px rgba(0, 0, 0, 0.25),
+    inset 1px 0 1px rgba(255, 255, 255, 0.18),
+    0 2px 3px -1px rgba(40, 70, 180, 0.45),
+    0 6px 12px -6px rgba(40, 70, 180, 0.55);
+  transform: rotate(-6deg);
+  animation: orb-breathe 3.6s ease-in-out infinite;
+}
+
+/* 顶面的一抹反光 */
+.orb-core::before {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 3px;
+  width: 9px;
+  height: 5px;
+  border-radius: 50%;
+  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0));
+  transform: rotate(-14deg);
+}
+
+/* 底部的一层薄影，让方块像立着 */
+.orb-core::after {
+  content: "";
+  position: absolute;
+  left: 2px;
+  right: 2px;
+  bottom: -4px;
+  height: 5px;
+  border-radius: 50%;
+  background: rgba(40, 70, 180, 0.22);
+  filter: blur(2px);
+  z-index: -1;
+}
+
+@keyframes orb-breathe {
+  0%, 100% {
+    transform: rotate(-6deg) translateY(0) scale(1);
+  }
+  50% {
+    transform: rotate(-3deg) translateY(-1px) scale(1.06);
+  }
+}
+
+/* ---------- 侧边栏四个入口：做成有厚度的小卡片 ---------- */
+
+.drawer-links {
+  gap: 6px;
+}
+
+.drawer-links a {
+  position: relative;
+  gap: 5px;
+  padding: 9px 2px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  color: var(--ink-2);
+  background:
+    linear-gradient(180deg, #ffffff 0%, #f6f8fc 100%);
+  border: 0.5px solid rgba(0, 0, 0, 0.07);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    0 1px 1px rgba(16, 24, 40, 0.04),
+    0 4px 10px -6px rgba(16, 24, 40, 0.4);
+  transition:
+    transform 0.16s var(--spring),
+    box-shadow 0.16s ease,
+    background 0.16s ease;
+}
+
+/* 图标本身给个圆形底，像一枚小徽章 */
+.drawer-links a span {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 8px;
+  font-size: 13px;
+  color: #fff;
+  background: linear-gradient(155deg, #7c93f5 0%, #4f63ea 55%, #3548c9 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.5),
+    inset 0 -1px 1px rgba(0, 0, 0, 0.2),
+    0 2px 5px -2px rgba(53, 72, 201, 0.7);
+}
+
+/* 钱包用青色系、相册用紫色系，四个不撞色 */
+.drawer-links a:nth-child(2) span {
+  background: linear-gradient(155deg, #6fd8ef 0%, #22b8dc 55%, #1592b4 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.5),
+    inset 0 -1px 1px rgba(0, 0, 0, 0.2),
+    0 2px 5px -2px rgba(21, 146, 180, 0.7);
+}
+
+.drawer-links a:nth-child(3) span {
+  background: linear-gradient(155deg, #b99dff 0%, #8b5cf6 55%, #6d3fd6 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.5),
+    inset 0 -1px 1px rgba(0, 0, 0, 0.2),
+    0 2px 5px -2px rgba(109, 63, 214, 0.7);
+}
+
+.drawer-links a:nth-child(4) span {
+  background: linear-gradient(155deg, #ffc36b 0%, #f59e0b 55%, #c97a05 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.5),
+    inset 0 -1px 1px rgba(0, 0, 0, 0.2),
+    0 2px 5px -2px rgba(201, 122, 5, 0.7);
+}
+
+.drawer-links a:active {
+  transform: translateY(1px) scale(0.97);
+  background: linear-gradient(180deg, #f4f6fb 0%, #eef1f8 100%);
+  box-shadow:
+    inset 0 2px 4px rgba(16, 24, 40, 0.12),
+    0 1px 1px rgba(16, 24, 40, 0.04);
+}
+
+/* 轨道换成一段旋转的弧，比虚线干净 */
+.orb-ring {
+  inset: 2px;
+  border: 1.5px solid transparent;
+  border-top-color: rgba(0, 113, 227, 0.55);
+  border-right-color: rgba(0, 113, 227, 0.22);
+  border-radius: 50%;
+  animation: orb-spin 3.4s linear infinite;
+}
+
+/* 绕行的点再大一点，加一圈光 */
+.orb-ball {
+  width: 6px;
+  height: 6px;
+  margin: -3px 0 0 -3px;
+  z-index: 3;
+  background: #0071e3;
+  box-shadow: 0 0 6px rgba(0, 113, 227, 0.9);
+}
+
+/* 广场用翡翠绿，避开之前说过的黄色 */
+.drawer-links a:nth-child(4) span {
+  background: linear-gradient(155deg, #7bf0c9 0%, #10b981 55%, #059669 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.55),
+    inset 0 -1px 1px rgba(0, 0, 0, 0.2),
+    0 2px 5px -2px rgba(5, 150, 105, 0.7);
+}
+
+/* 绕行的小点从方块后面绕过去，像卫星被挡住一下，立体感更强 */
+.orb-core {
+  z-index: 2;
+}
+
+.orb-ball {
+  z-index: 1;
+  animation-name: orb-orbit-far;
+}
+
+@keyframes orb-orbit-far {
+  from { transform: rotate(0deg) translateX(16px) rotate(0deg); }
+  to { transform: rotate(360deg) translateX(16px) rotate(-360deg); }
+}
