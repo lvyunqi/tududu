@@ -75,10 +75,10 @@ pub async fn execute(
 
     // 参考图可能有多张，放在 job_inputs 里；老任务只记了单图
     let mut input_ids = store::list_inputs(db, job_id).await?;
-    if input_ids.is_empty() {
-        if let Some(single) = job.input_asset_id {
-            input_ids.push(single);
-        }
+    if input_ids.is_empty()
+        && let Some(single) = job.input_asset_id
+    {
+        input_ids.push(single);
     }
 
     let mut inputs: Vec<Vec<u8>> = Vec::with_capacity(input_ids.len());
@@ -305,7 +305,6 @@ async fn call_once(
 
         http.post(format!("{base}/images/edits")).multipart(form)
     };
-
 
     let response = request
         .bearer_auth(&api_key)

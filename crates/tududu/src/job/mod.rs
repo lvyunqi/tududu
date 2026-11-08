@@ -60,10 +60,10 @@ pub async fn submit(
 
     // 新字段优先，老的单图字段继续兼容
     let mut inputs = req.input_asset_ids.clone();
-    if inputs.is_empty() {
-        if let Some(single) = req.input_asset_id {
-            inputs.push(single);
-        }
+    if inputs.is_empty()
+        && let Some(single) = req.input_asset_id
+    {
+        inputs.push(single);
     }
 
     // 去重但保留顺序

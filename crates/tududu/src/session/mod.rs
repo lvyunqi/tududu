@@ -117,16 +117,16 @@ pub async fn send_message(
 
     // 没指定输入图就接着上一版改，这样「再自然一点」知道指的是哪张
     let mut input_asset_ids = req.input_asset_ids.clone();
-    if input_asset_ids.is_empty() {
-        if let Some(single) = req.input_asset_id {
-            input_asset_ids.push(single);
-        }
+    if input_asset_ids.is_empty()
+        && let Some(single) = req.input_asset_id
+    {
+        input_asset_ids.push(single);
     }
 
-    if input_asset_ids.is_empty() {
-        if let Some(latest) = store::latest_output_asset(db, session_id).await? {
-            input_asset_ids.push(latest);
-        }
+    if input_asset_ids.is_empty()
+        && let Some(latest) = store::latest_output_asset(db, session_id).await?
+    {
+        input_asset_ids.push(latest);
     }
 
     let input_asset_id = input_asset_ids.first().copied();

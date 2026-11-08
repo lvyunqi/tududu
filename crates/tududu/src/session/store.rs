@@ -35,8 +35,7 @@ pub struct MessageRow {
 
 const SESSION_COLUMNS: &str = "id, title, model, status, last_active_at, created_at";
 
-const MESSAGE_COLUMNS: &str =
-    "id, role, content, input_asset_id, input_asset_ids, output_asset_id, job_id, status, created_at";
+const MESSAGE_COLUMNS: &str = "id, role, content, input_asset_id, input_asset_ids, output_asset_id, job_id, status, created_at";
 
 pub async fn insert(
     db: &PgPool,
