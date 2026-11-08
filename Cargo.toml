@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["crates/tududu"]
+members = ["crates/tududu", "crates/tududu-launcher"]
 
 [workspace.package]
 version = "0.1.0"
@@ -30,6 +30,7 @@ rust-embed = { version = "8", features = ["interpolate-folder-path"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 sha2 = "0.10"
+signal-hook = "0.3"
 sqlx = { version = "0.8", features = ["runtime-tokio", "tls-rustls", "postgres", "macros", "migrate", "uuid", "chrono", "json"] }
 thiserror = "2"
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "signal", "net", "time"] }

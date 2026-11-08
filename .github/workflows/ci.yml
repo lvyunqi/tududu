@@ -101,7 +101,9 @@ jobs:
         env:
           CC_x86_64_unknown_linux_musl: musl-gcc
           AR_x86_64_unknown_linux_musl: ar
-        run: cargo build --release --target x86_64-unknown-linux-musl
+        run: |
+          cargo build --release --target x86_64-unknown-linux-musl \
+            -p tududu -p tududu-launcher
       - name: 校验产物
         run: |
           file target/x86_64-unknown-linux-musl/release/tududu

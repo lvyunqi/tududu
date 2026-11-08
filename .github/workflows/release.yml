@@ -69,7 +69,9 @@ jobs:
           AR_x86_64_unknown_linux_musl: ar
           TUDUDU_BUILD_VERSION: ${{ env.RELEASE_VERSION }}
           TUDUDU_BUILD_COMMIT: ${{ github.sha }}
-        run: cargo build --release --target x86_64-unknown-linux-musl
+        run: |
+          cargo build --release --target x86_64-unknown-linux-musl \
+            -p tududu -p tududu-launcher
 
       - name: 整理产物
         run: |
@@ -78,6 +80,12 @@ jobs:
           OUT="dist/tududu-${RELEASE_VERSION}-linux-x86_64"
           cp target/x86_64-unknown-linux-musl/release/tududu "$OUT"
           chmod +x "$OUT"
+
+          # 启动器单独放一个文件，解压后和主程序摆同一目录即可
+          LAUNCHER="dist/tududu-${RELEASE_VERSION}-launcher-linux-x86_64"
+          cp target/x86_64-unknown-linux-musl/release/tududu-launcher "$LAUNCHER"
+          chmod +x "$LAUNCHER"
+
           ls -lh dist/
 
       - name: 上传产物
@@ -388,6 +396,7 @@ jobs:
           ## 这次发的东西
 
           - tududu-*-linux-x86_64：服务端，静态链接，单文件，接口与两个前端都在里面
+          - tududu-*-launcher-linux-x86_64：启动器，和主程序放同一目录，由它托管主程序并负责重启
           - tududu-*-arm64.apk：安卓包，已用发布密钥签名
           - SHA256SUMS.txt：上面两个文件的校验和
           - BUILD_INFO.txt：这次构建的提交号与两个包的哈希，同一个标签覆盖发布时靠它区分新旧
@@ -436,9 +445,9 @@ jobs:
           echo "=== 最终附件 ==="
           gh release view "$VERSION" --json assets --jq '.assets[] | "\(.name)  \(.size)"'
 
-          # 两个包 + 校验和 + 构建信息，少一个就说明上传不完整
+          # 主程序 + 启动器 + 安卓包 + 校验和 + 构建信息，少一个就说明上传不完整
           COUNT=$(gh release view "$VERSION" --json assets --jq '.assets | length')
-          if [ "$COUNT" -lt 4 ]; then
+          if [ "$COUNT" -lt 5 ]; then
             echo "附件只有 $COUNT 个，上传不完整"
             exit 1
           fi
