@@ -29,6 +29,9 @@ pub struct SendMessageRequest {
     pub text: String,
     #[serde(default)]
     pub input_asset_id: Option<Uuid>,
+    /// 多张参考图，有它时优先用它
+    #[serde(default)]
+    pub input_asset_ids: Vec<Uuid>,
     #[serde(default)]
     pub size: Option<String>,
     #[serde(default)]
@@ -113,16 +116,27 @@ pub async fn send_message(
     }
 
     // 没指定输入图就接着上一版改，这样「再自然一点」知道指的是哪张
-    let input_asset_id = match req.input_asset_id {
-        Some(id) => Some(id),
-        None => store::latest_output_asset(db, session_id).await?,
-    };
+    let mut input_asset_ids = req.input_asset_ids.clone();
+    if input_asset_ids.is_empty() {
+        if let Some(single) = req.input_asset_id {
+            input_asset_ids.push(single);
+        }
+    }
+
+    if input_asset_ids.is_empty() {
+        if let Some(latest) = store::latest_output_asset(db, session_id).await? {
+            input_asset_ids.push(latest);
+        }
+    }
+
+    let input_asset_id = input_asset_ids.first().copied();
 
     let user_message = store::NewMessage {
         session_id,
         role: "user",
         content: text,
         input_asset_id,
+        input_asset_ids: &input_asset_ids,
         status: store::MSG_DONE,
     };
     let user_message = store::insert_message(db, &user_message).await?;
@@ -132,6 +146,7 @@ pub async fn send_message(
         role: "assistant",
         content: "",
         input_asset_id: None,
+        input_asset_ids: &[],
         status: store::MSG_PENDING,
     };
     let assistant = store::insert_message(db, &assistant).await?;
@@ -141,6 +156,7 @@ pub async fn send_message(
         model: session.model.clone(),
         provider_id: req.provider_id,
         input_asset_id,
+        input_asset_ids,
         size: req.size,
         quality: req.quality,
     };

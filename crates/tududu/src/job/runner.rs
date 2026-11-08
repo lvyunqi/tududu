@@ -73,26 +73,34 @@ pub async fn execute(
 
     store::mark_running(db, job_id).await?;
 
-    let input_bytes = match job.input_asset_id {
-        Some(asset_id) => {
-            let asset = crate::storage::store::find_owned(db, asset_id, job.user_id).await?;
-            match asset {
-                Some(asset) => match files.read(&asset.object_key).await {
-                    Ok(bytes) => Some(bytes),
-                    Err(err) => {
-                        tracing::error!(error = %err, %asset_id, "读取输入图片失败");
-                        fail_and_refund(db, &job, ERR_INPUT_MISSING, "输入图片已丢失").await?;
-                        return Ok(());
-                    }
-                },
-                None => {
-                    fail_and_refund(db, &job, ERR_INPUT_MISSING, "输入图片不存在").await?;
-                    return Ok(());
-                }
+    // 参考图可能有多张，放在 job_inputs 里；老任务只记了单图
+    let mut input_ids = store::list_inputs(db, job_id).await?;
+    if input_ids.is_empty() {
+        if let Some(single) = job.input_asset_id {
+            input_ids.push(single);
+        }
+    }
+
+    let mut inputs: Vec<Vec<u8>> = Vec::with_capacity(input_ids.len());
+    for asset_id in input_ids {
+        let asset = crate::storage::store::find_owned(db, asset_id, job.user_id).await?;
+        let asset = match asset {
+            Some(asset) => asset,
+            None => {
+                fail_and_refund(db, &job, ERR_INPUT_MISSING, "输入图片不存在").await?;
+                return Ok(());
+            }
+        };
+
+        match files.read(&asset.object_key).await {
+            Ok(bytes) => inputs.push(bytes),
+            Err(err) => {
+                tracing::error!(error = %err, %asset_id, "读取输入图片失败");
+                fail_and_refund(db, &job, ERR_INPUT_MISSING, "输入图片已丢失").await?;
+                return Ok(());
             }
         }
-        None => None,
-    };
+    }
 
     let targets = list_targets(db, job.provider_id).await?;
     if targets.is_empty() {
@@ -108,7 +116,7 @@ pub async fn execute(
         store::bump_attempt(db, job_id, attempt, target.channel_id).await?;
 
         let started = Instant::now();
-        let outcome = call_once(http, key, target, &job, input_bytes.as_deref()).await;
+        let outcome = call_once(http, key, target, &job, &inputs).await;
         let latency_ms = i32::try_from(started.elapsed().as_millis()).unwrap_or(i32::MAX);
 
         match outcome {
@@ -254,7 +262,7 @@ async fn call_once(
     key: &[u8; 32],
     target: &CallTarget,
     job: &store::JobRow,
-    input: Option<&[u8]>,
+    inputs: &[Vec<u8>],
 ) -> Result<Vec<u8>, CallError> {
     let api_key = crypto::decrypt(key, &target.api_key_cipher).map_err(|err| CallError {
         retryable: false,
@@ -266,10 +274,23 @@ async fn call_once(
     let timeout = std::time::Duration::from_millis(u64::from(target.timeout_ms.max(1000) as u32));
     let base = target.base_url.trim_end_matches('/');
 
-    let request = match input {
-        Some(bytes) => {
-            let part = reqwest::multipart::Part::bytes(bytes.to_vec())
-                .file_name("image.png")
+    let request = if inputs.is_empty() {
+        http.post(format!("{base}/images/generations"))
+            .json(&serde_json::json!({
+                "prompt": job.prompt.clone(),
+                "model": job.model.clone(),
+                "n": 1
+            }))
+    } else {
+        let mut form = reqwest::multipart::Form::new()
+            .text("prompt", job.prompt.clone())
+            .text("model", job.model.clone())
+            .text("n", "1");
+
+        // OpenAI 的多图语法是 image[]，只有一张时用 image 兼容老中转
+        for (index, bytes) in inputs.iter().enumerate() {
+            let part = reqwest::multipart::Part::bytes(bytes.clone())
+                .file_name(format!("image{index}.png"))
                 .mime_str("image/png")
                 .map_err(|err| CallError {
                     retryable: false,
@@ -278,22 +299,13 @@ async fn call_once(
                     message: err.to_string(),
                 })?;
 
-            let form = reqwest::multipart::Form::new()
-                .part("image", part)
-                .text("prompt", job.prompt.clone())
-                .text("model", job.model.clone())
-                .text("n", "1");
-
-            http.post(format!("{base}/images/edits")).multipart(form)
+            let field = if inputs.len() > 1 { "image[]" } else { "image" };
+            form = form.part(field, part);
         }
-        None => http
-            .post(format!("{base}/images/generations"))
-            .json(&serde_json::json!({
-                "prompt": job.prompt.clone(),
-                "model": job.model.clone(),
-                "n": 1
-            })),
+
+        http.post(format!("{base}/images/edits")).multipart(form)
     };
+
 
     let response = request
         .bearer_auth(&api_key)

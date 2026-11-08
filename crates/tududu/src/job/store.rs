@@ -41,6 +41,8 @@ pub struct NewJob<'a> {
     pub model: &'a str,
     pub prompt: &'a str,
     pub input_asset_id: Option<Uuid>,
+    /// 这一轮用到的全部参考图，按顺序；空表示纯文生图
+    pub input_asset_ids: &'a [Uuid],
     pub session_id: Option<Uuid>,
     pub message_id: Option<Uuid>,
     pub max_attempts: i32,
@@ -52,7 +54,7 @@ pub async fn insert(db: &PgPool, item: &NewJob<'_>) -> sqlx::Result<JobRow> {
         "INSERT INTO jobs (user_id, provider_id, model, prompt, input_asset_id, session_id, message_id, max_attempts, price) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING {JOB_COLUMNS}"
     );
 
-    sqlx::query_as::<_, JobRow>(&sql)
+    let row = sqlx::query_as::<_, JobRow>(&sql)
         .bind(item.user_id)
         .bind(item.provider_id)
         .bind(item.model)
@@ -63,7 +65,29 @@ pub async fn insert(db: &PgPool, item: &NewJob<'_>) -> sqlx::Result<JobRow> {
         .bind(item.max_attempts)
         .bind(item.price)
         .fetch_one(db)
-        .await
+        .await?;
+
+    // 参考图单独存一张表，顺序即用户选择的顺序
+    for (position, asset_id) in item.input_asset_ids.iter().enumerate() {
+        sqlx::query("INSERT INTO job_inputs (job_id, asset_id, position) VALUES ($1, $2, $3)")
+            .bind(row.id)
+            .bind(asset_id)
+            .bind(position as i16)
+            .execute(db)
+            .await?;
+    }
+
+    Ok(row)
+}
+
+/// 取任务的全部参考图，按顺序。
+pub async fn list_inputs(db: &PgPool, job_id: Uuid) -> sqlx::Result<Vec<Uuid>> {
+    sqlx::query_scalar::<_, Uuid>(
+        "SELECT asset_id FROM job_inputs WHERE job_id = $1 ORDER BY position",
+    )
+    .bind(job_id)
+    .fetch_all(db)
+    .await
 }
 
 pub async fn find_owned(db: &PgPool, id: Uuid, owner: Uuid) -> sqlx::Result<Option<JobRow>> {

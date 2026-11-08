@@ -31,7 +31,8 @@ export default function ChatPage({ auth, sessionId }: { auth: Auth; sessionId?: 
   const [sid, setSid] = useState<string | null>(sessionId ?? null);
   const [detail, setDetail] = useState<SessionDetail | null>(null);
   const [text, setText] = useState("");
-  const [asset, setAsset] = useState<Asset | null>(null);
+  // 参考图最多 4 张，顺序即发送顺序
+  const [assets, setAssets] = useState<Asset[]>([]);
   const [uploading, setUploading] = useState(false);
   const [sending, setSending] = useState(false);
   const [runningJob, setRunningJob] = useState<string | null>(null);
@@ -52,6 +53,8 @@ export default function ChatPage({ auth, sessionId }: { auth: Auth; sessionId?: 
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  // 一次最多四张参考图，再多上游也吃不下
+  const MAX_FILES = 4;
   const textRef = useRef<HTMLTextAreaElement>(null);
 
   const load = useCallback(async (id: string) => {
@@ -83,7 +86,7 @@ export default function ChatPage({ auth, sessionId }: { auth: Auth; sessionId?: 
     const pending = localStorage.getItem("tududu.pendingInput");
     if (pending) {
       localStorage.removeItem("tududu.pendingInput");
-      setAsset({ id: pending } as Asset);
+      setAssets([{ id: pending } as Asset]);
     }
 
     // 从广场点「做同款」过来时，把提示词填进输入框
@@ -154,7 +157,11 @@ export default function ChatPage({ auth, sessionId }: { auth: Auth; sessionId?: 
 
   /// 把已有的图设为下一轮输入，实现「以图改图」。
   async function continueWith(assetId: string) {
-    setAsset({ id: assetId } as Asset);
+    setAssets((prev) =>
+      prev.length >= MAX_FILES || prev.some((item) => item.id === assetId)
+        ? prev
+        : [...prev, { id: assetId } as Asset]
+    );
     setError(null);
     textRef.current?.focus();
   }
@@ -184,7 +191,7 @@ export default function ChatPage({ auth, sessionId }: { auth: Auth; sessionId?: 
       const form = new FormData();
       form.append("file", file);
       const created = await request<Asset>("/api/v1/uploads", { method: "POST", form });
-      setAsset(created);
+      setAssets((prev) => (prev.length >= MAX_FILES ? prev : [...prev, created]));
     } catch (err) {
       setError(err instanceof Error ? err.message : "上传失败");
     } finally {
@@ -215,11 +222,15 @@ export default function ChatPage({ auth, sessionId }: { auth: Auth; sessionId?: 
 
       const turn = await request<TurnResult>("/api/v1/sessions/" + current + "/messages", {
         method: "POST",
-        body: { text: content, input_asset_id: asset?.id ?? null }
+        body: {
+          text: content,
+          input_asset_id: assets[0]?.id ?? null,
+          input_asset_ids: assets.map((item) => item.id)
+        }
       });
 
       setText("");
-      setAsset(null);
+      setAssets([]);
       if (textRef.current) textRef.current.style.height = "auto";
 
       await load(current);
@@ -350,22 +361,38 @@ export default function ChatPage({ auth, sessionId }: { auth: Auth; sessionId?: 
 
       <div className="composer">
         {/* 参考图放在输入框上方，单独一条，比塞在框里清楚 */}
-        {asset && (
+        {assets.length > 0 && (
           <div className="attach-bar">
-            <div className="attach-item">
+            {assets.map((item, index) => (
+              <div key={item.id} className="attach-item">
+                <button
+                  type="button"
+                  className="attach-thumb"
+                  onClick={() => setViewing({ output_asset_id: item.id } as Message)}
+                  aria-label="查看参考图"
+                >
+                  <AuthImage assetId={item.id} alt="参考图" variant="thumb" />
+                </button>
+                <button
+                  className="attach-remove"
+                  onClick={() => setAssets((prev) => prev.filter((row) => row.id !== item.id))}
+                  aria-label="移除参考图"
+                >
+                  ✕
+                </button>
+                <span className="attach-label">参考图 {index + 1}</span>
+              </div>
+            ))}
+
+            {assets.length < MAX_FILES && (
               <button
-                type="button"
-                className="attach-thumb"
-                onClick={() => setViewing({ output_asset_id: asset.id } as Message)}
-                aria-label="查看参考图"
+                className="attach-add"
+                onClick={() => fileRef.current?.click()}
+                aria-label="再加一张"
               >
-                <AuthImage assetId={asset.id} alt="参考图" variant="thumb" />
+                ＋
               </button>
-              <button className="attach-remove" onClick={() => setAsset(null)} aria-label="移除参考图">
-                ✕
-              </button>
-              <span className="attach-label">参考图</span>
-            </div>
+            )}
           </div>
         )}
 
@@ -745,8 +772,14 @@ function MessageRow({
       <div className="bubble">
         {!mine && <span className="who">图嘟嘟</span>}
 
-        {message.input_asset_id && (
-          <AuthImage assetId={message.input_asset_id} alt="原图" variant="thumb" />
+        {refsOf(message).length > 0 && (
+          <div className="bubble-refs">
+            {refsOf(message).map((id) => (
+              <div key={id} className="bubble-ref">
+                <AuthImage assetId={id} alt="参考图" variant="thumb" />
+              </div>
+            ))}
+          </div>
         )}
 
         {message.content && message.status !== 4 && (
@@ -776,6 +809,15 @@ function MessageRow({
       </div>
     </div>
   );
+}
+
+/// 一条消息带的参考图；老数据只有单图字段，回退到它。
+function refsOf(message: Message): string[] {
+  if (message.input_asset_ids && message.input_asset_ids.length > 0) {
+    return message.input_asset_ids;
+  }
+
+  return message.input_asset_id ? [message.input_asset_id] : [];
 }
 
 /// 找出这张图对应的那句指令：往前找最近的一条用户消息。
