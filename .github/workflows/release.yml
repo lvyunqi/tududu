@@ -186,6 +186,41 @@ jobs:
       - name: 初始化安卓工程
         run: pnpm tauri android init --ci
 
+      # tauri icon 只把安卓图标生成到 icons/android，init 不会自动拷进工程，这里显式覆盖
+      - name: 应用安卓图标
+        run: |
+          set -euo pipefail
+          RES="src-tauri/gen/android/app/src/main/res"
+          SRC="src-tauri/icons/android"
+          test -d "$SRC" || { echo "缺少 $SRC"; exit 1; }
+
+          groups=0
+          for d in "$SRC"/mipmap-*; do
+            name=$(basename "$d")
+            mkdir -p "$RES/$name"
+            cp -f "$d"/*.png "$RES/$name"/
+            groups=$((groups + 1))
+          done
+          echo "覆盖了 $groups 组密度"
+          ls -l "$RES"/mipmap-xxhdpi
+
+          # 自适应图标的底色换成品牌色，系统做视差时不会露出白底
+          COLORS="$RES/values/colors.xml"
+          if [ -f "$COLORS" ]; then
+            python3 - "$COLORS" <<'PY'
+          import re, sys
+          path = sys.argv[1]
+          text = open(path, encoding="utf-8").read()
+          new, n = re.subn(r'(<color name="ic_launcher_background">)[^<]*(</color>)',
+                           r"\g<1>#4F63EA\g<2>", text)
+          if n == 0:
+              new = text.replace("</resources>",
+                  '    <color name="ic_launcher_background">#4F63EA</color>\n</resources>')
+          open(path, "w", encoding="utf-8").write(new)
+          print("背景色已设为品牌色")
+          PY
+          fi
+
       # 装到手机上的名字改成中文
       - name: 改应用名
         run: |
