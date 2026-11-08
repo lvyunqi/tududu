@@ -206,7 +206,10 @@ fn parse_args(argv: Vec<String>) -> anyhow::Result<Args> {
             args.program_args = argv[index + 1..].to_vec();
             return Ok(args);
         } else {
-            bail!("未知参数 {current}，主程序参数请放在 -- 之后");
+            // 不认识的参数一律当成主程序参数，从它开始整段传过去。
+            // 这样 ./tududu-launcher serve 和 ./tududu-launcher -- serve 等价。
+            args.program_args = argv[index..].to_vec();
+            return Ok(args);
         }
 
         index += 1;
@@ -270,6 +273,7 @@ fn print_help() {
         "图嘟嘟服务端启动器",
         "",
         "用法：tududu-launcher [--env-file PATH] [--] [主程序参数...]",
+        "第一个不认识的参数开始都算主程序参数，-- 可以省略",
         "不给参数时默认执行 serve，也可以用 TUDUDU_ARGS 覆盖",
         "",
         "环境变量：",
