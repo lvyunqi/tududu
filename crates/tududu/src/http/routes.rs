@@ -38,7 +38,9 @@ pub struct AppState {
 
 /// 当前二进制对应的提交号，没有注入就是空。
 pub fn build_commit() -> String {
-    option_env!("TUDUDU_BUILD_COMMIT").unwrap_or_default().to_owned()
+    option_env!("TUDUDU_BUILD_COMMIT")
+        .unwrap_or_default()
+        .to_owned()
 }
 
 impl AppState {

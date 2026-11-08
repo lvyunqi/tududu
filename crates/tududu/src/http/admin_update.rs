@@ -122,8 +122,16 @@ async fn collect(state: &AppState, refresh: bool) -> Result<SoftwareStatus, ApiE
     Ok(SoftwareStatus {
         version: current,
         commit,
-        deployment: if in_container() { "container" } else { "binary" },
-        launch_mode: if launched_by_launcher() { "launcher" } else { "bare" },
+        deployment: if in_container() {
+            "container"
+        } else {
+            "binary"
+        },
+        launch_mode: if launched_by_launcher() {
+            "launcher"
+        } else {
+            "bare"
+        },
         install_enabled: blocked.is_none(),
         check_enabled: true,
         update_phase: phase,
@@ -192,7 +200,12 @@ pub async fn install(
     // 核对目标版本，检查完又发新版就让前端重来
     let latest = state
         .updates
-        .version_fresh("linux", &crate::update::build_version(), &build_commit(), true)
+        .version_fresh(
+            "linux",
+            &crate::update::build_version(),
+            &build_commit(),
+            true,
+        )
         .await
         .map_err(|err| {
             tracing::warn!(error = %err, "安装前查版本失败");
@@ -200,7 +213,11 @@ pub async fn install(
         })?;
 
     if !latest.has_update {
-        return Err(ApiError::new(StatusCode::BAD_REQUEST, 40006, "已经是最新版本"));
+        return Err(ApiError::new(
+            StatusCode::BAD_REQUEST,
+            40006,
+            "已经是最新版本",
+        ));
     }
 
     let expected_tag = format!("v{}", latest.latest);
@@ -331,7 +348,8 @@ pub async fn restart(
 
 /// 不能安装的原因，None 表示可以装。
 fn blocked_reason() -> Option<String> {
-    if std::env::var("TUDUDU_DISABLE_SELF_UPDATE").is_ok_and(|value| value == "1" || value == "true")
+    if std::env::var("TUDUDU_DISABLE_SELF_UPDATE")
+        .is_ok_and(|value| value == "1" || value == "true")
     {
         return Some("not_enabled".to_owned());
     }
