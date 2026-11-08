@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { useAuth } from "./lib/store";
 import ChatPage from "./pages/Chat";
 import GalleryPage from "./pages/Gallery";
+import UpdateGate from "./components/UpdateGate";
 import LoginPage from "./pages/Login";
 import MePage from "./pages/Me";
 import PlazaPage from "./pages/Plaza";
@@ -112,6 +113,8 @@ export default function App() {
           {route.kind === "recharge" && <RechargePage auth={auth} />}
         </div>
       </main>
+
+      <UpdateGate />
     </div>
   );
 }

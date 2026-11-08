@@ -1,5 +1,7 @@
 //! 版本更新：从 GitHub Releases 取最新包，并提供下载中转。
 
+pub mod cli;
+
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
@@ -42,6 +44,8 @@ pub struct VersionInfo {
     pub size: i64,
     /// 站内中转下载地址
     pub download_url: String,
+    /// 安装包的 SHA-256，有才校验
+    pub sha256: Option<String>,
 }
 
 #[derive(Clone)]
@@ -110,10 +114,41 @@ impl UpdateService {
         })
     }
 
+    /// 从 SHA256SUMS.txt 里找出某个包的校验和。找不到就返回 None，不阻塞更新。
+    pub async fn checksum_for(&self, release: &Release, asset_name: &str) -> Option<String> {
+        let sums = release
+            .assets
+            .iter()
+            .find(|item| item.name.to_uppercase().contains("SHA256"))?;
+
+        let text = self
+            .http
+            .get(&sums.browser_download_url)
+            .header("User-Agent", "tududu-update")
+            .send()
+            .await
+            .ok()?
+            .text()
+            .await
+            .ok()?;
+
+        text.lines().find_map(|line| {
+            let mut parts = line.split_whitespace();
+            let hash = parts.next()?;
+            let name = parts.next()?.trim_start_matches('*');
+
+            (name == asset_name).then(|| hash.to_lowercase())
+        })
+    }
+
     pub async fn version(&self, platform: &str, current: &str) -> Result<VersionInfo, String> {
         let release = self.latest().await?;
         let latest = normalize(&release.tag_name);
         let asset = Self::asset_for(&release, platform);
+        let sha256 = match asset {
+            Some(item) => self.checksum_for(&release, &item.name).await,
+            None => None,
+        };
 
         Ok(VersionInfo {
             has_update: is_newer(&latest, current),
@@ -123,6 +158,7 @@ impl UpdateService {
             published_at: release.published_at.clone(),
             size: asset.map(|item| item.size).unwrap_or(0),
             download_url: format!("/api/v1/app/download?platform={platform}"),
+            sha256,
         })
     }
 }

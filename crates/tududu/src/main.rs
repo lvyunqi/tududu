@@ -2,7 +2,7 @@ use anyhow::Context;
 use clap::Parser;
 use sqlx::PgPool;
 
-use tududu::cli::{Cli, Command};
+use tududu::cli::{Cli, Command, UpdateAction};
 use tududu::config::Config;
 use tududu::{db, env_file, http, telemetry};
 
@@ -43,9 +43,31 @@ async fn main() -> anyhow::Result<()> {
         Command::Version => {
             println!("tududu {}", env!("CARGO_PKG_VERSION"));
         }
+        Command::Update { action } => match action {
+            UpdateAction::Check { url } => {
+                let options = update_options(url, true);
+                tududu::update::cli::check(&options).await?;
+            }
+            UpdateAction::Install { url, yes } => {
+                let options = update_options(url, yes);
+                let code = tududu::update::cli::install(&options).await?;
+                // 75 是约定的「已更新，请重启」退出码，启动器看到就会拉起来
+                if code != 0 {
+                    std::process::exit(code);
+                }
+            }
+        },
     }
 
     Ok(())
+}
+
+/// 拼一下更新命令的参数，没给地址就用默认值。
+fn update_options(url: Option<String>, yes: bool) -> tududu::update::cli::UpdateOptions {
+    tududu::update::cli::UpdateOptions {
+        base_url: url.unwrap_or_else(tududu::update::cli::default_base),
+        yes,
+    }
 }
 
 /// 建连接池并跑迁移。serve 和 migrate 两个子命令共用。
