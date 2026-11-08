@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 
 import Toast from "../components/Toast";
 import BackHome from "../components/BackHome";
-import { BASE, request, requestBlob } from "../lib/api";
+import { request, requestBlob } from "../lib/api";
 import type { useAuth } from "../lib/store";
 import { readPrefs, writePrefs } from "../lib/prefs";
 import type { PromptItem } from "../lib/types";
@@ -101,13 +101,6 @@ export default function MePage({ auth }: { auth: Auth }) {
       </section>
 
       <SecurityCard onToast={setToast} auth={auth} />
-
-      <section className="card">
-        <h3>关于</h3>
-        <p className="hint">接口地址：{BASE || "当前站点同源"}</p>
-        <p className="hint">注册时间：{formatDay(auth.user?.created_at)}</p>
-        <p className="hint">版本：{import.meta.env.MODE}</p>
-      </section>
 
       {toast && <Toast text={toast} onDone={() => setToast(null)} />}
     </div>
@@ -439,12 +432,4 @@ function formatBytes(value: number): string {
   if (value < 1024 * 1024) return (value / 1024).toFixed(1) + " KB";
   if (value < 1024 * 1024 * 1024) return (value / 1024 / 1024).toFixed(1) + " MB";
   return (value / 1024 / 1024 / 1024).toFixed(2) + " GB";
-}
-
-function formatDay(value?: string): string {
-  if (!value) return "";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "";
-
-  return date.getFullYear() + " 年 " + (date.getMonth() + 1) + " 月 " + date.getDate() + " 日";
 }
