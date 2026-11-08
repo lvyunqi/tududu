@@ -192,6 +192,39 @@ curl http://127.0.0.1:8080/api/v1/health
 
 除注册、登录、刷新外，其余接口需要 `Authorization: Bearer <access_token>`。
 
+## 自动更新
+
+更新链路分两截：客户端只认本站，本站再去找 GitHub。
+
+**版本检测**：`GET /api/v1/app/version?platform=android&current=0.1.13`，服务端带 5 分钟缓存查最新 release，
+按平台挑包并用版本号比较，返回更新说明、包大小、SHA-256 和站内下载地址。
+
+**下载中转**：`GET /api/v1/app/download?platform=android`，把 GitHub 的安装包流式转发，带 `Content-Length`，
+客户端可以直接画进度条。仓库地址可用 `TUDUDU_UPDATE_REPO` 换掉。
+
+**安卓端**：启动后 2.5 秒查一次版本，有新版就弹窗；点「立即更新」走应用内下载，
+进度实时显示，下完拉起系统安装界面；原生拉起失败时退回浏览器下载。
+
+**服务端**：`tududu update check` 看版本，`tududu update install --yes` 下载校验并替换二进制，
+替换成功后以退出码 75 退出，表示「已更新待重启」。
+
+配合 `deploy/tududu-launcher.sh` 使用：启动器托管主程序，看到 75 就自动重新拉起。
+
+```bash
+tududu update check
+tududu update install --yes    # 会校验 SHA-256，旧版本留在同目录的 tududu-backup
+```
+
+systemd 里把 `ExecStart` 指向启动器即可：
+
+```ini
+[Service]
+ExecStart=/opt/tududu/tududu-launcher.sh
+Restart=always
+Environment=TUDUDU_BIN=/opt/tududu/tududu
+Environment=TUDUDU_ARGS=serve
+```
+
 ## 配置
 
 启动参数从环境变量读取，也可以写进 `.env` 文件。服务启动时会自动加载当前目录的 `.env`，
