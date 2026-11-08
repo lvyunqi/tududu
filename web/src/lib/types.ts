@@ -48,6 +48,7 @@ export interface Message {
   role: string;
   content: string;
   input_asset_id: string | null;
+  input_asset_ids?: string[];
   output_asset_id: string | null;
   job_id: string | null;
   status: number;

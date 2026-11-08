@@ -2739,3 +2739,62 @@ select:focus {
   from { opacity: 0; transform: translateY(8px) scale(0.94); }
   to { opacity: 1; transform: translateY(0) scale(1); }
 }
+
+/* ---------- 多张参考图 ---------- */
+
+.attach-bar {
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.attach-add {
+  width: 84px;
+  height: 84px;
+  padding: 0;
+  border-radius: 14px;
+  display: grid;
+  place-items: center;
+  font-size: 22px;
+  color: var(--ink-3);
+  background: var(--surface);
+  border: 1px dashed rgba(0, 0, 0, 0.18);
+  box-shadow: none;
+  transition: transform 0.16s var(--spring), border-color 0.16s ease, color 0.16s ease;
+}
+
+.attach-add:active {
+  transform: scale(0.94);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* 气泡里的参考图排成一条小带 */
+.bubble-refs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.bubble-ref {
+  width: 64px;
+  height: 64px;
+  border-radius: 10px;
+  overflow: hidden;
+  position: relative;
+}
+
+.bubble-ref::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 10px;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.06);
+  pointer-events: none;
+}
+
+.bubble-ref .thumb {
+  width: 64px;
+  height: 64px;
+  border-radius: 10px;
+  object-fit: cover;
+}

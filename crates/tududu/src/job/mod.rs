@@ -11,6 +11,8 @@ use crate::error::ApiError;
 
 const MAX_PROMPT_CHARS: usize = 2000;
 const DEFAULT_MAX_ATTEMPTS: i32 = 3;
+/// 一次最多带几张参考图。再多上游也吃不下，而且计费会失控。
+pub const MAX_INPUT_IMAGES: usize = 4;
 
 #[derive(Debug, Deserialize)]
 pub struct CreateJobRequest {
@@ -20,6 +22,9 @@ pub struct CreateJobRequest {
     pub provider_id: Option<Uuid>,
     #[serde(default)]
     pub input_asset_id: Option<Uuid>,
+    /// 多张参考图；有它就用它，input_asset_id 只作单图兼容
+    #[serde(default)]
+    pub input_asset_ids: Vec<Uuid>,
     #[serde(default)]
     pub size: Option<String>,
     #[serde(default)]
@@ -53,8 +58,31 @@ pub async fn submit(
         return Err(ApiError::bad_request("模型不能为空"));
     }
 
-    if let Some(asset_id) = req.input_asset_id {
-        let owned = crate::storage::store::find_owned(db, asset_id, user_id).await?;
+    // 新字段优先，老的单图字段继续兼容
+    let mut inputs = req.input_asset_ids.clone();
+    if inputs.is_empty()
+        && let Some(single) = req.input_asset_id
+    {
+        inputs.push(single);
+    }
+
+    // 去重但保留顺序
+    let mut seen = Vec::with_capacity(inputs.len());
+    for id in inputs {
+        if !seen.contains(&id) {
+            seen.push(id);
+        }
+    }
+    let inputs = seen;
+
+    if inputs.len() > MAX_INPUT_IMAGES {
+        return Err(ApiError::bad_request(format!(
+            "一次最多带 {MAX_INPUT_IMAGES} 张参考图"
+        )));
+    }
+
+    for asset_id in &inputs {
+        let owned = crate::storage::store::find_owned(db, *asset_id, user_id).await?;
         if owned.is_none() {
             return Err(ApiError::not_found("输入图片不存在"));
         }
@@ -68,7 +96,8 @@ pub async fn submit(
         provider_id: req.provider_id,
         model,
         prompt,
-        input_asset_id: req.input_asset_id,
+        input_asset_id: inputs.first().copied(),
+        input_asset_ids: &inputs,
         session_id: link.session_id,
         message_id: link.message_id,
         max_attempts: DEFAULT_MAX_ATTEMPTS,

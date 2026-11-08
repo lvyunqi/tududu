@@ -25,6 +25,8 @@ pub struct MessageRow {
     pub role: String,
     pub content: String,
     pub input_asset_id: Option<Uuid>,
+    /// 这一轮用到的全部参考图，前端一起显示
+    pub input_asset_ids: Vec<Uuid>,
     pub output_asset_id: Option<Uuid>,
     pub job_id: Option<Uuid>,
     pub status: i16,
@@ -33,8 +35,7 @@ pub struct MessageRow {
 
 const SESSION_COLUMNS: &str = "id, title, model, status, last_active_at, created_at";
 
-const MESSAGE_COLUMNS: &str =
-    "id, role, content, input_asset_id, output_asset_id, job_id, status, created_at";
+const MESSAGE_COLUMNS: &str = "id, role, content, input_asset_id, input_asset_ids, output_asset_id, job_id, status, created_at";
 
 pub async fn insert(
     db: &PgPool,
@@ -123,12 +124,13 @@ pub struct NewMessage<'a> {
     pub role: &'a str,
     pub content: &'a str,
     pub input_asset_id: Option<Uuid>,
+    pub input_asset_ids: &'a [Uuid],
     pub status: i16,
 }
 
 pub async fn insert_message(db: &PgPool, item: &NewMessage<'_>) -> sqlx::Result<MessageRow> {
     let sql = format!(
-        "INSERT INTO session_messages (session_id, role, content, input_asset_id, status) VALUES ($1, $2, $3, $4, $5) RETURNING {MESSAGE_COLUMNS}"
+        "INSERT INTO session_messages (session_id, role, content, input_asset_id, input_asset_ids, status) VALUES ($1, $2, $3, $4, $5, $6) RETURNING {MESSAGE_COLUMNS}"
     );
 
     sqlx::query_as::<_, MessageRow>(&sql)
@@ -136,6 +138,7 @@ pub async fn insert_message(db: &PgPool, item: &NewMessage<'_>) -> sqlx::Result<
         .bind(item.role)
         .bind(item.content)
         .bind(item.input_asset_id)
+        .bind(item.input_asset_ids.to_vec())
         .bind(item.status)
         .fetch_one(db)
         .await
