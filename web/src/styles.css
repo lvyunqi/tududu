@@ -2428,3 +2428,126 @@ select:focus {
   border-radius: 10px;
   font-size: 13px;
 }
+
+/* =========================================================
+   历史对话抽屉：最终定义
+   用 .drawer 前缀提高权重，压掉前面所有历史规则，不改旧代码
+   ========================================================= */
+
+.drawer .drawer-list {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  gap: 2px;
+  padding: 2px 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.drawer .drawer-row {
+  position: relative;
+  display: block;
+  flex: 0 0 auto;
+  height: 58px;
+  min-height: 58px;
+  max-height: 58px;
+  margin: 0;
+  padding: 0;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.drawer .drawer-row .swipe-delete {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: auto;
+  width: 84px;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: var(--danger);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.16s ease;
+  z-index: 0;
+}
+
+.drawer .drawer-row.open .swipe-delete {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.drawer .drawer-row .drawer-item {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  width: 100%;
+  height: 58px;
+  margin: 0;
+  padding: 0 14px;
+  border-radius: 12px;
+  background: var(--surface);
+  text-decoration: none;
+  color: var(--ink);
+  touch-action: pan-y;
+  user-select: none;
+  will-change: transform;
+}
+
+.drawer .drawer-row .drawer-item.active {
+  background: var(--accent-soft);
+}
+
+.drawer .drawer-row .drawer-title {
+  display: block;
+  font-size: 14.5px;
+  line-height: 20px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.drawer .drawer-row .drawer-time {
+  display: block;
+  font-size: 11px;
+  line-height: 14px;
+  color: var(--ink-3);
+}
+
+/* 删除按钮必须脱离文档流：上面那条 button:not(...) 会强加 position:relative，
+   所以这里用 .danger 类绕开，并把定位写死 */
+.drawer .drawer-row .swipe-delete.danger {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: auto;
+  width: 84px;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #d70015;
+  color: #fff;
+  border: none;
+  border-radius: 0;
+  overflow: hidden;
+  transition: opacity 0.16s ease;
+}
