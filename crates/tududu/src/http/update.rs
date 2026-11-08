@@ -29,10 +29,14 @@ pub async fn version(
     let platform = query.platform.as_deref().unwrap_or("android");
     let current = query.current.as_deref().unwrap_or_default();
 
-    let info = state.updates.version(platform, current).await.map_err(|err| {
-        tracing::warn!(error = %err, "查询最新版本失败");
-        ApiError::new(StatusCode::BAD_GATEWAY, 40003, "暂时查不到版本信息")
-    })?;
+    let info = state
+        .updates
+        .version(platform, current)
+        .await
+        .map_err(|err| {
+            tracing::warn!(error = %err, "查询最新版本失败");
+            ApiError::new(StatusCode::BAD_GATEWAY, 40003, "暂时查不到版本信息")
+        })?;
 
     Ok(Json(ApiBody::ok(info)))
 }
@@ -77,7 +81,9 @@ pub async fn download(
         ));
     }
 
-    let total = upstream.content_length().unwrap_or(asset.size.max(0) as u64);
+    let total = upstream
+        .content_length()
+        .unwrap_or(asset.size.max(0) as u64);
     let body = Body::from_stream(upstream.bytes_stream());
 
     let disposition = format!("attachment; filename=\"{}\"", asset.name);

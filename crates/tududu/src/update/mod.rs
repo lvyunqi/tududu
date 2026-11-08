@@ -129,10 +129,7 @@ impl UpdateService {
 
 /// 去掉版本号前面的 v。
 pub fn normalize(version: &str) -> String {
-    version
-        .trim()
-        .trim_start_matches(['v', 'V'])
-        .to_owned()
+    version.trim().trim_start_matches(['v', 'V']).to_owned()
 }
 
 /// 比较两个版本号，前者比后者新就返回 true。只认数字段，其它一律当分隔符。
