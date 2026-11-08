@@ -106,7 +106,8 @@ pub async fn republish(
         .await?
         .ok_or_else(|| ApiError::not_found("作品不存在"))?;
 
-    let hits = store::sensitive_hits(db, &format!("{}\n{}", prompt.title, prompt.prompt_text)).await?;
+    let hits =
+        store::sensitive_hits(db, &format!("{}\n{}", prompt.title, prompt.prompt_text)).await?;
     let status = if hits.is_empty() {
         store::STATUS_PUBLISHED
     } else {
