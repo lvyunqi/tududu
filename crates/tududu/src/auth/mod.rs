@@ -246,6 +246,66 @@ pub async fn logout(db: &PgPool, session_id: Uuid) -> Result<(), ApiError> {
     Ok(())
 }
 
+const MAX_NICKNAME_CHARS: usize = 24;
+const MIN_PASSWORD_CHARS: usize = 8;
+
+/// 改昵称。空串和超长直接拒绝，前后空格去掉。
+pub async fn rename(db: &PgPool, user_id: Uuid, nickname: &str) -> Result<UserInfo, ApiError> {
+    let name = nickname.trim();
+
+    if name.is_empty() {
+        return Err(ApiError::bad_request("昵称不能为空"));
+    }
+
+    if name.chars().count() > MAX_NICKNAME_CHARS {
+        return Err(ApiError::bad_request("昵称最多 24 个字"));
+    }
+
+    store::update_nickname(db, user_id, name).await?;
+    profile(db, user_id).await
+}
+
+/// 改密码。要验旧密码，改完把其它会话全部踢掉。
+pub async fn change_password(
+    db: &PgPool,
+    user_id: Uuid,
+    old_password: &str,
+    new_password: &str,
+) -> Result<(), ApiError> {
+    let user = store::find_user_by_id(db, user_id)
+        .await?
+        .ok_or_else(ApiError::unauthorized)?;
+
+    let hash = user.password_hash.as_deref().unwrap_or_default();
+    if hash.is_empty() {
+        return Err(ApiError::bad_request("这个账号还没有设置密码"));
+    }
+
+    if !password::verify(old_password, hash) {
+        return Err(ApiError::bad_request("原密码不对"));
+    }
+
+    if new_password.chars().count() < MIN_PASSWORD_CHARS {
+        return Err(ApiError::bad_request(format!(
+            "新密码至少 {MIN_PASSWORD_CHARS} 位"
+        )));
+    }
+
+    if new_password == old_password {
+        return Err(ApiError::bad_request("新密码不能和原密码一样"));
+    }
+
+    let next = password::hash(new_password).map_err(|err| {
+        tracing::error!(error = %err, "生成密码哈希失败");
+        ApiError::internal("保存密码失败")
+    })?;
+
+    store::update_password(db, user_id, &next).await?;
+    store::revoke_all_sessions(db, user_id).await?;
+
+    Ok(())
+}
+
 pub async fn profile(db: &PgPool, user_id: Uuid) -> Result<UserInfo, ApiError> {
     let user = store::find_user_by_id(db, user_id)
         .await?

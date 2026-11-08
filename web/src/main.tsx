@@ -12,6 +12,11 @@ const inApp =
 
 if (inApp) {
   document.documentElement.classList.add("in-app");
+
+// 偏好里关掉动效时给根节点挂个 class，CSS 统一收掉装饰动画
+if (localStorage.getItem("tududu.prefs")?.includes('"reduceMotion":true')) {
+  document.documentElement.classList.add("calm");
+}
 }
 
 const container = document.getElementById("root");
