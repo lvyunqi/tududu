@@ -85,6 +85,8 @@ fn supervise(bin: &Path, program_args: &[String]) -> anyhow::Result<()> {
     loop {
         let mut child = Command::new(bin)
             .args(program_args)
+            // 告诉主程序自己是被托管的，后台重启时才知道能拉起来
+            .env("TUDUDU_LAUNCHER", "1")
             .stdin(Stdio::null())
             .stdout(Stdio::inherit())
             .stderr(Stdio::inherit())

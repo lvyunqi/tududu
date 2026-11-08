@@ -32,6 +32,15 @@ pub struct AppState {
     pub settings: Arc<std::sync::RwLock<crate::settings::LiveSettings>>,
     /// 版本检测与下载中转，内部带 GitHub 响应的缓存。
     pub updates: crate::update::UpdateService,
+    /// 已装好、等重启的新版本，后台界面要看这个状态。
+    pub upgrade: crate::http::admin_update::UpgradeSlot,
+}
+
+/// 当前二进制对应的提交号，没有注入就是空。
+pub fn build_commit() -> String {
+    option_env!("TUDUDU_BUILD_COMMIT")
+        .unwrap_or_default()
+        .to_owned()
 }
 
 impl AppState {
@@ -114,6 +123,22 @@ pub fn router(state: AppState) -> Router {
         )
         .route("/api/v1/models", get(models::list))
         .route("/api/v1/app/version", get(crate::http::update::version))
+        .route(
+            "/api/v1/admin/update",
+            get(crate::http::admin_update::status),
+        )
+        .route(
+            "/api/v1/admin/update/check",
+            post(crate::http::admin_update::check),
+        )
+        .route(
+            "/api/v1/admin/update/install",
+            post(crate::http::admin_update::install),
+        )
+        .route(
+            "/api/v1/admin/update/restart",
+            post(crate::http::admin_update::restart),
+        )
         .route("/api/v1/app/download", get(crate::http::update::download))
         .route("/api/v1/qrcode", post(qrcode::render))
         .route("/api/v1/prompt-categories", get(plaza::categories))

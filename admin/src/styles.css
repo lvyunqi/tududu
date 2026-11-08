@@ -898,3 +898,72 @@ textarea:focus {
   padding: 5px 8px;
   font-size: 12px;
 }
+
+/* ---------- 在线升级 ---------- */
+
+.update-versions {
+  display: flex;
+  gap: 40px;
+  margin-bottom: 14px;
+}
+
+.update-versions > div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.update-versions strong {
+  font-size: 20px;
+}
+
+.update-notes {
+  margin: 12px 0;
+  padding: 12px 14px;
+  max-height: 240px;
+  overflow-y: auto;
+  border-radius: 10px;
+  background: var(--bg);
+  font-size: 13px;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  color: var(--ink-2);
+}
+
+.update-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.hint.warn {
+  color: #b45309;
+}
+
+pre.code {
+  margin: 10px 0;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: var(--bg);
+  font-size: 13px;
+  line-height: 1.7;
+  white-space: pre-wrap;
+}
+
+.checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--ink-2);
+  flex: 1;
+}
+
+button.link {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--accent);
+  font-size: 13px;
+  cursor: pointer;
+}
