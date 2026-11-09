@@ -17,6 +17,7 @@ fn sample() -> tududu::settings::LiveSettings {
         refresh_ttl_secs: 2_592_000,
         user_quota_bytes: 2_147_483_648,
         trash_retention_days: 30,
+        job_timeout_secs: 300,
         public_base_url: None,
     }
 }
