@@ -263,6 +263,7 @@ cp .env.example .env
 | `TUDUDU_ADMIN_USERNAME` | 空 | 初始管理员账号，只在库里没有管理员时创建 |
 | `TUDUDU_ADMIN_PASSWORD` | 空 | 初始管理员密码，同上 |
 | `TUDUDU_ADMIN_TOKEN` | 空 | 旧的单一令牌，保留作为过渡，账号体系就绪后可以不配 |
+| `TUDUDU_JOB_TIMEOUT_SECS` | `300` | 单个生成任务总超时（秒），超时中断并退款 |
 | `TUDUDU_TRASH_DAYS` | `30` | 回收站保留天数，到期后文件会被真正删掉 |
 | `TUDUDU_QUOTA_BYTES` | `2147483648` | 单用户存储上限（字节），默认 2GB |
 | `TUDUDU_CORS_ORIGINS` | `tauri://localhost` 等 | 允许跨域的来源，逗号分隔；默认放行 App 的 WebView |

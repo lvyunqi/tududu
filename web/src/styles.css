@@ -3887,3 +3887,67 @@ button.block {
   font-size: 15px;
   font-weight: 600;
 }
+
+/* ---------- 对话里的失败提示 ---------- */
+
+.failure {
+  display: flex;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 14px;
+  background: #fdf6f5;
+  border: 1px solid rgba(180, 35, 24, 0.14);
+}
+
+.failure-icon {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  font-size: 12px;
+  font-weight: 700;
+  color: #b42318;
+  background: rgba(180, 35, 24, 0.1);
+}
+
+.failure-main {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.failure-main strong {
+  font-size: 13.5px;
+  color: #8f1c14;
+}
+
+.failure-main p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.6;
+  color: #96302a;
+  word-break: break-word;
+}
+
+.failure-action {
+  align-self: flex-start;
+  margin-top: 4px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #fff;
+  text-decoration: none;
+  background: #b42318;
+}
+
+.failure-action:active {
+  transform: scale(0.97);
+}
+
+.failure.inline {
+  margin: 0 2px;
+}

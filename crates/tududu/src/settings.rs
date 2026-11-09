@@ -21,6 +21,8 @@ pub struct LiveSettings {
     pub refresh_ttl_secs: i64,
     pub user_quota_bytes: i64,
     pub trash_retention_days: i32,
+    /// 单个任务总超时秒数，超时按失败处理并退款。
+    pub job_timeout_secs: i64,
     pub public_base_url: Option<String>,
 }
 
@@ -68,6 +70,13 @@ pub const SPECS: &[SettingSpec] = &[
         max: 3_650,
     },
     SettingSpec {
+        key: "job_timeout_secs",
+        description: "单个生成任务超时（秒），超时自动中断并退款",
+        kind: SettingKind::Int,
+        min: 30,
+        max: 3_600,
+    },
+    SettingSpec {
         key: "public_base_url",
         description: "对外访问地址，用于拼接支付回调；留空表示未配置",
         kind: SettingKind::Url,
@@ -92,6 +101,7 @@ impl LiveSettings {
             refresh_ttl_secs: config.refresh_token_ttl_secs,
             user_quota_bytes: config.user_quota_bytes,
             trash_retention_days: config.trash_retention_days,
+            job_timeout_secs: config.job_timeout_secs,
             public_base_url: config.public_base_url.clone(),
         }
     }
@@ -124,6 +134,7 @@ impl LiveSettings {
                     "refresh_ttl_secs" => next.refresh_ttl_secs = parsed,
                     "user_quota_bytes" => next.user_quota_bytes = parsed,
                     "trash_retention_days" => next.trash_retention_days = parsed as i32,
+                    "job_timeout_secs" => next.job_timeout_secs = parsed,
                     _ => return Err(ApiError::bad_request("配置项没有对应的字段")),
                 }
             }
@@ -149,6 +160,7 @@ impl LiveSettings {
             "refresh_ttl_secs" => self.refresh_ttl_secs.to_string(),
             "user_quota_bytes" => self.user_quota_bytes.to_string(),
             "trash_retention_days" => self.trash_retention_days.to_string(),
+            "job_timeout_secs" => self.job_timeout_secs.to_string(),
             "public_base_url" => self.public_base_url.clone().unwrap_or_default(),
             _ => String::new(),
         }
