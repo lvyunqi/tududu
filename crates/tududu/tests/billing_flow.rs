@@ -167,7 +167,7 @@ async fn pay_fixture(pool: &PgPool) -> PayFixture {
     let created = payment::store::NewOrder {
         order_no: &order_no,
         user_id: user,
-        plan_id: plan.id,
+        plan_id: Some(plan.id),
         channel_id: channel.id,
         amount_fen: plan.amount_fen,
         credit: plan.credit,

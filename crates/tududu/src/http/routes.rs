@@ -94,6 +94,14 @@ pub fn router(state: AppState) -> Router {
         .route("/api/v1/billing/wallet", get(billing::wallet))
         .route("/api/v1/billing/ledger", get(billing::ledger))
         .route("/api/v1/billing/config", get(billing::public_config))
+        .route(
+            "/api/v1/billing/recharge-options",
+            get(payment::recharge_options),
+        )
+        .route(
+            "/api/v1/billing/recharge",
+            post(payment::create_custom_order),
+        )
         .route("/api/v1/billing/plans", get(payment::list_plans))
         .route("/api/v1/billing/orders", post(payment::create_order))
         .route(

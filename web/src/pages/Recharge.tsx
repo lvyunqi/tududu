@@ -5,12 +5,18 @@ import Toast from "../components/Toast";
 
 import { BASE, getToken, request } from "../lib/api";
 import type { useAuth } from "../lib/store";
-import type { CheckoutInfo, PayOrder, RechargePlan } from "../lib/types";
+import type { CheckoutInfo, PayOrder, RechargeOptions } from "../lib/types";
 
 type Auth = ReturnType<typeof useAuth>;
 
+/** 分转元，去掉多余的 0。 */
+function yuan(fen: number): string {
+  return String(Number((fen / 100).toFixed(2)));
+}
+
 export default function RechargePage({ auth }: { auth: Auth }) {
-  const [plans, setPlans] = useState<RechargePlan[]>([]);
+  const [options, setOptions] = useState<RechargeOptions | null>(null);
+  const [amount, setAmount] = useState("");
   const [pending, setPending] = useState<CheckoutInfo | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -19,21 +25,28 @@ export default function RechargePage({ auth }: { auth: Auth }) {
   const [qr, setQr] = useState<string | null>(null);
 
   useEffect(() => {
-    void request<RechargePlan[]>("/api/v1/billing/plans", { auth: false })
-      .then(setPlans)
-      .catch((err) => setError(err instanceof Error ? err.message : "加载套餐失败"));
+    void request<RechargeOptions>("/api/v1/billing/recharge-options", { auth: false })
+      .then((data) => {
+        setOptions(data);
+        if (data.quick_amounts.length > 0) setAmount(yuan(data.quick_amounts[0]));
+      })
+      .catch((err) => setError(err instanceof Error ? err.message : "加载充值配置失败"));
   }, []);
 
-  async function buy(plan: RechargePlan) {
+  const perYuan = options?.unit_per_yuan ?? 0;
+  const amountFen = Math.round(Number(amount || "0") * 100);
+  const credit = perYuan > 0 && amountFen > 0 ? (amountFen / 100) * perYuan : 0;
+
+  async function pay() {
     setBusy(true);
     setError(null);
     setNote(null);
     setStatus("正在下单…");
 
     try {
-      const info = await request<CheckoutInfo>("/api/v1/billing/orders", {
+      const info = await request<CheckoutInfo>("/api/v1/billing/recharge", {
         method: "POST",
-        body: { plan_id: plan.id }
+        body: { amount_fen: amountFen }
       });
 
       setPending(info);
@@ -122,6 +135,8 @@ export default function RechargePage({ auth }: { auth: Auth }) {
     }
   }
 
+  const canPay = amountFen >= 100 && credit > 0 && !busy;
+
   return (
     <div className="page">
       <header className="page-head">
@@ -137,27 +152,44 @@ export default function RechargePage({ auth }: { auth: Auth }) {
       {error && <p className="error">{error}</p>}
       {status && <p className="hint">{status}</p>}
 
-      <div className="list">
-        {plans.map((plan) => (
-          <article key={plan.id} className="card plan">
-            <div>
-              <h3>{plan.name}</h3>
-              <p className="hint">
-                {plan.credit} {auth.unitName}
-                {plan.bonus > 0 ? " 另赠 " + plan.bonus : ""}
-              </p>
-            </div>
-            <div className="plan-right">
-              <span className="price">¥{(plan.amount_fen / 100).toFixed(2)}</span>
-              <button onClick={() => void buy(plan)} disabled={busy}>
-                购买
-              </button>
-            </div>
-          </article>
-        ))}
-      </div>
+      <section className="card recharge-card">
+        <label className="recharge-input">
+          <span>充值金额</span>
+          <div>
+            <em>¥</em>
+            <input
+              inputMode="decimal"
+              value={amount}
+              onChange={(event) => setAmount(event.target.value.replace(/[^\d.]/g, ""))}
+              placeholder="0"
+            />
+          </div>
+        </label>
 
-      {plans.length === 0 && !error && <p className="hint">还没有可购买的套餐</p>}
+        {options && options.quick_amounts.length > 0 && (
+          <div className="quick-amounts">
+            {options.quick_amounts.map((fen) => (
+              <button
+                key={fen}
+                className={Math.round(Number(amount || "0") * 100) === fen ? "chip on" : "chip"}
+                onClick={() => setAmount(yuan(fen))}
+              >
+                ¥{yuan(fen)}
+              </button>
+            ))}
+          </div>
+        )}
+
+        <p className="hint">
+          {perYuan > 0
+            ? `1 元 = ${perYuan} ${options?.unit_name ?? auth.unitName}，本次到账 ${Number(credit.toFixed(4))} ${options?.unit_name ?? auth.unitName}`
+            : "正在读取充值比例…"}
+        </p>
+
+        <button className="block" onClick={() => void pay()} disabled={!canPay}>
+          {busy ? "下单中…" : "去支付"}
+        </button>
+      </section>
 
       {pending && (
         <div className="pay-sheet">
@@ -167,6 +199,9 @@ export default function RechargePage({ auth }: { auth: Auth }) {
           </p>
 
           <p className="hint mono">订单号 {pending.order_no}</p>
+          <p className="hint">
+            ¥{yuan(pending.amount_fen)} → {Number(pending.credit)} {options?.unit_name ?? auth.unitName}
+          </p>
 
           {qr && (
             <div className="qr-box">

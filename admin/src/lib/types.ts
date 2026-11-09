@@ -113,6 +113,7 @@ export interface PriceRow {
 export interface BillingConfig {
   unit_name: string;
   unit_per_yuan: number;
+  quick_amounts?: string;
 }
 
 export const JOB_STATUS: Record<number, string> = {

@@ -131,3 +131,10 @@ export interface PublicModel {
   code: string;
   display_name: string;
 }
+
+/** 充值页配置：单位、每元多少单位、快捷金额（分）。 */
+export interface RechargeOptions {
+  unit_name: string;
+  unit_per_yuan: number;
+  quick_amounts: number[];
+}

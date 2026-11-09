@@ -69,6 +69,9 @@ pub struct UpdatePricesRequest {
 pub struct UpdateConfigRequest {
     pub unit_name: String,
     pub unit_per_yuan: i64,
+    /// 快捷充值金额（分），不传就保留原样
+    #[serde(default)]
+    pub quick_amounts: Option<Vec<i64>>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -111,6 +114,23 @@ pub async fn price_for(
     let found = store::find_price(db, model, size, quality).await?;
 
     found.ok_or_else(|| ApiError::bad_request("该模型还没有配置价格，请联系管理员"))
+}
+
+/// 把人民币金额换算成计费单位。比例来自 billing_config。
+pub async fn credit_for_amount(db: &PgPool, amount_fen: i64) -> Result<Decimal, ApiError> {
+    if amount_fen <= 0 {
+        return Err(ApiError::bad_request("充值金额需要大于 0"));
+    }
+
+    let config = config(db).await?;
+    let per_yuan = Decimal::from(config.unit_per_yuan);
+    let credit = (Decimal::from(amount_fen) / Decimal::from(100) * per_yuan).round_dp(4);
+
+    if credit <= Decimal::ZERO {
+        return Err(ApiError::bad_request("金额太小，换算后到账为 0"));
+    }
+
+    Ok(credit)
 }
 
 pub async fn charge(
@@ -264,7 +284,13 @@ pub async fn update_config(
         return Err(ApiError::bad_request("每元单位数量需要大于 0"));
     }
 
-    store::write_config(db, req.unit_name.trim(), req.unit_per_yuan).await?;
+    store::write_config(
+        db,
+        req.unit_name.trim(),
+        req.unit_per_yuan,
+        req.quick_amounts.as_deref(),
+    )
+    .await?;
 
     config(db).await
 }

@@ -43,6 +43,19 @@ pub struct PriceRow {
 pub struct ConfigRow {
     pub unit_name: String,
     pub unit_per_yuan: i64,
+    /// 快捷充值金额，逗号分隔，单位分
+    pub quick_amounts: String,
+}
+
+impl ConfigRow {
+    /// 快捷金额解析成整数列表，坏数据直接跳过。
+    pub fn quick_amount_fen(&self) -> Vec<i64> {
+        self.quick_amounts
+            .split(',')
+            .filter_map(|item| item.trim().parse::<i64>().ok())
+            .filter(|fen| *fen > 0)
+            .collect()
+    }
 }
 
 pub async fn find_wallet(db: &PgPool, user_id: Uuid) -> sqlx::Result<Option<WalletRow>> {
@@ -84,18 +97,41 @@ pub async fn list_ledger(
 
 pub async fn read_config(db: &PgPool) -> sqlx::Result<Option<ConfigRow>> {
     sqlx::query_as::<_, ConfigRow>(
-        "SELECT unit_name, unit_per_yuan FROM billing_config WHERE id = 1",
+        "SELECT unit_name, unit_per_yuan, quick_amounts FROM billing_config WHERE id = 1",
     )
     .fetch_optional(db)
     .await
 }
 
-pub async fn write_config(db: &PgPool, unit_name: &str, unit_per_yuan: i64) -> sqlx::Result<()> {
-    sqlx::query("UPDATE billing_config SET unit_name = $1, unit_per_yuan = $2, updated_at = now() WHERE id = 1")
-        .bind(unit_name)
-        .bind(unit_per_yuan)
-        .execute(db)
-        .await?;
+pub async fn write_config(
+    db: &PgPool,
+    unit_name: &str,
+    unit_per_yuan: i64,
+    quick_amounts: Option<&[i64]>,
+) -> sqlx::Result<()> {
+    match quick_amounts {
+        Some(list) => {
+            let joined = list
+                .iter()
+                .map(|fen| fen.to_string())
+                .collect::<Vec<_>>()
+                .join(",");
+
+            sqlx::query("UPDATE billing_config SET unit_name = $1, unit_per_yuan = $2, quick_amounts = $3, updated_at = now() WHERE id = 1")
+                .bind(unit_name)
+                .bind(unit_per_yuan)
+                .bind(joined)
+                .execute(db)
+                .await?;
+        }
+        None => {
+            sqlx::query("UPDATE billing_config SET unit_name = $1, unit_per_yuan = $2, updated_at = now() WHERE id = 1")
+                .bind(unit_name)
+                .bind(unit_per_yuan)
+                .execute(db)
+                .await?;
+        }
+    }
 
     Ok(())
 }
