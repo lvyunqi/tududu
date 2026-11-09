@@ -355,6 +355,24 @@ jobs:
           "$BUILD_TOOLS/apksigner" verify --print-certs "$OUT" | head -5
           ls -lh dist/
 
+          # 光看构建日志不够，直接从成品包里核对版本号、应用名和图标
+          AAPT2=$(ls "$ANDROID_HOME"/build-tools/*/aapt2 | sort -V | tail -1)
+          "$AAPT2" dump badging "$OUT" | grep -E "^package:|^application-label|^application-icon" | head -8
+
+          WANT="${RELEASE_VERSION#v}"
+          if ! "$AAPT2" dump badging "$OUT" | grep "^package:" | grep -q "versionName='$WANT'"; then
+            echo "安装包版本号不是 $WANT"
+            exit 1
+          fi
+          if ! "$AAPT2" dump badging "$OUT" | grep -q "application-label:'图嘟嘟'"; then
+            echo "应用名不是图嘟嘟"
+            exit 1
+          fi
+          if ! "$AAPT2" dump badging "$OUT" | grep -q "application-icon-640"; then
+            echo "安装包缺少高密度图标"
+            exit 1
+          fi
+
       - name: 上传产物
         uses: actions/upload-artifact@v4
         with:
