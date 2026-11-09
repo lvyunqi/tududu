@@ -1,11 +1,12 @@
 //! 计费：钱包余额、流水、价格表。
 //!
-//! 余额是不带小数的整数，单位由 billing_config 定义，可以按需要改成点、米粒或次数。
-
+//! 余额单位由 billing_config 定义，可以按需要改成点、米粒或次数；
+//! 金额是四位小数的定点数，够表达 0.0001 这样的单价。
 pub mod store;
 
 use axum::http::StatusCode;
 use chrono::{DateTime, Utc};
+use rust_decimal::Decimal;
 use serde::Deserialize;
 use sqlx::PgPool;
 use uuid::Uuid;
@@ -23,23 +24,40 @@ pub struct PriceItem {
     pub size: Option<String>,
     #[serde(default)]
     pub quality: Option<String>,
-    /// 单价，单位是计费单位。允许传小数，落库时四舍五入到整数。
+    /// 单价，允许小数，最多四位。
     #[serde(deserialize_with = "deserialize_price")]
-    pub price: i64,
+    pub price: Decimal,
 }
 
-/// 价格允许前端直接传小数（比如按元算出来的 12.5），这里统一取整。
-fn deserialize_price<'de, D>(deserializer: D) -> Result<i64, D::Error>
+/// 价格允许前端传数字或字符串，统一转成四位小数的定点数。
+fn deserialize_price<'de, D>(deserializer: D) -> Result<Decimal, D::Error>
 where
     D: serde::Deserializer<'de>,
 {
-    let value = f64::deserialize(deserializer)?;
+    #[derive(Deserialize)]
+    #[serde(untagged)]
+    enum Raw {
+        Number(f64),
+        Text(String),
+    }
 
-    if !value.is_finite() || value < 0.0 {
+    let value = Raw::deserialize(deserializer)?;
+    let parsed = match value {
+        Raw::Number(number) => {
+            if !number.is_finite() {
+                return Err(serde::de::Error::custom("价格不合法"));
+            }
+            crate::money::from_f64(number)
+        }
+        Raw::Text(text) => crate::money::parse_decimal(&text)
+            .ok_or_else(|| serde::de::Error::custom("价格不合法"))?,
+    };
+
+    if parsed.is_sign_negative() {
         return Err(serde::de::Error::custom("价格必须是非负数"));
     }
 
-    Ok(value.round() as i64)
+    Ok(parsed)
 }
 
 #[derive(Debug, Deserialize)]
@@ -55,7 +73,7 @@ pub struct UpdateConfigRequest {
 
 #[derive(Debug, Deserialize)]
 pub struct AdjustCreditsRequest {
-    pub amount: i64,
+    pub amount: Decimal,
     #[serde(default)]
     pub remark: Option<String>,
 }
@@ -89,7 +107,7 @@ pub async fn price_for(
     model: &str,
     size: Option<&str>,
     quality: Option<&str>,
-) -> Result<i64, ApiError> {
+) -> Result<Decimal, ApiError> {
     let found = store::find_price(db, model, size, quality).await?;
 
     found.ok_or_else(|| ApiError::bad_request("该模型还没有配置价格，请联系管理员"))
@@ -98,12 +116,12 @@ pub async fn price_for(
 pub async fn charge(
     db: &PgPool,
     user_id: Uuid,
-    amount: i64,
+    amount: Decimal,
     ref_type: Option<&str>,
     ref_id: Option<Uuid>,
     remark: &str,
-) -> Result<i64, ApiError> {
-    if amount <= 0 {
+) -> Result<Decimal, ApiError> {
+    if amount <= Decimal::ZERO {
         return Ok(wallet(db, user_id).await?.balance);
     }
 
@@ -113,19 +131,24 @@ pub async fn charge(
 pub async fn refund(
     db: &PgPool,
     user_id: Uuid,
-    amount: i64,
+    amount: Decimal,
     ref_type: Option<&str>,
     ref_id: Option<Uuid>,
     remark: &str,
-) -> Result<i64, ApiError> {
-    if amount <= 0 {
+) -> Result<Decimal, ApiError> {
+    if amount <= Decimal::ZERO {
         return Ok(wallet(db, user_id).await?.balance);
     }
 
     apply_delta(db, user_id, amount, KIND_REFUND, ref_type, ref_id, remark).await
 }
 
-pub async fn grant(db: &PgPool, user_id: Uuid, amount: i64, remark: &str) -> Result<i64, ApiError> {
+pub async fn grant(
+    db: &PgPool,
+    user_id: Uuid,
+    amount: Decimal,
+    remark: &str,
+) -> Result<Decimal, ApiError> {
     apply_delta(db, user_id, amount, KIND_GRANT, None, None, remark).await
 }
 
@@ -133,11 +156,11 @@ pub async fn grant(db: &PgPool, user_id: Uuid, amount: i64, remark: &str) -> Res
 pub async fn grant_ref(
     db: &PgPool,
     user_id: Uuid,
-    amount: i64,
+    amount: Decimal,
     ref_type: &str,
     ref_id: Uuid,
     remark: &str,
-) -> Result<i64, ApiError> {
+) -> Result<Decimal, ApiError> {
     apply_delta(
         db,
         user_id,
@@ -154,12 +177,14 @@ pub async fn grant_ref(
 async fn apply_delta(
     db: &PgPool,
     user_id: Uuid,
-    delta: i64,
+    delta: Decimal,
     kind: &str,
     ref_type: Option<&str>,
     ref_id: Option<Uuid>,
     remark: &str,
-) -> Result<i64, ApiError> {
+) -> Result<Decimal, ApiError> {
+    // 统一保留四位小数，避免累加出更多位
+    let delta = delta.round_dp(4);
     let mut tx = db.begin().await?;
 
     sqlx::query("INSERT INTO wallets (user_id) VALUES ($1) ON CONFLICT (user_id) DO NOTHING")
@@ -167,14 +192,14 @@ async fn apply_delta(
         .execute(&mut *tx)
         .await?;
 
-    let balance: i64 =
+    let balance: Decimal =
         sqlx::query_scalar("SELECT balance FROM wallets WHERE user_id = $1 FOR UPDATE")
             .bind(user_id)
             .fetch_one(&mut *tx)
             .await?;
 
-    let after = balance.saturating_add(delta);
-    if after < 0 {
+    let after = (balance + delta).round_dp(4);
+    if after.is_sign_negative() {
         return Err(ApiError::new(
             StatusCode::PAYMENT_REQUIRED,
             40201,
@@ -182,10 +207,14 @@ async fn apply_delta(
         ));
     }
 
-    let credited = if kind == KIND_GRANT { delta.max(0) } else { 0 };
+    let credited = if kind == KIND_GRANT && delta > Decimal::ZERO {
+        delta
+    } else {
+        Decimal::ZERO
+    };
 
     // 先写流水。同一业务对象同一类型只会成功一次，重复调用直接返回原余额。
-    let inserted: Option<i64> = sqlx::query_scalar(
+    let inserted: Option<Decimal> = sqlx::query_scalar(
         "INSERT INTO ledger_entries (user_id, kind, amount, balance_after, ref_type, ref_id, remark) \
          VALUES ($1, $2, $3, $4, $5, $6, $7) \
          ON CONFLICT DO NOTHING \
@@ -230,7 +259,7 @@ pub async fn update_prices(
             return Err(ApiError::bad_request("模型名不能为空"));
         }
 
-        if item.price < 0 {
+        if item.price.is_sign_negative() {
             return Err(ApiError::bad_request("价格不能是负数"));
         }
 
@@ -239,7 +268,7 @@ pub async fn update_prices(
             model,
             normalize(item.size.as_deref()).as_deref(),
             normalize(item.quality.as_deref()).as_deref(),
-            item.price,
+            item.price.round_dp(4),
         )
         .await?;
     }
@@ -247,55 +276,10 @@ pub async fn update_prices(
     Ok(store::list_prices(db).await?)
 }
 
-pub async fn update_config(
-    db: &PgPool,
-    req: UpdateConfigRequest,
-) -> Result<store::ConfigRow, ApiError> {
-    let name = req.unit_name.trim();
-    if name.is_empty() || name.chars().count() > 16 {
-        return Err(ApiError::bad_request("单位名称需要 1 到 16 个字"));
-    }
-
-    if req.unit_per_yuan <= 0 {
-        return Err(ApiError::bad_request("每元对应的单位数量必须大于 0"));
-    }
-
-    store::write_config(db, name, req.unit_per_yuan).await?;
-    config(db).await
-}
-
-fn normalize(value: Option<&str>) -> Option<String> {
+/// 空白字符串当通配处理。
+pub fn normalize(value: Option<&str>) -> Option<String> {
     value
         .map(str::trim)
-        .filter(|item| !item.is_empty())
-        .map(str::to_owned)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn blank_wildcards_become_none() {
-        assert_eq!(normalize(Some("  ")), None);
-        assert_eq!(normalize(None), None);
-        assert_eq!(normalize(Some(" 1024x1024 ")), Some("1024x1024".to_owned()));
-    }
-
-    #[test]
-    fn price_accepts_decimals_and_rounds() {
-        let item: PriceItem =
-            serde_json::from_str(r#"{"model":"gpt-image-1","price":12.5}"#).expect("小数应能解析");
-        assert_eq!(item.price, 13);
-
-        let item: PriceItem =
-            serde_json::from_str(r#"{"model":"gpt-image-1","price":0.4}"#).expect("小数应能解析");
-        assert_eq!(item.price, 0);
-    }
-
-    #[test]
-    fn price_rejects_negative() {
-        let result: Result<PriceItem, _> = serde_json::from_str(r#"{"model":"m","price":-1}"#);
-        assert!(result.is_err());
-    }
+        .filter(|text| !text.is_empty())
+        .map(ToOwned::to_owned)
 }

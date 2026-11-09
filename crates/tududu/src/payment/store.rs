@@ -1,4 +1,5 @@
 use chrono::{DateTime, Utc};
+use rust_decimal::Decimal;
 use serde::Serialize;
 use sqlx::PgPool;
 use uuid::Uuid;
@@ -12,8 +13,10 @@ pub struct PlanRow {
     pub id: Uuid,
     pub name: String,
     pub amount_fen: i64,
-    pub credit: i64,
-    pub bonus: i64,
+    #[serde(serialize_with = "crate::money::serialize_decimal")]
+    pub credit: Decimal,
+    #[serde(serialize_with = "crate::money::serialize_decimal")]
+    pub bonus: Decimal,
     pub sort: i32,
     pub enabled: bool,
 }
@@ -44,8 +47,10 @@ pub struct OrderRow {
     pub order_no: String,
     pub user_id: Uuid,
     pub amount_fen: i64,
-    pub credit: i64,
-    pub bonus: i64,
+    #[serde(serialize_with = "crate::money::serialize_decimal")]
+    pub credit: Decimal,
+    #[serde(serialize_with = "crate::money::serialize_decimal")]
+    pub bonus: Decimal,
     pub status: i16,
     pub subject: String,
     pub trade_no: Option<String>,
@@ -77,8 +82,8 @@ pub async fn insert_plan(
     db: &PgPool,
     name: &str,
     amount_fen: i64,
-    credit: i64,
-    bonus: i64,
+    credit: Decimal,
+    bonus: Decimal,
     sort: i32,
 ) -> sqlx::Result<PlanRow> {
     sqlx::query_as::<_, PlanRow>(
@@ -148,8 +153,8 @@ pub struct NewOrder<'a> {
     pub plan_id: Uuid,
     pub channel_id: Uuid,
     pub amount_fen: i64,
-    pub credit: i64,
-    pub bonus: i64,
+    pub credit: Decimal,
+    pub bonus: Decimal,
     pub subject: &'a str,
     pub expire_at: DateTime<Utc>,
 }

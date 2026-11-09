@@ -1,4 +1,5 @@
 use chrono::{DateTime, Utc};
+use rust_decimal::Decimal;
 use serde::Serialize;
 use sqlx::PgPool;
 use uuid::Uuid;
@@ -11,7 +12,8 @@ pub struct AdminUserRow {
     pub phone: Option<String>,
     pub email: Option<String>,
     pub status: i16,
-    pub balance: i64,
+    #[serde(serialize_with = "crate::money::serialize_decimal")]
+    pub balance: Decimal,
     pub used_bytes: i64,
     pub created_at: DateTime<Utc>,
 }
@@ -21,8 +23,10 @@ pub struct AdminOrderRow {
     pub order_no: String,
     pub user_id: Uuid,
     pub amount_fen: i64,
-    pub credit: i64,
-    pub bonus: i64,
+    #[serde(serialize_with = "crate::money::serialize_decimal")]
+    pub credit: Decimal,
+    #[serde(serialize_with = "crate::money::serialize_decimal")]
+    pub bonus: Decimal,
     pub status: i16,
     pub paid_at: Option<DateTime<Utc>>,
     pub created_at: DateTime<Utc>,
@@ -34,7 +38,8 @@ pub struct AdminJobRow {
     pub user_id: Uuid,
     pub model: String,
     pub status: i16,
-    pub price: i64,
+    #[serde(serialize_with = "crate::money::serialize_decimal")]
+    pub price: Decimal,
     pub error_code: Option<i32>,
     pub error_message: Option<String>,
     pub finished_at: Option<DateTime<Utc>>,

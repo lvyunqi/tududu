@@ -16,8 +16,10 @@ const INTERVAL: Duration = Duration::from_secs(5 * 60);
 #[derive(Debug, Serialize, sqlx::FromRow)]
 pub struct Mismatch {
     pub user_id: Uuid,
-    pub balance: i64,
-    pub ledger_sum: i64,
+    #[serde(serialize_with = "crate::money::serialize_decimal")]
+    pub balance: rust_decimal::Decimal,
+    #[serde(serialize_with = "crate::money::serialize_decimal")]
+    pub ledger_sum: rust_decimal::Decimal,
 }
 
 #[derive(Debug, Serialize)]
@@ -193,7 +195,7 @@ pub async fn close_expired_orders(db: &PgPool) -> sqlx::Result<u64> {
 /// 余额必须等于流水之和。对不上说明有人绕过接口改了余额，或者哪里写漏了。
 pub async fn check_ledger(db: &PgPool) -> sqlx::Result<Vec<Mismatch>> {
     sqlx::query_as::<_, Mismatch>(
-        "SELECT w.user_id, w.balance, COALESCE(SUM(l.amount), 0)::bigint AS ledger_sum \
+        "SELECT w.user_id, w.balance, COALESCE(SUM(l.amount), 0) AS ledger_sum \
            FROM wallets w LEFT JOIN ledger_entries l ON l.user_id = w.user_id \
           GROUP BY w.user_id, w.balance \
          HAVING w.balance <> COALESCE(SUM(l.amount), 0) \

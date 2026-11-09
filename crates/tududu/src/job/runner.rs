@@ -3,6 +3,7 @@ use std::time::Instant;
 use base64::Engine as _;
 use base64::engine::general_purpose::STANDARD;
 use serde::Deserialize;
+use rust_decimal::Decimal;
 use sqlx::PgPool;
 use uuid::Uuid;
 
@@ -192,7 +193,7 @@ async fn fail_and_refund(
         }
     }
 
-    if job.price > 0 {
+    if job.price > Decimal::ZERO {
         let outcome = crate::billing::refund(
             db,
             job.user_id,

@@ -8,6 +8,7 @@ use axum::http::StatusCode;
 use chrono::{Duration, Utc};
 use md5::{Digest, Md5};
 use percent_encoding::{NON_ALPHANUMERIC, utf8_percent_encode};
+use rust_decimal::Decimal;
 use serde::Serialize;
 use sqlx::PgPool;
 use uuid::Uuid;
@@ -21,8 +22,10 @@ const ORDER_TTL_MINUTES: i64 = 30;
 pub struct CheckoutInfo {
     pub order_no: String,
     pub amount_fen: i64,
-    pub credit: i64,
-    pub bonus: i64,
+    #[serde(serialize_with = "crate::money::serialize_decimal")]
+    pub credit: Decimal,
+    #[serde(serialize_with = "crate::money::serialize_decimal")]
+    pub bonus: Decimal,
     pub subject: String,
     pub pay_url: String,
     pub expire_at: chrono::DateTime<Utc>,

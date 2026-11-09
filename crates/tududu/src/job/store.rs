@@ -1,4 +1,5 @@
 use chrono::{DateTime, Utc};
+use rust_decimal::Decimal;
 use serde::Serialize;
 use sqlx::PgPool;
 use uuid::Uuid;
@@ -25,7 +26,8 @@ pub struct JobRow {
     pub attempt_count: i32,
     pub max_attempts: i32,
     pub output_asset_id: Option<Uuid>,
-    pub price: i64,
+    #[serde(serialize_with = "crate::money::serialize_decimal")]
+    pub price: Decimal,
     pub error_code: Option<i32>,
     pub error_message: Option<String>,
     pub started_at: Option<DateTime<Utc>>,
@@ -46,7 +48,7 @@ pub struct NewJob<'a> {
     pub session_id: Option<Uuid>,
     pub message_id: Option<Uuid>,
     pub max_attempts: i32,
-    pub price: i64,
+    pub price: Decimal,
 }
 
 pub async fn insert(db: &PgPool, item: &NewJob<'_>) -> sqlx::Result<JobRow> {
@@ -198,7 +200,7 @@ pub async fn insert_attempt(db: &PgPool, item: &NewAttempt<'_>) -> sqlx::Result<
 pub struct OrphanJob {
     pub id: Uuid,
     pub user_id: Uuid,
-    pub price: i64,
+    pub price: Decimal,
     pub message_id: Option<Uuid>,
 }
 

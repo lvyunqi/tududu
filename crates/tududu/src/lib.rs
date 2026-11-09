@@ -12,6 +12,7 @@ pub mod db;
 pub mod env_file;
 pub mod error;
 pub mod http;
+pub mod money;
 pub mod job;
 pub mod payment;
 pub mod plaza;
