@@ -116,7 +116,7 @@ pub async fn price_for(
 pub async fn charge(
     db: &PgPool,
     user_id: Uuid,
-    amount: Decimal,
+    amount: impl Into<Decimal>,
     ref_type: Option<&str>,
     ref_id: Option<Uuid>,
     remark: &str,
@@ -125,13 +125,14 @@ pub async fn charge(
         return Ok(wallet(db, user_id).await?.balance);
     }
 
+    let amount = amount.into();
     apply_delta(db, user_id, -amount, KIND_CHARGE, ref_type, ref_id, remark).await
 }
 
 pub async fn refund(
     db: &PgPool,
     user_id: Uuid,
-    amount: Decimal,
+    amount: impl Into<Decimal>,
     ref_type: Option<&str>,
     ref_id: Option<Uuid>,
     remark: &str,
@@ -140,15 +141,17 @@ pub async fn refund(
         return Ok(wallet(db, user_id).await?.balance);
     }
 
+    let amount = amount.into();
     apply_delta(db, user_id, amount, KIND_REFUND, ref_type, ref_id, remark).await
 }
 
 pub async fn grant(
     db: &PgPool,
     user_id: Uuid,
-    amount: Decimal,
+    amount: impl Into<Decimal>,
     remark: &str,
 ) -> Result<Decimal, ApiError> {
+    let amount = amount.into();
     apply_delta(db, user_id, amount, KIND_GRANT, None, None, remark).await
 }
 
@@ -156,7 +159,7 @@ pub async fn grant(
 pub async fn grant_ref(
     db: &PgPool,
     user_id: Uuid,
-    amount: Decimal,
+    amount: impl Into<Decimal>,
     ref_type: &str,
     ref_id: Uuid,
     remark: &str,
@@ -164,7 +167,7 @@ pub async fn grant_ref(
     apply_delta(
         db,
         user_id,
-        amount,
+        amount.into(),
         KIND_GRANT,
         Some(ref_type),
         Some(ref_id),

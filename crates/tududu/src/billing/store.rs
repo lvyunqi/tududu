@@ -113,8 +113,9 @@ pub async fn upsert_price(
     model: &str,
     size: Option<&str>,
     quality: Option<&str>,
-    price: Decimal,
+    price: impl Into<Decimal>,
 ) -> sqlx::Result<PriceRow> {
+    let price: Decimal = price.into();
     sqlx::query_as::<_, PriceRow>(
         "INSERT INTO billing_prices (model, size, quality, price) VALUES ($1, $2, $3, $4) \
          ON CONFLICT (model, size, quality) DO UPDATE SET price = EXCLUDED.price, enabled = TRUE \
