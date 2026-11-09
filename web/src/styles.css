@@ -3862,3 +3862,78 @@ select:focus {
 .update-notes.md a {
   color: var(--accent);
 }
+
+/* ---------- 充値 ---------- */
+
+.recharge-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.recharge-input {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.recharge-input > span {
+  font-size: 13px;
+  color: var(--ink-2);
+}
+
+.recharge-input > div {
+  display: flex;
+  align-items: baseline;
+  gap: 2px;
+}
+
+.recharge-input em {
+  font-style: normal;
+  font-size: 20px;
+  color: var(--ink-2);
+}
+
+.recharge-input input {
+  width: 140px;
+  border: none;
+  background: transparent;
+  font-size: 28px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  text-align: right;
+  color: var(--ink);
+  outline: none;
+}
+
+.quick-amounts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.quick-amounts .chip {
+  padding: 8px 14px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+  background: var(--surface-2);
+  border: 0.5px solid var(--line);
+}
+
+.quick-amounts .chip.on {
+  color: #fff;
+  background: linear-gradient(135deg, #4f63ea, #22b8dc);
+  border-color: transparent;
+}
+
+button.block {
+  width: 100%;
+  padding: 14px;
+  border-radius: 14px;
+  font-size: 15px;
+  font-weight: 600;
+}

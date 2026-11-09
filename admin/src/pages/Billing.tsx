@@ -10,6 +10,7 @@ export default function BillingPage() {
 
   const [unitName, setUnitName] = useState("");
   const [unitPerYuan, setUnitPerYuan] = useState("");
+  const [quickAmounts, setQuickAmounts] = useState("");
   const [note, setNote] = useState<string | null>(null);
 
   const [model, setModel] = useState("");
@@ -27,6 +28,7 @@ export default function BillingPage() {
     if (config.data) {
       setUnitName(config.data.unit_name);
       setUnitPerYuan(String(config.data.unit_per_yuan));
+      setQuickAmounts(config.data.quick_amounts ?? "");
     }
   }, [config.data]);
 
@@ -36,7 +38,15 @@ export default function BillingPage() {
     try {
       await adminRequest("/api/v1/admin/billing/config", {
         method: "PUT",
-        body: { unit_name: unitName, unit_per_yuan: Math.round(Number(unitPerYuan)) }
+        body: {
+          unit_name: unitName,
+          unit_per_yuan: Math.round(Number(unitPerYuan)),
+          quick_amounts: quickAmounts
+            .split(",")
+            .map((item) => Number(item.trim()))
+            .filter((fen) => Number.isFinite(fen) && fen > 0)
+            .map((fen) => Math.round(fen))
+        }
       });
       await config.reload();
       setNote("计费单位已更新");
@@ -144,6 +154,13 @@ export default function BillingPage() {
           <button onClick={() => void saveConfig()} disabled={!unitName || !unitPerYuan}>
             保存
           </button>
+        </div>
+        <div className="form-row">
+          <input
+            placeholder="快捷充值金额（分），如 1000,2000,5000"
+            value={quickAmounts}
+            onChange={(e) => setQuickAmounts(e.target.value)}
+          />
         </div>
       </div>
 

@@ -6,7 +6,7 @@ use axum::extract::{Path, Query, State};
 use axum::http::{HeaderMap, Uri};
 use axum::response::Html;
 use rust_decimal::Decimal;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use crate::error::{ApiBody, ApiError};
@@ -21,6 +21,53 @@ pub async fn list_plans(
 ) -> Result<Json<ApiBody<Vec<pay_store::PlanRow>>>, ApiError> {
     let rows = payment::list_plans(&state.db).await?;
     Ok(Json(ApiBody::ok(rows)))
+}
+
+#[derive(Debug, Serialize)]
+pub struct RechargeOptions {
+    pub unit_name: String,
+    pub unit_per_yuan: i64,
+    /// 快捷金额，单位分
+    pub quick_amounts: Vec<i64>,
+}
+
+/// 充值页要的信息：单位、比例、快捷金额。
+pub async fn recharge_options(
+    State(state): State<AppState>,
+) -> Result<Json<ApiBody<RechargeOptions>>, ApiError> {
+    let config = crate::billing::config(&state.db).await?;
+
+    Ok(Json(ApiBody::ok(RechargeOptions {
+        unit_name: config.unit_name,
+        unit_per_yuan: config.unit_per_yuan,
+        quick_amounts: config.quick_amount_fen(),
+    })))
+}
+
+#[derive(Debug, Deserialize)]
+pub struct CustomRechargeRequest {
+    /// 充值金额，单位分
+    pub amount_fen: i64,
+}
+
+/// 自定义金额充值：金额按分传，到账额度由比例换算。
+pub async fn create_custom_order(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Json(req): Json<CustomRechargeRequest>,
+) -> Result<Json<ApiBody<payment::CheckoutInfo>>, ApiError> {
+    let current = require_user(&state, &headers).await?;
+
+    let info = payment::create_custom_order(
+        &state.db,
+        &state.provider_key,
+        state.live().public_base_url.as_deref(),
+        current.user_id,
+        req.amount_fen,
+    )
+    .await?;
+
+    Ok(Json(ApiBody::ok(info)))
 }
 
 #[derive(Debug, Deserialize)]

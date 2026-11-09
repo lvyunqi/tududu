@@ -110,7 +110,7 @@ pub async fn create_order(
     let created = store::NewOrder {
         order_no: &order_no,
         user_id,
-        plan_id: plan.id,
+        plan_id: Some(plan.id),
         channel_id: channel.id,
         amount_fen: plan.amount_fen,
         credit: plan.credit,
@@ -148,6 +148,97 @@ pub async fn create_order(
         amount_fen: plan.amount_fen,
         credit: plan.credit,
         bonus: plan.bonus,
+        subject,
+        pay_url: format!("{gateway}/submit.php?{query}"),
+        expire_at,
+    })
+}
+
+
+/// 自定义金额下单：金额按分传进来，到账额度按计费比例换算。
+pub async fn create_custom_order(
+    db: &PgPool,
+    encrypt_key: &[u8; 32],
+    public_base: Option<&str>,
+    user_id: Uuid,
+    amount_fen: i64,
+) -> Result<CheckoutInfo, ApiError> {
+    if amount_fen < 100 {
+        return Err(ApiError::bad_request("充值金额至少 1 元"));
+    }
+
+    if amount_fen > 5_000_00 {
+        return Err(ApiError::bad_request("单笔充值不能超过 5000 元"));
+    }
+
+    let credit = crate::billing::credit_for_amount(db, amount_fen).await?;
+
+    let Some(base) = public_base else {
+        return Err(ApiError::internal("未配置对外访问地址，无法生成回调地址"));
+    };
+
+    let found = store::pick_channel(db).await?;
+    let channel = match found {
+        Some(value) => value,
+        None => {
+            return Err(ApiError::new(
+                StatusCode::SERVICE_UNAVAILABLE,
+                40204,
+                "暂时没有可用的支付通道",
+            ));
+        }
+    };
+
+    let secret = crypto::decrypt(encrypt_key, &channel.key_cipher).map_err(|err| {
+        tracing::error!(error = %err, "解密支付密钥失败");
+        ApiError::internal("支付通道配置异常")
+    })?;
+
+    let order_no = new_order_no();
+    let subject = sanitize_subject(&format!("充值 {}", fen_to_yuan(amount_fen)));
+    let expire_at = Utc::now() + Duration::minutes(ORDER_TTL_MINUTES);
+
+    let created = store::NewOrder {
+        order_no: &order_no,
+        user_id,
+        plan_id: None,
+        channel_id: channel.id,
+        amount_fen,
+        credit,
+        bonus: Decimal::ZERO,
+        subject: &subject,
+        expire_at,
+    };
+
+    store::insert_order(db, &created).await?;
+
+    let base = base.trim_end_matches('/');
+    let mut params: BTreeMap<String, String> = BTreeMap::new();
+    params.insert("pid".to_owned(), channel.pid.clone());
+    params.insert("type".to_owned(), channel.pay_type.clone());
+    params.insert("out_trade_no".to_owned(), order_no.clone());
+    params.insert("notify_url".to_owned(), format!("{base}/pay/epay/notify"));
+    params.insert("return_url".to_owned(), format!("{base}/pay/epay/return"));
+    params.insert("name".to_owned(), subject.clone());
+    params.insert("money".to_owned(), fen_to_yuan(amount_fen));
+
+    let signature = sign(&params, &secret);
+    params.insert("sign".to_owned(), signature);
+    params.insert("sign_type".to_owned(), "MD5".to_owned());
+
+    let query = params
+        .iter()
+        .map(|(name, value)| format!("{}={}", encode(name), encode(value)))
+        .collect::<Vec<_>>()
+        .join("&");
+
+    let gateway = channel.gateway_url.trim_end_matches('/');
+
+    Ok(CheckoutInfo {
+        order_no,
+        amount_fen,
+        credit,
+        bonus: Decimal::ZERO,
         subject,
         pay_url: format!("{gateway}/submit.php?{query}"),
         expire_at,

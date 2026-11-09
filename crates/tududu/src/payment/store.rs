@@ -150,7 +150,7 @@ pub async fn find_channel_by_pid(db: &PgPool, pid: &str) -> sqlx::Result<Option<
 pub struct NewOrder<'a> {
     pub order_no: &'a str,
     pub user_id: Uuid,
-    pub plan_id: Uuid,
+    pub plan_id: Option<Uuid>,
     pub channel_id: Uuid,
     pub amount_fen: i64,
     pub credit: Decimal,
