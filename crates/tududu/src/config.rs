@@ -103,14 +103,16 @@ impl Config {
         };
 
         let admin_token = read_env("TUDUDU_ADMIN_TOKEN");
-        let job_timeout_secs = match read_env("TUDUDU_JOB_TIMEOUT_SECS") {
-        Some(raw) => raw
-            .parse::<i64>()
-            .map_err(|_| anyhow::anyhow!("TUDUDU_JOB_TIMEOUT_SECS 需要整数"))?,
-        None => 300,
-    };
 
-    let trash_retention_days = match read_env("TUDUDU_TRASH_DAYS") {
+        let job_timeout_secs = match read_env("TUDUDU_JOB_TIMEOUT_SECS") {
+            Some(raw) => raw.parse().map_err(|_| ConfigError::Env {
+                name: "TUDUDU_JOB_TIMEOUT_SECS",
+                value: raw,
+            })?,
+            None => 300,
+        };
+
+        let trash_retention_days = match read_env("TUDUDU_TRASH_DAYS") {
             Some(raw) => raw.parse().map_err(|_| ConfigError::Env {
                 name: "TUDUDU_TRASH_DAYS",
                 value: raw,
