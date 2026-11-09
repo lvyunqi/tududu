@@ -36,11 +36,12 @@ pub async fn recharge_options(
     State(state): State<AppState>,
 ) -> Result<Json<ApiBody<RechargeOptions>>, ApiError> {
     let config = crate::billing::config(&state.db).await?;
+    let quick_amounts = config.quick_amount_fen();
 
     Ok(Json(ApiBody::ok(RechargeOptions {
         unit_name: config.unit_name,
         unit_per_yuan: config.unit_per_yuan,
-        quick_amounts: config.quick_amount_fen(),
+        quick_amounts,
     })))
 }
 

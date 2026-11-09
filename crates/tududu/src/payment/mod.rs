@@ -167,7 +167,7 @@ pub async fn create_custom_order(
         return Err(ApiError::bad_request("充值金额至少 1 元"));
     }
 
-    if amount_fen > 5_000_00 {
+    if amount_fen > 500_000 {
         return Err(ApiError::bad_request("单笔充值不能超过 5000 元"));
     }
 
