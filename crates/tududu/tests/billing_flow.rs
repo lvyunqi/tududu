@@ -288,6 +288,6 @@ async fn reconcile_detects_broken_balance() {
 
     assert!(found.is_some(), "没有发现被改坏的账目");
     let row = found.expect("找不到异常记录");
-    assert_eq!(row.balance, 999);
-    assert_eq!(row.ledger_sum, 100);
+    assert_eq!(row.balance, dec(999));
+    assert_eq!(row.ledger_sum, dec(100));
 }
