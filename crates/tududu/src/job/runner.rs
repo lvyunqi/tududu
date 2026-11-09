@@ -2,8 +2,8 @@ use std::time::Instant;
 
 use base64::Engine as _;
 use base64::engine::general_purpose::STANDARD;
-use serde::Deserialize;
 use rust_decimal::Decimal;
+use serde::Deserialize;
 use sqlx::PgPool;
 use uuid::Uuid;
 

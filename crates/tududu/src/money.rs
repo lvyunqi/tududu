@@ -23,7 +23,10 @@ pub fn from_f64(value: f64) -> Decimal {
 
 /// 字符串或数字都能解析，方便直接收表单值。
 pub fn parse_decimal(raw: &str) -> Option<Decimal> {
-    raw.trim().parse::<Decimal>().ok().map(|value| value.round_dp(4))
+    raw.trim()
+        .parse::<Decimal>()
+        .ok()
+        .map(|value| value.round_dp(4))
 }
 
 /// 反序列化：数字或字符串都接受，统一成定点。
@@ -48,8 +51,9 @@ where
             }
             from_f64(number)
         }
-        Raw::Text(text) => parse_decimal(&text)
-            .ok_or_else(|| serde::de::Error::custom("金额不合法"))?,
+        Raw::Text(text) => {
+            parse_decimal(&text).ok_or_else(|| serde::de::Error::custom("金额不合法"))?
+        }
     };
 
     Ok(parsed)
