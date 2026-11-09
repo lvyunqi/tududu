@@ -5,6 +5,7 @@ use axum::Json;
 use axum::extract::{Path, Query, State};
 use axum::http::{HeaderMap, Uri};
 use axum::response::Html;
+use rust_decimal::Decimal;
 use serde::Deserialize;
 use uuid::Uuid;
 
@@ -115,9 +116,10 @@ const RETURN_HTML: &str = r#"<!doctype html>
 pub struct CreatePlanRequest {
     pub name: String,
     pub amount_fen: i64,
-    pub credit: i64,
-    #[serde(default)]
-    pub bonus: i64,
+    #[serde(deserialize_with = "crate::money::deserialize_decimal")]
+    pub credit: Decimal,
+    #[serde(default, deserialize_with = "crate::money::deserialize_decimal")]
+    pub bonus: Decimal,
     #[serde(default)]
     pub sort: i32,
 }
@@ -143,11 +145,11 @@ pub async fn admin_create_plan(
         return Err(ApiError::bad_request("套餐名称不能为空"));
     }
 
-    if req.amount_fen <= 0 || req.credit <= 0 {
+    if req.amount_fen <= 0 || req.credit <= Decimal::ZERO {
         return Err(ApiError::bad_request("金额和到账数量都需要大于 0"));
     }
 
-    if req.bonus < 0 {
+    if req.bonus.is_sign_negative() {
         return Err(ApiError::bad_request("赠送数量不能是负数"));
     }
 

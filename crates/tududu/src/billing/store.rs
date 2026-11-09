@@ -1,4 +1,5 @@
 use chrono::{DateTime, Utc};
+use rust_decimal::Decimal;
 use serde::Serialize;
 use sqlx::PgPool;
 use uuid::Uuid;
@@ -6,8 +7,10 @@ use uuid::Uuid;
 #[derive(Debug, Serialize, sqlx::FromRow)]
 pub struct WalletRow {
     pub user_id: Uuid,
-    pub balance: i64,
-    pub total_charged: i64,
+    #[serde(serialize_with = "crate::money::serialize_decimal")]
+    pub balance: Decimal,
+    #[serde(serialize_with = "crate::money::serialize_decimal")]
+    pub total_charged: Decimal,
     pub updated_at: DateTime<Utc>,
 }
 
@@ -15,8 +18,10 @@ pub struct WalletRow {
 pub struct LedgerRow {
     pub id: i64,
     pub kind: String,
-    pub amount: i64,
-    pub balance_after: i64,
+    #[serde(serialize_with = "crate::money::serialize_decimal")]
+    pub amount: Decimal,
+    #[serde(serialize_with = "crate::money::serialize_decimal")]
+    pub balance_after: Decimal,
     pub ref_type: Option<String>,
     pub ref_id: Option<Uuid>,
     pub remark: String,
@@ -29,7 +34,8 @@ pub struct PriceRow {
     pub model: String,
     pub size: Option<String>,
     pub quality: Option<String>,
-    pub price: i64,
+    #[serde(serialize_with = "crate::money::serialize_decimal")]
+    pub price: Decimal,
     pub enabled: bool,
 }
 
@@ -107,8 +113,9 @@ pub async fn upsert_price(
     model: &str,
     size: Option<&str>,
     quality: Option<&str>,
-    price: i64,
+    price: impl Into<Decimal>,
 ) -> sqlx::Result<PriceRow> {
+    let price: Decimal = price.into();
     sqlx::query_as::<_, PriceRow>(
         "INSERT INTO billing_prices (model, size, quality, price) VALUES ($1, $2, $3, $4) \
          ON CONFLICT (model, size, quality) DO UPDATE SET price = EXCLUDED.price, enabled = TRUE \
@@ -128,8 +135,8 @@ pub async fn find_price(
     model: &str,
     size: Option<&str>,
     quality: Option<&str>,
-) -> sqlx::Result<Option<i64>> {
-    sqlx::query_scalar::<_, i64>(
+) -> sqlx::Result<Option<Decimal>> {
+    sqlx::query_scalar::<_, Decimal>(
         "SELECT price FROM billing_prices \
           WHERE model = $1 AND enabled = TRUE \
             AND (size IS NULL OR size = $2) \
