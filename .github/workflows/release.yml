@@ -194,10 +194,35 @@ jobs:
       - name: 生成图标
         run: pnpm tauri icon src-tauri/icon-source.png
 
+      # 版本号必须在初始化安卓工程之前写：init 会把它烤进 build.gradle 的 versionName，
+      # 之后再改配置，装到手机上显示的仍是旧版本。
+      - name: 写入版本号
+        run: |
+          set -euo pipefail
+          VERSION="${RELEASE_VERSION#v}"
+          python3 - "$VERSION" <<'PY'
+          import json, sys
+          version = sys.argv[1]
+          for path in ("src-tauri/tauri.conf.json", "package.json"):
+              with open(path, encoding="utf-8") as handle:
+                  data = json.load(handle)
+              data["version"] = version
+              with open(path, "w", encoding="utf-8") as handle:
+                  json.dump(data, handle, ensure_ascii=False, indent=2)
+                  handle.write("\n")
+              print(path, "->", version)
+          PY
+
       - name: 初始化安卓工程
         run: pnpm tauri android init --ci
 
       # tauri icon 只把安卓图标生成到 icons/android，init 不会自动拷进工程，这里显式覆盖
+      - name: 核对安卓版本号
+        run: |
+          set -euo pipefail
+          F="src-tauri/gen/android/app/build.gradle.kts"
+          grep -nE "versionCode|versionName" "$F" || true
+
       - name: 应用安卓图标
         run: |
           set -euo pipefail
@@ -288,24 +313,6 @@ jobs:
           } > "$WRAPPER.new"
           mv "$WRAPPER.new" "$WRAPPER"
           cat "$WRAPPER"
-
-      # App 上报的版本来自 tauri.conf.json，跟着标签走，否则更新检测会一直误报
-      - name: 写入版本号
-        run: |
-          set -euo pipefail
-          VERSION="${RELEASE_VERSION#v}"
-          python3 - "$VERSION" <<'PY'
-          import json, sys
-          version = sys.argv[1]
-          for path in ("src-tauri/tauri.conf.json", "package.json"):
-              with open(path, encoding="utf-8") as handle:
-                  data = json.load(handle)
-              data["version"] = version
-              with open(path, "w", encoding="utf-8") as handle:
-                  json.dump(data, handle, ensure_ascii=False, indent=2)
-                  handle.write("\n")
-              print(path, "->", version)
-          PY
 
       - name: 打包 APK
         env:
