@@ -88,7 +88,7 @@ export async function downloadUpdate(
     throw new Error("当前环境不支持应用内下载");
   }
 
-  const url = info.download_url.startsWith("http") ? info.download_url : BASE + info.download_url;
+  const url = absoluteUrl(info.download_url);
   const name = "tududu-update-" + (info.latest || "latest") + ".apk";
 
   const off = await api.event?.listen("update://progress", (event) => onProgress(event.payload));
@@ -112,7 +112,7 @@ export async function installUpdate(path: string): Promise<void> {
 /** 用系统浏览器下载，兜底方案。 */
 export async function openInBrowser(info: VersionInfo): Promise<void> {
   const api = tauri();
-  const url = info.download_url.startsWith("http") ? info.download_url : BASE + info.download_url;
+  const url = absoluteUrl(info.download_url);
 
   if (api?.core) {
     await api.core.invoke("open_external", { url });
@@ -120,6 +120,14 @@ export async function openInBrowser(info: VersionInfo): Promise<void> {
   }
 
   window.location.href = url;
+}
+
+/** 服务端给的是相对地址，拼成绝对地址再交给原生下载。 */
+export function absoluteUrl(path: string): string {
+  if (path.startsWith("http")) return path;
+
+  const base = BASE || window.location.origin;
+  return base.replace(/\/$/, "") + path;
 }
 
 export function formatSize(bytes: number): string {

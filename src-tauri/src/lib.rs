@@ -37,7 +37,10 @@ async fn download_update(
         .map_err(|err| format!("下载失败：{err}"))?;
 
     if !response.status().is_success() {
-        return Err(format!("下载失败，服务端返回 {}", response.status()));
+        return Err(format!(
+            "下载失败，服务端返回 {}（{url}）",
+            response.status()
+        ));
     }
 
     let total = response.content_length().unwrap_or(0);

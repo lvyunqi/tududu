@@ -389,38 +389,17 @@ jobs:
           } > BUILD_INFO.txt
           cat BUILD_INFO.txt
 
+      # 更新说明是给用户看的：只写改了什么、修了什么，不写部署和校验步骤。
+      # 版本号复用同一个标签反复重建时，这份文件里的内容跟着一起更新。
       - name: 写入发布说明
         run: |
           set -euo pipefail
-          cat > notes.md <<'NOTES'
-          ## 这次发的东西
-
-          - tududu-*-linux-x86_64：服务端，静态链接，单文件，接口与两个前端都在里面
-          - tududu-*-launcher-linux-x86_64：启动器，和主程序放同一目录，由它托管主程序并负责重启
-          - tududu-*-arm64.apk：安卓包，已用发布密钥签名
-          - SHA256SUMS.txt：上面两个文件的校验和
-          - BUILD_INFO.txt：这次构建的提交号与两个包的哈希，同一个标签覆盖发布时靠它区分新旧
-
-          ## 服务端怎么跑
-
-          复制 .env.example 为 .env，至少填 TUDUDU_DATABASE_URL 与 TUDUDU_JWT_SECRET
-          （密钥用 openssl rand -hex 32 生成），然后执行 ./tududu serve。启动时自动建表。
-
-          浏览器打开 http://机器地址:8080 是用户端，/admin 是管理后台；
-          首次启动会用环境变量里的账号建一个管理员。
-
-          ## 装安卓包之前
-
-          这个包的后端地址在构建时写死成仓库变量 ANDROID_API_BASE 的值。
-          如果服务器还没部署、域名还没解析，装上去会提示网络错误，先确保服务端能访问。
-
-          ## 签名
-
-          证书 SHA-256：D45BED1BB8A1BBD09D4B191B4B8E1A69881AFFCC650A324480441C47B000FEFC
-
-          可以用 apksigner verify --print-certs 核对。后续版本用同一把密钥，能覆盖升级。
-          NOTES
-
+          if [ ! -f RELEASE_NOTES.md ]; then
+            echo "缺少 RELEASE_NOTES.md，发布说明必须自己写清楚"
+            exit 1
+          fi
+          cp RELEASE_NOTES.md notes.md
+          cat notes.md
       - name: 创建或更新 Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

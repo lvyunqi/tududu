@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 
+import { renderMarkdown } from "../lib/markdown";
 import {
   downloadUpdate,
   formatSize,
@@ -46,8 +47,12 @@ export default function UpdateDialog({ info, onClose }: { info: VersionInfo; onC
         await openInBrowser(info);
       }
     } catch (err) {
+      // 应用内下载失败就直接交给系统浏览器，用户照样能装上
       setStage("error");
-      setNote(err instanceof Error ? err.message : "下载失败");
+      setNote(
+        (err instanceof Error ? err.message : "应用内下载失败") + "，已改用浏览器下载"
+      );
+      void openInBrowser(info).catch(() => undefined);
     }
   }
 
@@ -65,7 +70,9 @@ export default function UpdateDialog({ info, onClose }: { info: VersionInfo; onC
           <span className="hint">{formatSize(info.size)}</span>
         </div>
 
-        {info.notes && <p className="update-notes">{info.notes}</p>}
+        {info.notes && (
+          <div className="update-notes md">{renderMarkdown(info.notes)}</div>
+        )}
 
         {stage === "downloading" && (
           <div className="update-progress">
