@@ -118,17 +118,21 @@ impl UpdateService {
         Ok(release)
     }
 
-    /// 某个平台对应的包：安卓取 apk，其它取 linux 二进制。
+    /// 某个平台对应的包：安卓取 apk，其它取 linux 主程序。
+    ///
+    /// 注意启动器也叫 xxx-launcher-linux-x86_64，名字里同样有 linux，
+    /// 而且排序靠前，所以这里必须把 launcher 排除掉，否则会把启动器当成主程序装上去。
     pub fn asset_for<'a>(release: &'a Release, platform: &str) -> Option<&'a ReleaseAsset> {
         let want_apk = platform == "android";
 
         release.assets.iter().find(|item| {
             let name = item.name.to_lowercase();
+
             if want_apk {
-                name.ends_with(".apk")
-            } else {
-                name.contains("linux")
+                return name.ends_with(".apk");
             }
+
+            name.contains("linux") && !name.contains("launcher")
         })
     }
 
@@ -388,5 +392,36 @@ mod tests {
                 .unwrap_or_default(),
             10
         );
+    }
+
+    #[test]
+    fn launcher_is_not_picked_as_server_binary() {
+        // 发布包里同时有启动器，名字里也带 linux，不能把它当成主程序
+        let release = Release {
+            tag_name: "v0.1.14".to_owned(),
+            body: String::new(),
+            published_at: String::new(),
+            assets: vec![
+                ReleaseAsset {
+                    name: "tududu-v0.1.14-arm64.apk".to_owned(),
+                    size: 30,
+                    browser_download_url: "https://example.com/apk".to_owned(),
+                },
+                ReleaseAsset {
+                    name: "tududu-v0.1.14-launcher-linux-x86_64".to_owned(),
+                    size: 1,
+                    browser_download_url: "https://example.com/launcher".to_owned(),
+                },
+                ReleaseAsset {
+                    name: "tududu-v0.1.14-linux-x86_64".to_owned(),
+                    size: 11,
+                    browser_download_url: "https://example.com/server".to_owned(),
+                },
+            ],
+        };
+
+        let picked = UpdateService::asset_for(&release, "linux").expect("应该选中主程序");
+        assert_eq!(picked.name, "tududu-v0.1.14-linux-x86_64");
+        assert!(!picked.name.contains("launcher"));
     }
 }
