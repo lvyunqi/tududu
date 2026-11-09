@@ -3688,8 +3688,8 @@ select:focus {
    ========================================================= */
 
 .drawer {
-  /* 资料卡顶到状态栏下沿 */
-  padding-top: var(--safe-top);
+  /* 资料卡再往上收一点，只给状态栏留一点呼吸 */
+  padding-top: max(6px, calc(var(--safe-top) - 10px));
 }
 
 .drawer-profile {
