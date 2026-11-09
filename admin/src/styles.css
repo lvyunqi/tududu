@@ -982,3 +982,14 @@ button.ghost {
   border: 1px solid var(--line);
   color: var(--ink-2);
 }
+
+.modal.narrow {
+  max-width: 400px;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 4px;
+}
