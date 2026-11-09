@@ -121,11 +121,11 @@ pub async fn charge(
     ref_id: Option<Uuid>,
     remark: &str,
 ) -> Result<Decimal, ApiError> {
+    let amount = amount.into();
     if amount <= Decimal::ZERO {
         return Ok(wallet(db, user_id).await?.balance);
     }
 
-    let amount = amount.into();
     apply_delta(db, user_id, -amount, KIND_CHARGE, ref_type, ref_id, remark).await
 }
 
@@ -137,11 +137,11 @@ pub async fn refund(
     ref_id: Option<Uuid>,
     remark: &str,
 ) -> Result<Decimal, ApiError> {
+    let amount = amount.into();
     if amount <= Decimal::ZERO {
         return Ok(wallet(db, user_id).await?.balance);
     }
 
-    let amount = amount.into();
     apply_delta(db, user_id, amount, KIND_REFUND, ref_type, ref_id, remark).await
 }
 
