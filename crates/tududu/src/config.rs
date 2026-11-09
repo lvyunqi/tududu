@@ -33,6 +33,8 @@ pub struct Config {
     pub trash_retention_days: i32,
     /// 单个用户的存储上限，字节，来自 `TUDUDU_QUOTA_BYTES`，默认 2GB。
     pub user_quota_bytes: i64,
+    /// 单个生成任务的总超时秒数，来自 `TUDUDU_JOB_TIMEOUT_SECS`，默认 300。
+    pub job_timeout_secs: i64,
     /// 允许跨域访问的来源，逗号分隔，来自 `TUDUDU_CORS_ORIGINS`。
     pub cors_origins: Vec<String>,
 }
@@ -101,6 +103,15 @@ impl Config {
         };
 
         let admin_token = read_env("TUDUDU_ADMIN_TOKEN");
+
+        let job_timeout_secs = match read_env("TUDUDU_JOB_TIMEOUT_SECS") {
+            Some(raw) => raw.parse().map_err(|_| ConfigError::Env {
+                name: "TUDUDU_JOB_TIMEOUT_SECS",
+                value: raw,
+            })?,
+            None => 300,
+        };
+
         let trash_retention_days = match read_env("TUDUDU_TRASH_DAYS") {
             Some(raw) => raw.parse().map_err(|_| ConfigError::Env {
                 name: "TUDUDU_TRASH_DAYS",
@@ -151,6 +162,7 @@ impl Config {
             admin_username,
             admin_password,
             trash_retention_days,
+            job_timeout_secs,
             user_quota_bytes,
             cors_origins,
         })

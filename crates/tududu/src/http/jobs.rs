@@ -19,6 +19,7 @@ pub async fn create(
     let created = job::submit(&state.db, current.user_id, req, job::JobLink::default()).await?;
 
     let background = state.clone();
+    let timeout_secs = state.live().job_timeout_secs;
     let job_id = created.id;
     tokio::spawn(async move {
         let outcome = job::runner::execute(
@@ -27,6 +28,7 @@ pub async fn create(
             &background.http,
             &background.provider_key,
             job_id,
+            timeout_secs,
         )
         .await;
 

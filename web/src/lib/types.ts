@@ -72,6 +72,9 @@ export interface Job {
   output_asset_id: string | null;
   error_message: string | null;
   price: number;
+  error_code?: number | null;
+  started_at?: string | null;
+  created_at?: string;
 }
 
 export interface PromptItem {

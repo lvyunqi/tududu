@@ -61,6 +61,16 @@ export default function ChatPage({ auth, sessionId }: { auth: Auth; sessionId?: 
   const [sessions, setSessions] = useState<Session[]>([]);
 
   const scrollRef = useRef<HTMLDivElement>(null);
+  // 同一个任务只允许一条轮询，切页面回来不会重复起
+  const pollingRef = useRef<string | null>(null);
+  const aliveRef = useRef(true);
+
+  useEffect(() => {
+    aliveRef.current = true;
+    return () => {
+      aliveRef.current = false;
+    };
+  }, []);
   const fileRef = useRef<HTMLInputElement>(null);
   // 一次最多四张参考图，再多上游也吃不下
   const MAX_FILES = 4;
@@ -279,30 +289,41 @@ export default function ChatPage({ auth, sessionId }: { auth: Auth; sessionId?: 
   }
 
   async function poll(jobId: string, id: string) {
+    if (pollingRef.current === jobId) return;
+    pollingRef.current = jobId;
+
     setRunningJob(jobId);
     setJobPhase(0);
-    setStartedAt(Date.now());
 
-    for (let i = 0; i < 120; i += 1) {
-      await new Promise((resolve) => setTimeout(resolve, 2500));
+    try {
+      // 开始时间以服务端为准：切页面回来接着算，不会重置
+      const first = await request<Job>("/api/v1/jobs/" + jobId).catch(() => null);
+      if (first) {
+        setJobPhase(first.status);
+        setStartedAt(jobStartedAt(first));
+      }
 
-      try {
-        const latest = await request<Job>("/api/v1/jobs/" + jobId);
-        setJobPhase(latest.status);
+      for (let i = 0; i < 240; i += 1) {
+        await new Promise((resolve) => setTimeout(resolve, 2500));
+        if (!aliveRef.current) return;
 
-        if (latest.status === 2 || latest.status === 3) {
-          await load(id);
-          void auth.refresh();
-          setRunningJob(null);
+        try {
+          const latest = await request<Job>("/api/v1/jobs/" + jobId);
+          setJobPhase(latest.status);
+
+          if (latest.status === 2 || latest.status === 3) {
+            await load(id);
+            void auth.refresh();
+            return;
+          }
+        } catch {
           return;
         }
-      } catch {
-        setRunningJob(null);
-        return;
       }
+    } finally {
+      pollingRef.current = null;
+      if (aliveRef.current) setRunningJob(null);
     }
-
-    setRunningJob(null);
   }
 
   function grow(event: React.ChangeEvent<HTMLTextAreaElement>) {
@@ -396,7 +417,17 @@ export default function ChatPage({ auth, sessionId }: { auth: Auth; sessionId?: 
           </div>
         )}
 
-        {error && <p className="error">{error}</p>}
+        {error && (
+          <div className="failure inline">
+            <span className="failure-icon" aria-hidden="true">
+              !
+            </span>
+            <div className="failure-main">
+              <strong>提交失败</strong>
+              <p>{error}</p>
+            </div>
+          </div>
+        )}
       </div>
 
       {!atBottom && (
@@ -618,6 +649,14 @@ export default function ChatPage({ auth, sessionId }: { auth: Auth; sessionId?: 
       )}
     </div>
   );
+}
+
+/// 任务开始时间，优先服务端给的时间戳。
+function jobStartedAt(job: Job): number {
+  const raw = job.started_at ?? job.created_at;
+  const parsed = raw ? Date.parse(raw) : Number.NaN;
+
+  return Number.isFinite(parsed) ? parsed : Date.now();
 }
 
 /// 粒子方块的位置和节奏定死，避免每次渲染都跳一下
@@ -871,7 +910,7 @@ function MessageRow({
         )}
 
         {message.status === 4 && (
-          <p className="error">{message.content || "这一步没成功，换个说法再试"}</p>
+          <FailureNotice text={message.content || "这一步没成功，换个说法再试"} />
         )}
 
         {!mine && message.output_asset_id && (
@@ -883,6 +922,31 @@ function MessageRow({
           >
             发布到广场
           </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/** 失败提示：说清楚为什么、下一步能做什么，别只丢一行红字。 */
+function FailureNotice({ text }: { text: string }) {
+  const needRecharge = text.includes("余额不足") || text.includes("充值");
+  const timeout = text.includes("超时");
+
+  return (
+    <div className="failure">
+      <span className="failure-icon" aria-hidden="true">
+        {timeout ? "⟳" : "!"}
+      </span>
+
+      <div className="failure-main">
+        <strong>{timeout ? "生成超时" : "这次没生成出来"}</strong>
+        <p>{text}</p>
+
+        {needRecharge && (
+          <a className="failure-action" href="#/recharge">
+            去充值
+          </a>
         )}
       </div>
     </div>

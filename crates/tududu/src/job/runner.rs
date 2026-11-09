@@ -17,6 +17,8 @@ use crate::storage::local_store::LocalStore;
 pub const ERR_NO_CHANNEL: i32 = 30004;
 pub const ERR_UPSTREAM: i32 = 30002;
 pub const ERR_INPUT_MISSING: i32 = 30005;
+/// 整个任务跑太久，主动中断。
+pub const ERR_TIMEOUT: i32 = 30006;
 
 #[derive(Debug, sqlx::FromRow)]
 pub struct CallTarget {
@@ -67,7 +69,9 @@ pub async fn execute(
     http: &reqwest::Client,
     key: &[u8; 32],
     job_id: Uuid,
+    timeout_secs: i64,
 ) -> Result<(), ApiError> {
+    let deadline = Instant::now() + std::time::Duration::from_secs(timeout_secs.max(30) as u64);
     let job = store::find(db, job_id)
         .await?
         .ok_or_else(|| ApiError::not_found("任务不存在"))?;
@@ -113,6 +117,18 @@ pub async fn execute(
     let mut last_message = String::from("上游调用失败");
 
     for attempt in 1..=max_attempts {
+        // 整轮任务有总时限，超了就不再重试，直接按失败收尾
+        if Instant::now() >= deadline {
+            fail_and_refund(
+                db,
+                &job,
+                ERR_TIMEOUT,
+                &format!("生成超时（超过 {timeout_secs} 秒），已中断并退还额度"),
+            )
+            .await?;
+            return Ok(());
+        }
+
         let target = &targets[(attempt as usize - 1) % targets.len()];
         store::bump_attempt(db, job_id, attempt, target.channel_id).await?;
 

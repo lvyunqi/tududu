@@ -94,6 +94,7 @@ pub async fn send_message(
     let turn = session::send_message(&state.db, current.user_id, id, req).await?;
 
     let background = state.clone();
+    let timeout_secs = state.live().job_timeout_secs;
     let job_id = turn.job_id;
     tokio::spawn(async move {
         let outcome = job::runner::execute(
@@ -102,6 +103,7 @@ pub async fn send_message(
             &background.http,
             &background.provider_key,
             job_id,
+            timeout_secs,
         )
         .await;
 
