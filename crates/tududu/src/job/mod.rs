@@ -5,7 +5,6 @@ pub mod store;
 
 use serde::Deserialize;
 use sqlx::PgPool;
-use rust_decimal::Decimal;
 use uuid::Uuid;
 
 use crate::error::ApiError;

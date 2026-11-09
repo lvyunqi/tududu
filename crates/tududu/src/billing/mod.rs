@@ -249,6 +249,23 @@ async fn apply_delta(
     Ok(after)
 }
 
+pub async fn update_config(
+    db: &PgPool,
+    req: UpdateConfigRequest,
+) -> Result<store::ConfigRow, ApiError> {
+    if req.unit_name.trim().is_empty() {
+        return Err(ApiError::bad_request("单位名称不能为空"));
+    }
+
+    if req.unit_per_yuan <= 0 {
+        return Err(ApiError::bad_request("每元单位数量需要大于 0"));
+    }
+
+    store::write_config(db, req.unit_name.trim(), req.unit_per_yuan).await?;
+
+    config(db).await
+}
+
 pub async fn update_prices(
     db: &PgPool,
     req: UpdatePricesRequest,

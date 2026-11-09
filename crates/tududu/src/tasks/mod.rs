@@ -118,7 +118,7 @@ pub async fn recover_orphan_jobs(db: &PgPool, older_than_secs: i64) -> sqlx::Res
             }
         }
 
-        if job.price > 0 {
+        if job.price > rust_decimal::Decimal::ZERO {
             let outcome = crate::billing::refund(
                 db,
                 job.user_id,

@@ -2,6 +2,7 @@ use axum::Json;
 use axum::extract::{Path, Query, State};
 use axum::http::HeaderMap;
 use chrono::{DateTime, Utc};
+use rust_decimal::Decimal;
 use serde::Deserialize;
 use uuid::Uuid;
 
@@ -92,12 +93,12 @@ pub async fn adjust_credits(
 ) -> Result<Json<ApiBody<billing::store::WalletRow>>, ApiError> {
     require_admin(&state, &headers)?;
 
-    if req.amount == 0 {
+    if req.amount == Decimal::ZERO {
         return Err(ApiError::bad_request("调整数量不能为 0"));
     }
 
     let remark = req.remark.as_deref().unwrap_or("管理员调整");
-    if req.amount > 0 {
+    if req.amount > Decimal::ZERO {
         billing::grant(&state.db, user_id, req.amount, remark).await?;
     } else {
         billing::charge(&state.db, user_id, -req.amount, None, None, remark).await?;

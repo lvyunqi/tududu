@@ -3,6 +3,7 @@
 //! 库里用 NUMERIC 定点存储，对外接口按普通小数返回，前端不用关心实现细节。
 
 use rust_decimal::Decimal;
+use rust_decimal::prelude::ToPrimitive;
 use serde::Serializer;
 
 /// 序列化成 JSON 数字，前端直接当 number 用。
