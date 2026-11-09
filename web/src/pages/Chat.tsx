@@ -701,8 +701,6 @@ function SwipeRow({
 }) {
   const [offset, setOffset] = useState(0);
   const [dragging, setDragging] = useState(false);
-  // 删除要点两下，第一下变成「确认」，3 秒不点自己退回去
-  const [armed, setArmed] = useState(false);
 
   const startX = useRef<number | null>(null);
   const longPress = useRef<number | null>(null);
@@ -769,24 +767,19 @@ function SwipeRow({
       className={pulled ? "drawer-row open" : "drawer-row"}
     >
       <button
-        className={armed ? "swipe-delete danger armed" : "swipe-delete danger"}
+        type="button"
+        className="swipe-delete danger"
         tabIndex={pulled ? 0 : -1}
         aria-hidden={!pulled}
+        onPointerDown={(event) => event.stopPropagation()}
         onClick={(event) => {
           event.stopPropagation();
-
-          if (!armed) {
-            setArmed(true);
-            window.setTimeout(() => setArmed(false), 3200);
-            return;
-          }
-
-          setArmed(false);
+          event.preventDefault();
           closeAll();
           onDelete();
         }}
       >
-        {armed ? "确认" : "删除"}
+        删除
       </button>
 
       <a

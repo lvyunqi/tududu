@@ -2496,6 +2496,11 @@ select:focus {
   pointer-events: auto;
 }
 
+/* 拉开之后按钮要压在行内容之上，不然点击落到链接上 */
+.drawer .drawer-row .swipe-delete.danger {
+  z-index: 3;
+}
+
 .drawer .drawer-row .drawer-item {
   position: relative;
   z-index: 1;
