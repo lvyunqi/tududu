@@ -23,7 +23,23 @@ pub struct PriceItem {
     pub size: Option<String>,
     #[serde(default)]
     pub quality: Option<String>,
+    /// 单价，单位是计费单位。允许传小数，落库时四舍五入到整数。
+    #[serde(deserialize_with = "deserialize_price")]
     pub price: i64,
+}
+
+/// 价格允许前端直接传小数（比如按元算出来的 12.5），这里统一取整。
+fn deserialize_price<'de, D>(deserializer: D) -> Result<i64, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let value = f64::deserialize(deserializer)?;
+
+    if !value.is_finite() || value < 0.0 {
+        return Err(serde::de::Error::custom("价格必须是非负数"));
+    }
+
+    Ok(value.round() as i64)
 }
 
 #[derive(Debug, Deserialize)]
@@ -264,5 +280,22 @@ mod tests {
         assert_eq!(normalize(Some("  ")), None);
         assert_eq!(normalize(None), None);
         assert_eq!(normalize(Some(" 1024x1024 ")), Some("1024x1024".to_owned()));
+    }
+
+    #[test]
+    fn price_accepts_decimals_and_rounds() {
+        let item: PriceItem =
+            serde_json::from_str(r#"{"model":"gpt-image-1","price":12.5}"#).expect("小数应能解析");
+        assert_eq!(item.price, 13);
+
+        let item: PriceItem =
+            serde_json::from_str(r#"{"model":"gpt-image-1","price":0.4}"#).expect("小数应能解析");
+        assert_eq!(item.price, 0);
+    }
+
+    #[test]
+    fn price_rejects_negative() {
+        let result: Result<PriceItem, _> = serde_json::from_str(r#"{"model":"m","price":-1}"#);
+        assert!(result.is_err());
     }
 }
