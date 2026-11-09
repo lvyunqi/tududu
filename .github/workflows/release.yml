@@ -408,9 +408,11 @@ jobs:
           VERSION="${RELEASE_VERSION}"
 
           if gh release view "$VERSION" > /dev/null 2>&1; then
-            echo "Release 已存在，覆盖附件"
+            echo "Release 已存在，覆盖附件和说明"
             gh release delete-asset "$VERSION" "tududu-$VERSION-arm64.apk.idsig" --yes || true
             gh release upload "$VERSION" dist/* --clobber
+            # 说明也要一起更新，光换附件的话正文还是上一次的
+            gh release edit "$VERSION" --notes-file notes.md
           else
             gh release create "$VERSION" \
               --title "$VERSION" \
