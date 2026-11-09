@@ -967,3 +967,18 @@ button.link {
   font-size: 13px;
   cursor: pointer;
 }
+
+.price-input {
+  width: 90px;
+}
+
+.row-actions {
+  display: inline-flex;
+  gap: 6px;
+}
+
+button.ghost {
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--ink-2);
+}
