@@ -161,7 +161,7 @@ async fn orphan_job_is_failed_and_refunded() {
         .await
         .expect("读钱包失败")
         .balance;
-    assert_eq!(balance, 100);
+    assert_eq!(balance, rust_decimal::Decimal::from(100));
 }
 
 #[tokio::test]

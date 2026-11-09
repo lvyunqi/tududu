@@ -5,12 +5,18 @@
 use std::collections::BTreeMap;
 
 use chrono::{Duration, Utc};
+use rust_decimal::Decimal;
 use sqlx::PgPool;
 use uuid::Uuid;
 
 use tududu::billing;
 use tududu::payment;
 use tududu::provider::crypto;
+
+/// 测试里金额从整数写法转成定点。
+fn dec(value: i64) -> Decimal {
+    Decimal::from(value)
+}
 
 async fn pool() -> PgPool {
     let url = std::env::var("TEST_DATABASE_URL")
@@ -38,7 +44,7 @@ async fn new_user(pool: &PgPool) -> Uuid {
     id
 }
 
-async fn balance(pool: &PgPool, user: Uuid) -> i64 {
+async fn balance(pool: &PgPool, user: Uuid) -> Decimal {
     billing::wallet(pool, user)
         .await
         .expect("读钱包失败")
@@ -54,28 +60,28 @@ async fn charge_and_refund_are_idempotent() {
     billing::grant(&pool, user, 100, "测试发放")
         .await
         .expect("发放失败");
-    assert_eq!(balance(&pool, user).await, 100);
+    assert_eq!(balance(&pool, user).await, dec(100));
 
     billing::charge(&pool, user, 30, Some("job"), Some(order), "扣费")
         .await
         .expect("扣费失败");
-    assert_eq!(balance(&pool, user).await, 70);
+    assert_eq!(balance(&pool, user).await, dec(70));
 
     // 同一笔业务重复扣，不该再扣一次
     billing::charge(&pool, user, 30, Some("job"), Some(order), "扣费")
         .await
         .expect("重复扣费失败");
-    assert_eq!(balance(&pool, user).await, 70);
+    assert_eq!(balance(&pool, user).await, dec(70));
 
     billing::refund(&pool, user, 30, Some("job"), Some(order), "退回")
         .await
         .expect("退款失败");
-    assert_eq!(balance(&pool, user).await, 100);
+    assert_eq!(balance(&pool, user).await, dec(100));
 
     billing::refund(&pool, user, 30, Some("job"), Some(order), "退回")
         .await
         .expect("重复退款失败");
-    assert_eq!(balance(&pool, user).await, 100);
+    assert_eq!(balance(&pool, user).await, dec(100));
 }
 
 #[tokio::test]
@@ -92,7 +98,7 @@ async fn charge_rejects_insufficient_balance() {
         .expect_err("余额不足却没报错");
 
     assert_eq!(err.code, 40201);
-    assert_eq!(balance(&pool, user).await, 10);
+    assert_eq!(balance(&pool, user).await, dec(10));
 }
 
 #[tokio::test]
@@ -113,24 +119,24 @@ async fn price_lookup_prefers_specific_rule() {
     let wildcard = billing::price_for(&pool, &model, Some("512x512"), None)
         .await
         .expect("查通配价失败");
-    assert_eq!(wildcard, 10);
+    assert_eq!(wildcard, dec(10));
 
     let sized = billing::price_for(&pool, &model, Some("1024x1024"), Some("low"))
         .await
         .expect("查尺寸价失败");
-    assert_eq!(sized, 20);
+    assert_eq!(sized, dec(20));
 
     let exact = billing::price_for(&pool, &model, Some("1024x1024"), Some("high"))
         .await
         .expect("查精确价失败");
-    assert_eq!(exact, 30);
+    assert_eq!(exact, dec(30));
 }
 
 struct PayFixture {
     user: Uuid,
     order_no: String,
     amount_fen: i64,
-    credit: i64,
+    credit: Decimal,
     secret: String,
     pid: String,
 }
@@ -153,7 +159,7 @@ async fn pay_fixture(pool: &PgPool) -> PayFixture {
     .await
     .expect("建通道失败");
 
-    let plan = payment::store::insert_plan(pool, "测试套餐", 1200, 100, 10, 0)
+    let plan = payment::store::insert_plan(pool, "测试套餐", 1200, dec(100), dec(10), 0)
         .await
         .expect("建套餐失败");
 
@@ -231,7 +237,7 @@ async fn epay_notify_rejects_bad_signature() {
 
     let result = payment::handle_notify(&pool, &key, "raw=body", params).await;
     assert_eq!(result, "fail");
-    assert_eq!(balance(&pool, fixture.user).await, 0);
+    assert_eq!(balance(&pool, fixture.user).await, Decimal::ZERO);
 }
 
 #[tokio::test]
