@@ -1,68 +1,39 @@
 import { useEffect, useState } from "react";
 
 import { renderMarkdown } from "../lib/markdown";
-import {
-  downloadUpdate,
-  formatSize,
-  installUpdate,
-  openInBrowser,
-  type Progress,
-  type VersionInfo
-} from "../lib/updater";
-
-type Stage = "idle" | "downloading" | "done" | "error";
+import { formatSize, openInBrowser, type VersionInfo } from "../lib/updater";
 
 /**
  * 发现新版本时的弹窗。
  *
- * 点「立即更新」走应用内下载，进度条实时走；下完自动拉起系统安装界面。
- * 应用内下载失败时退回系统浏览器，用户手动装。
+ * 只负责讲清楚更新了什么；点「去下载」交给系统浏览器，
+ * 下载进度和安装都由系统接管，不在 App 里重复造一遍。
  */
 export default function UpdateDialog({ info, onClose }: { info: VersionInfo; onClose: () => void }) {
-  const [stage, setStage] = useState<Stage>("idle");
-  const [progress, setProgress] = useState<Progress | null>(null);
   const [note, setNote] = useState<string | null>(null);
 
   useEffect(() => {
     function onKey(event: KeyboardEvent) {
-      if (event.key === "Escape" && stage !== "downloading") onClose();
+      if (event.key === "Escape") onClose();
     }
 
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [onClose, stage]);
+  }, [onClose]);
 
-  async function start() {
-    setStage("downloading");
+  async function goDownload() {
     setNote(null);
 
     try {
-      const path = await downloadUpdate(info, setProgress);
-      setStage("done");
-
-      try {
-        await installUpdate(path);
-      } catch {
-        setNote("已经下载好，但没拉起安装界面，正在用浏览器再试一次");
-        await openInBrowser(info);
-      }
+      await openInBrowser(info);
+      onClose();
     } catch (err) {
-      // 应用内下载失败就直接交给系统浏览器，用户照样能装上
-      setStage("error");
-      setNote(
-        (err instanceof Error ? err.message : "应用内下载失败") + "，已改用浏览器下载"
-      );
-      void openInBrowser(info).catch(() => undefined);
+      setNote(err instanceof Error ? err.message : "打开浏览器失败");
     }
   }
 
-  const percent =
-    progress && progress.total > 0
-      ? Math.min(100, Math.round((progress.downloaded / progress.total) * 100))
-      : null;
-
   return (
-    <div className="sheet-backdrop" onClick={() => stage !== "downloading" && onClose()}>
+    <div className="sheet-backdrop" onClick={onClose}>
       <div className="sheet update-sheet" onClick={(event) => event.stopPropagation()}>
         <div className="update-head">
           <span className="update-badge">新版本</span>
@@ -70,46 +41,15 @@ export default function UpdateDialog({ info, onClose }: { info: VersionInfo; onC
           <span className="hint">{formatSize(info.size)}</span>
         </div>
 
-        {info.notes && (
-          <div className="update-notes md">{renderMarkdown(info.notes)}</div>
-        )}
+        {info.notes && <div className="update-notes md">{renderMarkdown(info.notes)}</div>}
 
-        {stage === "downloading" && (
-          <div className="update-progress">
-            <div className="meter">
-              <span style={{ width: (percent ?? 4) + "%" }} />
-            </div>
-            <p className="hint">
-              {percent === null
-                ? "正在下载…"
-                : "正在下载 " + percent + "% · " + formatSize(progress?.downloaded ?? 0)}
-            </p>
-          </div>
-        )}
-
-        {stage === "done" && <p className="hint">下载完成，正在打开安装界面…</p>}
         {note && <p className="hint">{note}</p>}
 
         <div className="update-actions">
-          {stage === "idle" && (
-            <>
-              <button className="ghost" onClick={onClose}>
-                稍后
-              </button>
-              <button onClick={() => void start()}>立即更新</button>
-            </>
-          )}
-
-          {stage === "downloading" && <button className="ghost" disabled>请稍候…</button>}
-
-          {(stage === "done" || stage === "error") && (
-            <>
-              <button className="ghost" onClick={onClose}>
-                关闭
-              </button>
-              <button onClick={() => void openInBrowser(info)}>用浏览器下载</button>
-            </>
-          )}
+          <button className="ghost" onClick={onClose}>
+            稍后
+          </button>
+          <button onClick={() => void goDownload()}>去下载</button>
         </div>
       </div>
     </div>
