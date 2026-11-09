@@ -3688,8 +3688,8 @@ select:focus {
    ========================================================= */
 
 .drawer {
-  /* 和主页面内容同一条基线：safe-top 之后 10px，和 .chat-tools 对齐 */
-  padding-top: calc(var(--safe-top) + 10px);
+  /* 资料卡顶到状态栏下沿，不再留白 */
+  padding-top: var(--safe-top);
 }
 
 .drawer-profile {
@@ -3700,8 +3700,8 @@ select:focus {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  padding: 14px 14px 12px;
-  border-radius: 20px;
+  padding: 12px 14px 12px;
+  border-radius: 18px;
   border: none;
   color: #fff;
   background: linear-gradient(152deg, #5566ef 0%, #4f63ea 44%, #2fb4d8 100%);
