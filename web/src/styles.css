@@ -3684,75 +3684,31 @@ select:focus {
 }
 
 /* =========================================================
-   侧边栏资料卡：品牌渐变 + 缓慢流动的极光
+   侧边栏资料卡：和输入框同一套中性色，不抢眼
    ========================================================= */
 
 .drawer {
-  /* 资料卡顶到状态栏下沿，不再留白 */
+  /* 资料卡顶到状态栏下沿 */
   padding-top: var(--safe-top);
 }
 
 .drawer-profile {
-  position: relative;
-  isolation: isolate;
-  overflow: hidden;
   flex: none;
   display: flex;
   flex-direction: column;
   gap: 12px;
-  padding: 12px 14px 12px;
+  padding: 12px;
   border-radius: 18px;
-  border: none;
-  color: #fff;
-  background: linear-gradient(152deg, #5566ef 0%, #4f63ea 44%, #2fb4d8 100%);
-  box-shadow:
-    0 2px 6px rgba(16, 24, 40, 0.08),
-    0 14px 30px -18px rgba(79, 99, 234, 0.9);
-  animation: profile-rise 0.42s var(--smooth) both;
-}
-
-/* 两团缓慢移动的光，代替死板的渐变 */
-.drawer-profile::before,
-.drawer-profile::after {
-  content: "";
-  position: absolute;
-  z-index: -1;
-  border-radius: 50%;
-  filter: blur(16px);
-  pointer-events: none;
-}
-
-.drawer-profile::before {
-  width: 180px;
-  height: 180px;
-  left: -54px;
-  top: -76px;
-  background: radial-gradient(circle at 42% 42%, rgba(255, 255, 255, 0.52), transparent 68%);
-  animation: profile-drift 15s ease-in-out infinite alternate;
-}
-
-.drawer-profile::after {
-  width: 200px;
-  height: 200px;
-  right: -72px;
-  bottom: -92px;
-  background: radial-gradient(circle at 55% 45%, rgba(96, 255, 236, 0.5), transparent 66%);
-  animation: profile-drift 19s ease-in-out infinite alternate-reverse;
-}
-
-@keyframes profile-drift {
-  from {
-    transform: translate3d(0, 0, 0) scale(1);
-  }
-  to {
-    transform: translate3d(16px, 12px, 0) scale(1.18);
-  }
+  background: var(--surface);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow);
+  animation: profile-rise 0.32s var(--smooth) both;
 }
 
 @keyframes profile-rise {
   from {
     opacity: 0;
-    transform: translateY(-6px);
+    transform: translateY(-4px);
   }
   to {
     opacity: 1;
@@ -3761,51 +3717,45 @@ select:focus {
 }
 
 .drawer-profile .avatar {
-  color: #fff;
-  background: rgba(255, 255, 255, 0.24);
-  border: 1px solid rgba(255, 255, 255, 0.34);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35);
+  color: var(--ink);
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  box-shadow: none;
 }
 
 .drawer-profile-main strong {
-  color: #fff;
+  color: var(--ink);
   font-size: 15.5px;
 }
 
 .drawer-profile-main .hint {
-  color: rgba(255, 255, 255, 0.74);
+  color: var(--ink-3);
 }
 
 .drawer-links a {
-  color: rgba(255, 255, 255, 0.94);
+  color: var(--ink-2);
 }
 
-/* 深底上给图标垫一块白色小芯片，保留原本的立体质感。
-   选择器要比前面按 nth-child 写的规则更具体，否则被盖掉。 */
 .drawer .drawer-profile .drawer-links a > span,
 .drawer .drawer-profile .drawer-links a:nth-child(2) > span,
 .drawer .drawer-profile .drawer-links a:nth-child(3) > span,
 .drawer .drawer-profile .drawer-links a:nth-child(4) > span {
-  width: 34px;
-  height: 34px;
-  border-radius: 11px;
-  background: rgba(255, 255, 255, 0.94);
-  box-shadow:
-    0 1px 2px rgba(12, 20, 48, 0.18),
-    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  background: transparent;
+  box-shadow: none;
 }
 
 .drawer .drawer-profile .drawer-links a > span > svg {
-  filter: drop-shadow(0 0.5px 0.5px rgba(16, 24, 40, 0.16));
+  filter: none;
 }
 
 .drawer-links a:active {
-  background: rgba(255, 255, 255, 0.14);
+  background: rgba(0, 0, 0, 0.05);
 }
 
-.calm .drawer-profile,
-.calm .drawer-profile::before,
-.calm .drawer-profile::after {
+.calm .drawer-profile {
   animation: none;
 }
 
